@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set Release Version from Tag
+        run: |
+          CLEAN_VER=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          echo "Setting version to: $CLEAN_VER"
+          echo -n "$CLEAN_VER" > internal/config/version
+          sed -i 's/"version": "[^"]*"/"version": "'"$CLEAN_VER"'"/' frontend/package.json
+          sed -i 's/"version": "[^"]*"/"version": "'"$CLEAN_VER"'"/' package.json
+          sed -i 's/"version": "[^"]*"/"version": "'"$CLEAN_VER"'"/' package-lock.json || true
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.26'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm install
+          npm run gen:zod || true
+          npm run build
+
+      - name: Build and Package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          platforms=("linux/amd64" "linux/arm64" "linux/s390x")
+          XRAY_VERSION=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/XTLS/Xray-core/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+          if [ -z "$XRAY_VERSION" ]; then
+            echo "Failed to fetch Xray version from GitHub API (rate-limited?). Falling back to v26.3.27."
+            XRAY_VERSION="v26.3.27"
+          fi
+          echo "Xray version to use: $XRAY_VERSION"
+          
+          for platform in "${platforms[@]}"; do
+            platform_split=(${platform//\// })
+            GOOS=${platform_split[0]}
+            GOARCH=${platform_split[1]}
+            
+            echo "Building for ${GOOS}/${GOARCH}..."
+            mkdir -p "dist/d-ui/bin"
+            
+            # Build backend
+            GOOS=${GOOS} GOARCH=${GOARCH} go build -o "dist/d-ui/d-ui" main.go
+            
+            # Download Xray
+            XRAY_ARCH=${GOARCH}
+            if [ "${GOARCH}" = "amd64" ]; then XRAY_ARCH="64"; fi
+            if [ "${GOARCH}" = "arm64" ]; then XRAY_ARCH="arm64-v8a"; fi
+            
+            curl -L -o "xray.zip" "https://github.com/XTLS/Xray-core/releases/download/${XRAY_VERSION}/Xray-linux-${XRAY_ARCH}.zip"
+            unzip -o "xray.zip" "xray" "geoip.dat" "geosite.dat" -d "dist/d-ui/bin"
+            mv "dist/d-ui/bin/xray" "dist/d-ui/bin/xray-linux-${GOARCH}"
+            rm xray.zip
+            
+            # Copy other files
+            cp d-ui.sh dist/d-ui/
+            cp install.sh dist/d-ui/
+            cp update.sh dist/d-ui/
+            cp d-ui.rc dist/d-ui/
+            cp d-ui.service.debian dist/d-ui/d-ui.service
+            cp d-ui.service.debian dist/d-ui/d-ui.service.debian
+            cp d-ui.service.arch dist/d-ui/d-ui.service.arch
+            cp d-ui.service.rhel dist/d-ui/d-ui.service.rhel
+            
+            # Create archive
+            cd dist
+            tar -czvf "../d-ui-linux-${GOARCH}.tar.gz" d-ui
+            cd ..
+            rm -rf dist/d-ui
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            d-ui-linux-amd64.tar.gz
+            d-ui-linux-arm64.tar.gz
+            d-ui-linux-s390x.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
