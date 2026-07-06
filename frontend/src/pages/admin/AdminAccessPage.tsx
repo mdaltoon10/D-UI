@@ -147,7 +147,7 @@ export default function AdminAccessPage() {
   const [inboundOptions, setInboundOptions] = useState<InboundOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [sortKey, setSortKey] = useState('createdAt:descend');
+  const [sortKey, setSortKey] = useState('createdAt:ascend');
 
   // Multi selection
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
@@ -758,9 +758,13 @@ export default function AdminAccessPage() {
               <Form.Item
                 name="password"
                 label={dict.labelPassword}
-                rules={[{ required: true, message: isFa ? 'رمز عبور را وارد کنید' : 'Please input password' }]}
+                rules={[{ required: !editingAdmin, message: isFa ? 'رمز عبور را وارد کنید' : 'Please input password' }]}
+                extra={editingAdmin ? (isFa ? 'خالی بگذارید تا رمز فعلی حفظ شود' : 'Leave empty to keep current password') : ''}
               >
-                <Input.Password placeholder="••••••••" style={{ borderRadius: 6 }} />
+                <Input.Password 
+                  placeholder={editingAdmin ? (isFa ? 'تغییر رمز عبور' : 'Change password') : '••••••••'} 
+                  style={{ borderRadius: 6 }} 
+                />
               </Form.Item>
             </Col>
           </Row>

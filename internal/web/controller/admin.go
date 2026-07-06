@@ -214,6 +214,13 @@ func (a *AdminController) update(c *gin.Context) {
 			// Just log the error, don't fail the update
 			// logger.Warning("Failed to re-enable clients for admin:", admin.Username, err)
 		}
+	} else {
+		// Disable clients if admin is disabled
+		_, _, err := a.inboundService.DisableClientsByCreator(nil, admin.Username)
+		if err != nil {
+			// Just log the error, don't fail the update
+			// logger.Warning("Failed to disable clients for admin:", admin.Username, err)
+		}
 	}
 
 	jsonMsg(c, "Admin updated successfully", nil)

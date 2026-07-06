@@ -266,10 +266,18 @@ export function useClients() {
   const [allClientStats, setAllClientStats] = useState<ClientStatRow[]>([]);
   const summary = useMemo<ClientsSummary>(() => {
     const serverSummary = listQuery.data?.summary ?? DEFAULT_SUMMARY;
-    if (allClientStats.length === 0) return serverSummary;
+    
+    // Only compute live summary if we have stats AND they match the current query's scope.
+    // For resellers or filtered views, live computing from the global broadcast is risky
+    // because the broadcast contains ALL clients in the system.
+    const isFiltered = !!(query.search || query.protocol || query.inbound || query.filter || query.group);
+    const isReseller = !!(localStorage.getItem('daltoon_current_admin') || (typeof window !== 'undefined' && window.X_UI_IS_RESELLER));
+    
+    if (allClientStats.length === 0 || isFiltered || isReseller) return serverSummary;
+    
     const live = computeClientsSummary(allClientStats, new Set(onlines), expireDiff, trafficDiff);
     return { ...live, total: serverSummary.total || live.total };
-  }, [allClientStats, onlines, expireDiff, trafficDiff, listQuery.data?.summary]);
+  }, [allClientStats, onlines, expireDiff, trafficDiff, listQuery.data?.summary, query]);
 
   const invalidateAll = useCallback(
     () => {

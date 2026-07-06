@@ -310,11 +310,16 @@ export default function AppSidebar() {
   const settingsActive = pathname === '/settings';
   const xrayActive = pathname === '/xray';
   const adminActive = pathname === '/admin-access' || pathname === '/clients-admin';
-  const selectedKey = settingsActive
-    ? `/settings${hash || '#general'}`
-    : xrayActive
-      ? `/xray${hash || '#basic'}`
-      : (pathname === '' ? '/' : pathname);
+  const selectedKey = useMemo(() => {
+    if (settingsActive) return `/settings${hash || '#general'}`;
+    if (xrayActive) return `/xray${hash || '#basic'}`;
+    if (adminActive) {
+      if (pathname.includes('/clients-admin')) return '/clients-admin';
+      if (pathname.includes('/admin-access')) return '/admin-access';
+      return 'admin-access-parent';
+    }
+    return pathname === '' ? '/' : pathname;
+  }, [settingsActive, xrayActive, adminActive, pathname, hash]);
 
   const openSubmenu = settingsActive ? '/settings' : xrayActive ? '/xray' : adminActive ? 'admin-access-parent' : null;
   const [openKeys, setOpenKeys] = useState<string[]>(() => (openSubmenu ? [openSubmenu] : []));

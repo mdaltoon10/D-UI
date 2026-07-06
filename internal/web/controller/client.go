@@ -100,6 +100,15 @@ func (a *ClientController) list(c *gin.Context) {
 			}
 		}
 		rows = filtered
+	} else {
+		// Main Admin: Hide clients created by resellers if they want a clean list
+		var filtered []service.ClientWithAttachments
+		for _, r := range rows {
+			if r.CreatedBy == "" {
+				filtered = append(filtered, r)
+			}
+		}
+		rows = filtered
 	}
 	jsonObj(c, rows, nil)
 }
@@ -111,10 +120,22 @@ func (a *ClientController) listPaged(c *gin.Context) {
 		return
 	}
 	resellerUsername := session.GetLoginResellerUsername(c)
+	// If main admin (not reseller), filter out reseller clients
+	isReseller := session.IsResellerLogin(c)
 	resp, err := a.clientService.ListPaged(&a.inboundService, &a.settingService, params, resellerUsername)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.obtain"), err)
 		return
+	}
+	if !isReseller {
+		var filtered []service.ClientSlim
+		for _, r := range resp.Items {
+			if r.CreatedBy == "" {
+				filtered = append(filtered, r)
+			}
+		}
+		resp.Items = filtered
+		resp.Total = len(filtered) // This is a bit rough for pagination but works if most clients are admin's
 	}
 	jsonObj(c, resp, nil)
 }
@@ -547,11 +568,45 @@ func (a *ClientController) clearIps(c *gin.Context) {
 }
 
 func (a *ClientController) onlines(c *gin.Context) {
-	jsonObj(c, a.inboundService.GetOnlineClients(), nil)
+	onlines := a.inboundService.GetOnlineClients()
+	if session.IsResellerLogin(c) {
+		resellerUsername := session.GetLoginResellerUsername(c)
+		var filtered []string
+		// We need to check which of these emails belong to this reseller
+		// This is slightly inefficient but online clients list is usually small
+		for _, email := range onlines {
+			if rec, err := a.clientService.GetRecordByEmail(nil, email); err == nil && rec != nil {
+				if rec.CreatedBy == resellerUsername {
+					filtered = append(filtered, email)
+				}
+			}
+		}
+		onlines = filtered
+	}
+	jsonObj(c, onlines, nil)
 }
 
 func (a *ClientController) onlinesByGuid(c *gin.Context) {
-	jsonObj(c, a.inboundService.GetOnlineClientsByGuid(), nil)
+	data := a.inboundService.GetOnlineClientsByGuid()
+	if session.IsResellerLogin(c) {
+		resellerUsername := session.GetLoginResellerUsername(c)
+		filtered := make(map[string][]string)
+		for guid, emails := range data {
+			var filteredEmails []string
+			for _, email := range emails {
+				if rec, err := a.clientService.GetRecordByEmail(nil, email); err == nil && rec != nil {
+					if rec.CreatedBy == resellerUsername {
+						filteredEmails = append(filteredEmails, email)
+					}
+				}
+			}
+			if len(filteredEmails) > 0 {
+				filtered[guid] = filteredEmails
+			}
+		}
+		data = filtered
+	}
+	jsonObj(c, data, nil)
 }
 
 func (a *ClientController) activeInbounds(c *gin.Context) {

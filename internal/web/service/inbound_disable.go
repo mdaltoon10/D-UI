@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
 	"github.com/mdaltoon10/D-UI/v3/internal/logger"
 	"github.com/mdaltoon10/D-UI/v3/internal/xray"
@@ -257,6 +258,9 @@ func (s *InboundService) DisableInvalidResellers(tx *gorm.DB) (bool, int64, erro
 }
 
 func (s *InboundService) DisableClientsByCreator(tx *gorm.DB, username string) (bool, int64, error) {
+	if tx == nil {
+		tx = database.GetDB()
+	}
 	var records []model.ClientRecord
 	if err := tx.Where("created_by = ? AND enable = ?", username, true).Find(&records).Error; err != nil {
 		return false, 0, err
@@ -365,6 +369,9 @@ func (s *InboundService) DisableClientsByEmails(tx *gorm.DB, emails []string) (b
 }
 
 func (s *InboundService) EnableClientsByCreator(tx *gorm.DB, username string) (bool, int64, error) {
+	if tx == nil {
+		tx = database.GetDB()
+	}
 	var records []model.ClientRecord
 	if err := tx.Where("created_by = ? AND enable = ?", username, false).Find(&records).Error; err != nil {
 		return false, 0, err

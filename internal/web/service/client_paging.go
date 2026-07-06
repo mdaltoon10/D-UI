@@ -103,22 +103,32 @@ func (s *ClientService) ListPaged(inboundSvc *InboundService, settingSvc *Settin
 		return nil, err
 	}
 
-	if adminUsername != "" {
-		// Reseller: filter strictly by CreatedBy.
-		// If adminUsername is set, we ONLY return clients owned by this admin.
-		// Comparison is case-sensitive.
+	if adminUsername == "" {
+		// Master Admin: filter by CreatedBy if provided, otherwise filter out reseller clients by default
+		if params.CreatedBy != "" {
+			var filtered []ClientWithAttachments
+			for _, c := range all {
+				if c.CreatedBy == params.CreatedBy {
+					filtered = append(filtered, c)
+				}
+			}
+			all = filtered
+		} else {
+			// DEFAULT behavior for Master Admin on main clients list:
+			// Show only clients created by admin (CreatedBy == "")
+			var filtered []ClientWithAttachments
+			for _, c := range all {
+				if c.CreatedBy == "" {
+					filtered = append(filtered, c)
+				}
+			}
+			all = filtered
+		}
+	} else {
+		// Reseller: filter strictly by their own username
 		var filtered []ClientWithAttachments
 		for _, c := range all {
 			if c.CreatedBy == adminUsername {
-				filtered = append(filtered, c)
-			}
-		}
-		all = filtered
-	} else if params.CreatedBy != "" {
-		// Master Admin: filter optionally by CreatedBy (e.g. from the clients admin page)
-		var filtered []ClientWithAttachments
-		for _, c := range all {
-			if c.CreatedBy == params.CreatedBy {
 				filtered = append(filtered, c)
 			}
 		}

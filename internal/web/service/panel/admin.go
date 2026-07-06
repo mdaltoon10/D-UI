@@ -12,7 +12,8 @@ type AdminService struct{}
 func (s *AdminService) GetAllAdmins() ([]model.ResellerAdmin, error) {
 	db := database.GetDB()
 	var admins []model.ResellerAdmin
-	err := db.Find(&admins).Error
+	// Sort by CreatedAt ASC so new admins appear at the bottom of the list.
+	err := db.Order("created_at ASC").Find(&admins).Error
 	
 	if err == nil {
 		for i := range admins {
@@ -45,9 +46,9 @@ func (s *AdminService) GetAllAdmins() ([]model.ResellerAdmin, error) {
 func (s *AdminService) AddAdmin(admin *model.ResellerAdmin) error {
 	db := database.GetDB()
 	var count int64
-	db.Model(&model.ResellerAdmin{}).Where("LOWER(username) = LOWER(?) OR web_path = ?", admin.Username, admin.WebPath).Count(&count)
+	db.Model(&model.ResellerAdmin{}).Where("LOWER(username) = LOWER(?) OR web_path = ? OR remark = ?", admin.Username, admin.WebPath, admin.Remark).Count(&count)
 	if count > 0 {
-		return errors.New("admin with this username or web_path already exists")
+		return errors.New("admin with this username, web_path or remark already exists")
 	}
 	if admin.Id == "" {
 		admin.Id = uuid.NewString()
@@ -63,9 +64,9 @@ func (s *AdminService) UpdateAdmin(admin *model.ResellerAdmin) error {
 	}
 	// Check unique constraints except for self
 	var count int64
-	db.Model(&model.ResellerAdmin{}).Where("(LOWER(username) = LOWER(?) OR web_path = ?) AND id != ?", admin.Username, admin.WebPath, admin.Id).Count(&count)
+	db.Model(&model.ResellerAdmin{}).Where("(LOWER(username) = LOWER(?) OR web_path = ? OR remark = ?) AND id != ?", admin.Username, admin.WebPath, admin.Remark, admin.Id).Count(&count)
 	if count > 0 {
-		return errors.New("admin with this username or web_path already exists")
+		return errors.New("admin with this username, web_path or remark already exists")
 	}
 
 	existing.Username = admin.Username
