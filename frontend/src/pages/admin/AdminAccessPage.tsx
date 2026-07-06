@@ -38,6 +38,7 @@ import {
   CheckCircleOutlined,
   StopOutlined,
   SortAscendingOutlined,
+  ExclamationCircleFilled,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { HttpUtil, SizeFormatter, IntlUtil } from '@/utils';
@@ -160,6 +161,7 @@ export default function AdminAccessPage() {
   const [infoAdmin, setInfoAdmin] = useState<ResellerAdmin | null>(null);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
 
+  const [modal, modalContextHolder] = Modal.useModal();
   const [form] = Form.useForm();
 
   const fetchAdmins = async () => {
@@ -301,12 +303,13 @@ export default function AdminAccessPage() {
   };
 
   const onBulkDelete = () => {
-    Modal.confirm({
+    modal.confirm({
       title: isFa ? 'حذف گروهی همکاران' : 'Bulk Delete Resellers',
+      icon: <ExclamationCircleFilled style={{ color: '#faad14' }} />,
       content: isFa 
-        ? 'آیا از حذف گروهی همکاران انتخاب شده اطمینان دارید؟ تمامی دسترسی‌های پورتال آنها لغو خواهد شد.' 
-        : 'Are you sure you want to delete the selected resellers? All their access links will be revoked.',
-      okText: isFa ? 'بله، حذف کن' : 'Yes, delete',
+        ? `آیا از حذف ${selectedRowKeys.length} همکار انتخاب شده اطمینان دارید؟ تمامی دسترسی‌های پورتال آن‌ها لغو خواهند شد. این عمل غیرقابل بازگشت است.` 
+        : 'Are you sure you want to delete the selected resellers? All their access links will be revoked. This cannot be undone.',
+      okText: isFa ? 'حذف' : 'Delete',
       okType: 'danger',
       cancelText: dict.btnCancel,
       onOk: async () => {
@@ -417,6 +420,7 @@ export default function AdminAccessPage() {
 
   return (
     <ConfigProvider theme={antdThemeConfig}>
+      {modalContextHolder}
       <Layout className={pageClass}>
         <AppSidebar />
         <Layout className="content-shell">
@@ -639,10 +643,11 @@ export default function AdminAccessPage() {
                               danger: true,
                               label: <><DeleteOutlined /> {isFa ? 'حذف ادمین همکار' : 'Delete Reseller'}</>,
                               onClick: () => {
-                                Modal.confirm({
-                                  title: isFa ? 'حذف همکار' : 'Delete Reseller',
-                                  content: dict.confirmDelete,
-                                  okText: isFa ? 'بله، حذف کن' : 'Yes, delete',
+                                modal.confirm({
+                                  title: isFa ? `حذف همکار ${row.remark || row.username}؟` : `Delete reseller ${row.remark || row.username}?`,
+                                   icon: <ExclamationCircleFilled style={{ color: '#faad14' }} />,
+                                  content: isFa ? 'آیا از حذف این ادمین همکار اطمینان دارید؟ تمامی دسترسی‌های پورتال او لغو خواهند شد. این عمل غیرقابل بازگشت است.' : 'Are you sure you want to delete this reseller? Their access link will be revoked. This cannot be undone.',
+                                  okText: isFa ? 'حذف' : 'Delete',
                                   okType: 'danger',
                                   cancelText: dict.btnCancel,
                                   onOk: () => handleDeleteAdmin(row.id)

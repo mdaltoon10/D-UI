@@ -258,7 +258,7 @@ export default function AppSidebar() {
       { key: '/groups', icon: 'groups' as IconName, title: t('menu.groups') },
       { key: '/nodes', icon: 'cluster' as IconName, title: t('menu.nodes') },
       { key: '/hosts', icon: 'hosts' as IconName, title: t('menu.hosts') },
-      { key: '/admin-access', icon: 'security' as IconName, title: getAdminAccessText(i18n.language || 'en-US') },
+      { key: 'admin-access-parent', icon: 'security' as IconName, title: getAdminAccessText(i18n.language || 'en-US') },
       { key: '/outbound', icon: 'outbound' as IconName, title: t('menu.outbounds') },
       { key: '/routing', icon: 'routing' as IconName, title: t('menu.routing') },
       { key: '/settings', icon: 'setting' as IconName, title: t('menu.settings') },
@@ -316,7 +316,7 @@ export default function AppSidebar() {
       ? `/xray${hash || '#basic'}`
       : (pathname === '' ? '/' : pathname);
 
-  const openSubmenu = settingsActive ? '/settings' : xrayActive ? '/xray' : adminActive ? '/admin-access' : null;
+  const openSubmenu = settingsActive ? '/settings' : xrayActive ? '/xray' : adminActive ? 'admin-access-parent' : null;
   const [openKeys, setOpenKeys] = useState<string[]>(() => (openSubmenu ? [openSubmenu] : []));
   useEffect(() => {
     if (openSubmenu) {
@@ -333,7 +333,7 @@ export default function AppSidebar() {
       if (tab.key === '/xray') {
         return { key: tab.key, icon: <Icon />, label: tab.title, children: xrayChildren };
       }
-      if (tab.key === '/admin-access') {
+      if (tab.key === 'admin-access-parent') {
         return { key: tab.key, icon: <Icon />, label: tab.title, children: adminChildren };
       }
       if (tab.key === LOGOUT_KEY) {
