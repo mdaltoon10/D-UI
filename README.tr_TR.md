@@ -44,10 +44,10 @@ Orijinal Daltoon-UI projesinin geliştirilmiş bir çatallaması (fork) olarak i
 bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh)
 ```
 
-Belirli bir sürümü kurmak için, etiketini (ör. `v1.0.1`) ekleyin:
+Belirli bir sürümü kurmak için, etiketini (ör. `v1.4.0`) ekleyin:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v1.0.1
+bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v1.4.0
 ```
 
 Sürekli güncellenen **dev** sürümünü (kararlı bir sürüm değil; `main` dalından her commit'te oluşturulan en son ön sürüm) kurmak için `dev-latest` değerini geçirin:

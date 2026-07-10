@@ -44,10 +44,10 @@ Construido como un fork mejorado del proyecto Daltoon-UI original, Daltoon-UI a�
 bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh)
 ```
 
-Para instalar una versión específica, añade su etiqueta (p. ej. `v1.0.1`):
+Para instalar una versión específica, añade su etiqueta (p. ej. `v1.4.0`):
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v1.0.1
+bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v1.4.0
 ```
 
 Para instalar la versión **dev** continua (la última prelanzamiento por commit desde `main`, no una versión estable), pasa `dev-latest`:

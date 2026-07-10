@@ -44,10 +44,10 @@
 bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh)
 ```
 
-Чтобы установить конкретную версию, добавьте её тег (например, `v1.0.1`):
+Чтобы установить конкретную версию, добавьте её тег (например, `v1.4.0`):
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v1.0.1
+bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v1.4.0
 ```
 
 Чтобы установить скользящую **dev**-сборку (новейший предварительный релиз по каждому коммиту из ветки `main`, а не стабильный релиз), передайте `dev-latest`:
