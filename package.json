@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "cd frontend && npm run dev",
+    "lint": "cd frontend && npm run lint"
+  },
+  "version": "1.4.7"
+}
