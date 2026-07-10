@@ -97,8 +97,8 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 			}
 			// Xray's statsUserOnline keeps track of all seen IPs since startup/reload.
 			// To ensure accurate real-time IP limiting and prevent offline devices
-			// from blocking new ones, we ignore IPs that haven't been active in the last 5 seconds.
-			if now-ts > 5 {
+			// from blocking new ones, we ignore IPs that haven't been active in the last 15 seconds.
+			if now-ts > 15 {
 				continue
 			}
 			if _, exists := observed[user.Email]; !exists {
@@ -409,8 +409,8 @@ func mergeClientIps(old, new []IPWithTimestamp, staleCutoff int64, newAlwaysLive
 		} else {
 			// Existing IP, update Timestamp to latest activity, but PRESERVE Created!
 			if ipTime.Timestamp > existing.Timestamp {
-				// If the IP was offline/unseen for more than 5 seconds, treat it as a new session
-				if ipTime.Timestamp-existing.Timestamp > 5 {
+				// If the IP was offline/unseen for more than 180 seconds, treat it as a new session
+				if ipTime.Timestamp-existing.Timestamp > 180 {
 					existing.Created = ipTime.Timestamp
 				}
 				existing.Timestamp = ipTime.Timestamp
@@ -446,9 +446,9 @@ func partitionLiveIps(ipMap map[string]IPWithTimestamp, observedThisScan map[str
 	now := time.Now().Unix()
 	for ip, entry := range ipMap {
 		// Consider an IP "live" if it was seen locally in this scan, OR if its
-		// timestamp from the synced database is very recent (e.g. within 5 seconds).
+		// timestamp from the synced database is very recent (e.g. within 120 seconds).
 		// This ensures cluster-wide limits work even if the IP was seen on another node.
-		if observedThisScan[ip] || now-entry.Timestamp < 5 {
+		if observedThisScan[ip] || now-entry.Timestamp < 120 {
 			live = append(live, entry)
 		} else {
 			historical = append(historical, entry)
