@@ -47,6 +47,12 @@ export default function FilterDrawer({
 }: FilterDrawerProps) {
   const { t } = useTranslation();
 
+  const isReseller = useMemo(() => {
+    return (typeof window !== 'undefined' && typeof window.X_UI_BASE_PATH !== 'undefined')
+      ? !!localStorage.getItem('daltoon_current_admin')
+      : false;
+  }, []);
+
   function patch<K extends keyof ClientFilters>(key: K, value: ClientFilters[K]) {
     onChange({ ...filters, [key]: value });
   }
@@ -130,22 +136,24 @@ export default function FilterDrawer({
           />
         </Form.Item>
 
-        <Form.Item label={t('inbounds')}>
-          <Select
-            mode="multiple"
-            value={filters.inboundIds}
-            onChange={(v) => patch('inboundIds', v as number[])}
-            options={inboundOptions}
-            placeholder={t('inbounds')}
-            maxTagCount="responsive"
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            listHeight={220}
-          />
-        </Form.Item>
+        {!isReseller && (
+          <Form.Item label={t('inbounds')}>
+            <Select
+              mode="multiple"
+              value={filters.inboundIds}
+              onChange={(v) => patch('inboundIds', v as number[])}
+              options={inboundOptions}
+              placeholder={t('inbounds')}
+              maxTagCount="responsive"
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              listHeight={220}
+            />
+          </Form.Item>
+        )}
 
-        {nodes.length > 0 && (
+        {!isReseller && nodes.length > 0 && (
           <Form.Item label={t('pages.clients.filters.nodes')}>
             <Select
               mode="multiple"

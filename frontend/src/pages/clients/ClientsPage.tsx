@@ -198,6 +198,13 @@ export default function ClientsPage() {
   const { isMobile } = useMediaQuery();
   const [modal, modalContextHolder] = Modal.useModal();
   const [messageApi, messageContextHolder] = message.useMessage();
+
+  const isReseller = useMemo(() => {
+    return (typeof window !== 'undefined' && typeof window.X_UI_BASE_PATH !== 'undefined')
+      ? !!localStorage.getItem('daltoon_current_admin')
+      : false;
+  }, []);
+
   useEffect(() => { setMessageInstance(messageApi); }, [messageApi]);
 
   const {
@@ -848,6 +855,7 @@ export default function ClientsPage() {
       title: t('pages.clients.attachedInbounds'),
       key: 'inboundIds',
       width: 170,
+      hidden: isReseller,
       render: (_v, record) => {
         const ids = record.inboundIds || [];
         if (ids.length === 0) return <span style={{ color: 'rgba(0,0,0,0.45)' }}>—</span>;

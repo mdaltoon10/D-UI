@@ -84,6 +84,13 @@ export default function ClientInfoModal({
   };
   const dateLabel = (ts?: number) => (!ts || ts <= 0 ? '-' : IntlUtil.formatDate(ts, datepicker));
   const [messageApi, messageContextHolder] = message.useMessage();
+
+  const isReseller = useMemo(() => {
+    return (typeof window !== 'undefined' && typeof window.X_UI_BASE_PATH !== 'undefined')
+      ? !!localStorage.getItem('daltoon_current_admin')
+      : false;
+  }, []);
+
   const [links, setLinks] = useState<string[]>([]);
   const [clientIps, setClientIps] = useState<ClientIpInfo[]>([]);
   const [ipsLoading, setIpsLoading] = useState(false);
@@ -320,48 +327,50 @@ export default function ClientInfoModal({
                     <td><Tag className="info-large-tag">{client.comment}</Tag></td>
                   </tr>
                 )}
-                <tr>
-                  <td>{t('pages.clients.attachedInbounds')}</td>
-                  <td>
-                    {(() => {
-                      const ids = client.inboundIds || [];
-                      if (ids.length === 0) return <span className="hint">—</span>;
-                      const visible = ids.slice(0, INBOUND_CHIP_LIMIT);
-                      const overflow = ids.slice(INBOUND_CHIP_LIMIT);
-                      const inboundChip = (id: number) => {
-                        const ib = inboundsById[id];
-                        const proto = (ib?.protocol || '').toLowerCase();
-                        const color = INBOUND_PROTOCOL_COLORS[proto] ?? 'default';
-                        const label = formatInboundLabel(ib?.tag, ib?.remark);
+                {!isReseller && (
+                  <tr>
+                    <td>{t('pages.clients.attachedInbounds')}</td>
+                    <td>
+                      {(() => {
+                        const ids = client.inboundIds || [];
+                        if (ids.length === 0) return <span className="hint">—</span>;
+                        const visible = ids.slice(0, INBOUND_CHIP_LIMIT);
+                        const overflow = ids.slice(INBOUND_CHIP_LIMIT);
+                        const inboundChip = (id: number) => {
+                          const ib = inboundsById[id];
+                          const proto = (ib?.protocol || '').toLowerCase();
+                          const color = INBOUND_PROTOCOL_COLORS[proto] ?? 'default';
+                          const label = formatInboundLabel(ib?.tag, ib?.remark);
+                          return (
+                            <Tooltip key={id} title={label}>
+                              <Tag color={color}>{label}</Tag>
+                            </Tooltip>
+                          );
+                        };
                         return (
-                          <Tooltip key={id} title={label}>
-                            <Tag color={color}>{label}</Tag>
-                          </Tooltip>
+                          <div className="chips">
+                            {visible.map((id) => inboundChip(id))}
+                            {overflow.length > 0 && (
+                              <Popover
+                                trigger="click"
+                                placement="bottomRight"
+                                content={
+                                  <div className="chips chips-stack">
+                                    {overflow.map((id) => inboundChip(id))}
+                                  </div>
+                                }
+                              >
+                                <Tag color="default" className="chip-more">
+                                  +{overflow.length} {t('more') !== 'more' ? t('more') : 'more'}
+                                </Tag>
+                              </Popover>
+                            )}
+                          </div>
                         );
-                      };
-                      return (
-                        <div className="chips">
-                          {visible.map((id) => inboundChip(id))}
-                          {overflow.length > 0 && (
-                            <Popover
-                              trigger="click"
-                              placement="bottomRight"
-                              content={
-                                <div className="chips chips-stack">
-                                  {overflow.map((id) => inboundChip(id))}
-                                </div>
-                              }
-                            >
-                              <Tag color="default" className="chip-more">
-                                +{overflow.length} {t('more') !== 'more' ? t('more') : 'more'}
-                              </Tag>
-                            </Popover>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </td>
-                </tr>
+                      })()}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
 

@@ -52,22 +52,27 @@ func (a *ClientController) filterResellerInbounds(c *gin.Context, inboundIds []i
 	if err := database.GetDB().Where("id = ?", resellerId).First(&admin).Error; err != nil {
 		return nil, err
 	}
-	allowedInbounds := make(map[int]bool)
-	if admin.Inbounds != "" {
-		for _, idStr := range strings.Split(admin.Inbounds, ",") {
-			if id, err := strconv.Atoi(strings.TrimSpace(idStr)); err == nil {
-				allowedInbounds[id] = true
-			}
+  if admin.Inbounds == "" {
+		return []int{}, nil
+	}
+	var allowed []int
+	allowedMap := make(map[int]bool)
+	for _, idStr := range strings.Split(admin.Inbounds, ",") {
+		if id, err := strconv.Atoi(strings.TrimSpace(idStr)); err == nil {
+			allowed = append(allowed, id)
+			allowedMap[id] = true
 		}
 	}
+
+	if len(inboundIds) == 0 {
+		return allowed, nil
+	}
+
 	var filtered []int
 	for _, id := range inboundIds {
-		if allowedInbounds[id] {
+		if allowedMap[id] {
 			filtered = append(filtered, id)
 		}
-	}
-	if len(inboundIds) > 0 && len(filtered) == 0 {
-		return nil, common.NewError("Reseller has no access to the specified inbounds")
 	}
 	return filtered, nil
 }
@@ -253,6 +258,12 @@ func (a *ClientController) update(c *gin.Context) {
 		return
 	}
 	inboundFilter := parseInboundIdsQuery(c.Query("inboundIds"))
+	var err error
+	inboundFilter, err = a.filterResellerInbounds(c, inboundFilter)
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
 	needRestart, err := a.clientService.UpdateByEmail(&a.inboundService, email, updated, inboundFilter...)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)

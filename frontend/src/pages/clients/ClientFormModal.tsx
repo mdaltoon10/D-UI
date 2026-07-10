@@ -735,26 +735,28 @@ export default function ClientFormModal({
                       </Row>
                     )}
 
-                    <Form.Item label={t('pages.clients.attachedInbounds')} required={!isEdit}>
-                      <SelectAllClearButtons
-                        options={inboundOptions}
-                        value={form.inboundIds}
-                        onChange={(v) => update('inboundIds', v)}
-                      />
-                      <Select
-                        mode="multiple"
-                        value={form.inboundIds}
-                        onChange={(v) => update('inboundIds', v)}
-                        options={inboundOptions}
-                        placeholder={t('pages.clients.selectInbound')}
-                        maxTagCount="responsive"
-                        placement="topLeft"
-                        listHeight={220}
-                        showSearch={{
-                          filterOption: (input, option) => ((option?.label as string) || '').toLowerCase().includes(input.toLowerCase()),
-                        }}
-                      />
-                    </Form.Item>
+                    {!isReseller && (
+                      <Form.Item label={t('pages.clients.attachedInbounds')} required={!isEdit}>
+                        <SelectAllClearButtons
+                          options={inboundOptions}
+                          value={form.inboundIds}
+                          onChange={(v) => update('inboundIds', v)}
+                        />
+                        <Select
+                          mode="multiple"
+                          value={form.inboundIds}
+                          onChange={(v) => update('inboundIds', v)}
+                          options={inboundOptions}
+                          placeholder={t('pages.clients.selectInbound')}
+                          maxTagCount="responsive"
+                          placement="topLeft"
+                          listHeight={220}
+                          showSearch={{
+                            filterOption: (input, option) => ((option?.label as string) || '').toLowerCase().includes(input.toLowerCase()),
+                          }}
+                        />
+                      </Form.Item>
+                    )}
 
                     <Form.Item>
                       <Switch aria-label={t('enable')} checked={form.enable} onChange={(v) => update('enable', v)} />
