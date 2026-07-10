@@ -56,12 +56,18 @@ func (a *ClientController) filterResellerInbounds(c *gin.Context, inboundIds []i
 		return []int{}, nil
 	}
 	var allowed []int
-	allowedMap := make(map[int]bool)
-	for _, idStr := range strings.Split(admin.Inbounds, ",") {
-		if id, err := strconv.Atoi(strings.TrimSpace(idStr)); err == nil {
-			allowed = append(allowed, id)
-			allowedMap[id] = true
+	if err := json.Unmarshal([]byte(admin.Inbounds), &allowed); err != nil {
+		// Fallback to comma-separated if JSON fails, just in case
+		for _, idStr := range strings.Split(admin.Inbounds, ",") {
+			if id, err := strconv.Atoi(strings.TrimSpace(idStr)); err == nil {
+				allowed = append(allowed, id)
+			}
 		}
+	}
+
+	allowedMap := make(map[int]bool)
+	for _, id := range allowed {
+		allowedMap[id] = true
 	}
 
 	if len(inboundIds) == 0 {
