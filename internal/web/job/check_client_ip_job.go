@@ -409,8 +409,8 @@ func mergeClientIps(old, new []IPWithTimestamp, staleCutoff int64, newAlwaysLive
 		} else {
 			// Existing IP, update Timestamp to latest activity, but PRESERVE Created!
 			if ipTime.Timestamp > existing.Timestamp {
-				// If the IP was offline/unseen for more than 180 seconds, treat it as a new session
-				if ipTime.Timestamp-existing.Timestamp > 180 {
+				// If the IP was offline/unseen for more than 60 seconds, treat it as a new session
+				if ipTime.Timestamp-existing.Timestamp > 60 {
 					existing.Created = ipTime.Timestamp
 				}
 				existing.Timestamp = ipTime.Timestamp
@@ -446,9 +446,9 @@ func partitionLiveIps(ipMap map[string]IPWithTimestamp, observedThisScan map[str
 	now := time.Now().Unix()
 	for ip, entry := range ipMap {
 		// Consider an IP "live" if it was seen locally in this scan, OR if its
-		// timestamp from the synced database is very recent (e.g. within 120 seconds).
+		// timestamp from the synced database is very recent (e.g. within 15 seconds).
 		// This ensures cluster-wide limits work even if the IP was seen on another node.
-		if observedThisScan[ip] || now-entry.Timestamp < 120 {
+		if observedThisScan[ip] || now-entry.Timestamp < 15 {
 			live = append(live, entry)
 		} else {
 			historical = append(historical, entry)
