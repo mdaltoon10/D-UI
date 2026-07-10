@@ -114,6 +114,11 @@ export class AllSetting {
     }
     const cpu = Math.round(Number(this.tgCpu));
     this.tgCpu = Number.isFinite(cpu) ? Math.min(100, Math.max(0, cpu)) : 80;
+
+    // Ensure ipLimitPolicy is always valid ('block_newest' or 'kick_oldest')
+    if (this.ipLimitPolicy !== 'kick_oldest' && this.ipLimitPolicy !== 'block_newest') {
+      this.ipLimitPolicy = 'block_newest';
+    }
   }
 
   equals(other: AllSetting): boolean {
