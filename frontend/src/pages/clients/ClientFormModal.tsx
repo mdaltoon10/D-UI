@@ -468,7 +468,7 @@ export default function ClientFormModal({
 
   async function onSubmit() {
     const finalInboundIds = form.inboundIds;
-    const schema = isEdit ? ClientFormSchema : ClientCreateFormSchema;
+    const schema = isEdit ? ClientFormSchema : (isReseller ? ClientFormSchema : ClientCreateFormSchema);
     const validated = schema.safeParse({
       email: form.email,
       subId: form.subId,

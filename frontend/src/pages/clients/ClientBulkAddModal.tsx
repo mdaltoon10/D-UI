@@ -63,6 +63,13 @@ export default function ClientBulkAddModal({
   const [form, setForm] = useState<FormState>(emptyForm);
   const [delayedStart, setDelayedStart] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const isReseller = useMemo(() => {
+    return (typeof window !== 'undefined' && typeof window.X_UI_BASE_PATH !== 'undefined')
+      ? !!localStorage.getItem('daltoon_current_admin')
+      : false;
+  }, []);
+
   const fail2ban = useFail2banStatusQuery();
   const limitIpDisabled = !fail2ban.usable;
   const limitIpNotice = getLimitIpNotice(fail2ban, t);
@@ -150,11 +157,25 @@ export default function ClientBulkAddModal({
   }
 
   async function submit() {
-    const validated = ClientBulkAddFormSchema.safeParse(form);
-    if (!validated.success) {
-      messageApi.error(t(validated.error.issues[0]?.message ?? 'somethingWentWrong'));
-      return;
+    if (isReseller) {
+      // For resellers, we allow inboundIds to be empty on the frontend
+      // because the backend will automatically attach assigned inbounds.
+      const result = ClientBulkAddFormSchema.safeParse(form);
+      if (!result.success) {
+        const otherIssues = result.error.issues.filter((i) => i.path[0] !== 'inboundIds');
+        if (otherIssues.length !== 0) {
+          messageApi.error(t(otherIssues[0].message ?? 'somethingWentWrong'));
+          return;
+        }
+      }
+    } else {
+      const result = ClientBulkAddFormSchema.safeParse(form);
+      if (!result.success) {
+        messageApi.error(t(result.error.issues[0]?.message ?? 'somethingWentWrong'));
+        return;
+      }
     }
+
     const emails = buildEmails();
     if (emails.length === 0) return;
 
@@ -214,23 +235,25 @@ export default function ClientBulkAddModal({
         onCancel={() => onOpenChange(false)}
       >
         <Form colon={false} labelCol={{ sm: { span: 8 } }} wrapperCol={{ sm: { span: 14 } }}>
-          <Form.Item label={t('pages.clients.attachedInbounds')} required>
-            <SelectAllClearButtons
-              options={inboundOptions}
-              value={form.inboundIds}
-              onChange={(v) => update('inboundIds', v)}
-            />
-            <Select
-              mode="multiple"
-              value={form.inboundIds}
-              onChange={(v) => update('inboundIds', v)}
-              options={inboundOptions}
-              placeholder={t('pages.clients.selectInbound')}
-              showSearch={{
-                filterOption: (input, option) => ((option?.label as string) || '').toLowerCase().includes(input.toLowerCase()),
-              }}
-            />
-          </Form.Item>
+          {!isReseller && (
+            <Form.Item label={t('pages.clients.attachedInbounds')} required>
+              <SelectAllClearButtons
+                options={inboundOptions}
+                value={form.inboundIds}
+                onChange={(v) => update('inboundIds', v)}
+              />
+              <Select
+                mode="multiple"
+                value={form.inboundIds}
+                onChange={(v) => update('inboundIds', v)}
+                options={inboundOptions}
+                placeholder={t('pages.clients.selectInbound')}
+                showSearch={{
+                  filterOption: (input, option) => ((option?.label as string) || '').toLowerCase().includes(input.toLowerCase()),
+                }}
+              />
+            </Form.Item>
+          )}
 
           <Form.Item label={t('pages.clients.method')}>
             <Select
