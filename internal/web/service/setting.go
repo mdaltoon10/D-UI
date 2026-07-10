@@ -109,7 +109,7 @@ var defaultValueMap = map[string]string{
 	"externalTrafficInformEnable": "false",
 	"externalTrafficInformURI":    "",
 	"restartXrayOnClientDisable":  "true",
-	"ipLimitPolicy":               "block_newest_kick_only",
+	"ipLimitPolicy":               "block_newest",
 	"xrayOutboundTestUrl":         "https://www.google.com/generate_204",
 	"panelOutbound":               "",
 	"devChannelEnable":            "false",
@@ -901,8 +901,8 @@ func (s *SettingService) GetIpLimitEnable() (bool, error) {
 // GetIpLimitPolicy returns the configured IP Limit policy.
 func (s *SettingService) GetIpLimitPolicy() string {
 	val, err := s.getString("ipLimitPolicy")
-	if err != nil {
-		return "block_newest_kick_only"
+	if err != nil || val == "" || val == "block_newest_kick_only" {
+		return "block_newest"
 	}
 	return val
 }

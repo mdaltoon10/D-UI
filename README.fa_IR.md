@@ -44,10 +44,10 @@
 bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh)
 ```
 
-برای نصب یک نسخه‌ی مشخص، تگ آن را در انتها اضافه کنید (مثلاً `v1.4.0`):
+برای نصب یک نسخه‌ی مشخص، تگ آن را در انتها اضافه کنید (مثلاً `v1.4.1`):
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v1.4.0
+bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v1.4.1
 ```
 
 برای نصب نسخه‌ی غلتانِ **dev** (آخرین پیش‌انتشار به‌ازای هر کامیت از شاخه‌ی `main`، نه یک انتشار پایدار)، مقدار `dev-latest` را پاس دهید:
