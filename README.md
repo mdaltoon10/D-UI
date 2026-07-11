@@ -1,7 +1,7 @@
 [English](/README.md) | [فارسی](/README.fa_IR.md) | [العربية](/README.ar_EG.md) | [中文](/README.zh_CN.md) | [Español](/README.es_ES.md) | [Русский](/README.ru_RU.md) | [Türkçe](/README.tr_TR.md)
 
 <p align="center">
-  <img src="./media/dui_dark.png" alt="D-UI Preview" width="100%">
+  <img src="./media/dui-dark.png" alt="D-UI Preview" width="100%">
 </p>
 
 <p align="center">
