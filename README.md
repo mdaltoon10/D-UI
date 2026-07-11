@@ -1,7 +1,11 @@
 [English](/README.md) | [فارسی](/README.fa_IR.md) | [العربية](/README.ar_EG.md) | [中文](/README.zh_CN.md) | [Español](/README.es_ES.md) | [Русский](/README.ru_RU.md) | [Türkçe](/README.tr_TR.md)
 
 <p align="center">
-  <img src="./media/dui-dark.png" alt="D-UI Preview" width="100%">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./media/d-ui-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="./media/d-ui-light.png">
+    <img alt="D-UI Preview" src="./media/d-ui-dark.png" width="100%">
+  </picture>
 </p>
 
 <p align="center">
