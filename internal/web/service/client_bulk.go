@@ -829,6 +829,42 @@ func (s *ClientService) BulkDelete(inboundSvc *InboundService, emails []string, 
 		trafficByEmail[t.Email] = t.Up + t.Down
 	}
 
+	if len(traffics) > 0 {
+		var emails []string
+		trafficMap := make(map[string]*EmailTraffic, len(traffics))
+		for j := range traffics {
+			email := strings.ToLower(traffics[j].Email)
+			emails = append(emails, traffics[j].Email)
+			trafficMap[email] = &traffics[j]
+		}
+
+		type globalRow struct {
+			Email string
+			Up    int64
+			Down  int64
+		}
+		var globalRows []globalRow
+		if err := db.Table("client_global_traffics").
+			Select("email, up, down").
+			Where("email IN ?", emails).
+			Scan(&globalRows).Error; err == nil {
+			for _, g := range globalRows {
+				emailKey := strings.ToLower(g.Email)
+				if r, exists := trafficMap[emailKey]; exists {
+					if g.Up > r.Up {
+						r.Up = g.Up
+					}
+					if g.Down > r.Down {
+						r.Down = g.Down
+					}
+				}
+			}
+			for _, t := range traffics {
+				trafficByEmail[t.Email] = t.Up + t.Down
+			}
+		}
+	}
+
 	needRestart := false
 	for inboundId, ibEmails := range emailsByInbound {
 		ibResult := s.bulkDelInboundClients(inboundSvc, inboundId, ibEmails, recordsByEmail, false)

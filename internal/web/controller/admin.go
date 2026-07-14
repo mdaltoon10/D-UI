@@ -312,15 +312,49 @@ func (a *AdminController) resetTraffic(c *gin.Context) {
 	// Reset the admin's traffic without resetting its clients
 	var totalClientsTraffic int64
 	type trafficRow struct {
-		Up   int64
-		Down int64
+		Email string
+		Up    int64
+		Down  int64
 	}
 	var trafficRows []trafficRow
 	db.Table("client_traffics").
-		Select("client_traffics.up, client_traffics.down").
+		Select("client_traffics.email, client_traffics.up, client_traffics.down").
 		Joins("JOIN clients ON clients.email = client_traffics.email").
 		Where("clients.created_by = ?", admin.Username).
 		Scan(&trafficRows)
+
+	if len(trafficRows) > 0 {
+		var emails []string
+		trafficMap := make(map[string]*trafficRow, len(trafficRows))
+		for j := range trafficRows {
+			email := strings.ToLower(trafficRows[j].Email)
+			emails = append(emails, trafficRows[j].Email)
+			trafficMap[email] = &trafficRows[j]
+		}
+
+		type globalRow struct {
+			Email string
+			Up    int64
+			Down  int64
+		}
+		var globalRows []globalRow
+		if err := db.Table("client_global_traffics").
+			Select("email, up, down").
+			Where("email IN ?", emails).
+			Scan(&globalRows).Error; err == nil {
+			for _, g := range globalRows {
+				emailKey := strings.ToLower(g.Email)
+				if r, exists := trafficMap[emailKey]; exists {
+					if g.Up > r.Up {
+						r.Up = g.Up
+					}
+					if g.Down > r.Down {
+						r.Down = g.Down
+					}
+				}
+			}
+		}
+	}
 
 	for _, r := range trafficRows {
 		totalClientsTraffic += r.Up + r.Down

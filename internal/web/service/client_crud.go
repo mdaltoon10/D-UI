@@ -441,6 +441,24 @@ func (s *ClientService) Delete(inboundSvc *InboundService, id int, keepTraffic b
 			deletedClientTrafficUp = traffic.Up
 			deletedClientTrafficDown = traffic.Down
 			hasTrafficRow = true
+
+			type globalRow struct {
+				Up   int64
+				Down int64
+			}
+			var gRow globalRow
+			if err := database.GetDB().Table("client_global_traffics").
+				Select("MAX(up) as up, MAX(down) as down").
+				Where("email = ?", existing.Email).
+				Group("email").
+				Scan(&gRow).Error; err == nil {
+				if gRow.Up > deletedClientTrafficUp {
+					deletedClientTrafficUp = gRow.Up
+				}
+				if gRow.Down > deletedClientTrafficDown {
+					deletedClientTrafficDown = gRow.Down
+				}
+			}
 		}
 	}
 
