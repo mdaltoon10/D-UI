@@ -10,6 +10,8 @@ export const ClientTrafficSchema = z.object({
   expiryTime: z.number().optional(),
   enable: z.boolean().optional(),
   lastOnline: z.number().optional(),
+  speedUp: z.number().optional(),
+  speedDown: z.number().optional(),
 });
 
 export const ClientRecordSchema = z.object({

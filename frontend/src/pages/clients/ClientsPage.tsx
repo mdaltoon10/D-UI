@@ -907,6 +907,8 @@ export default function ClientsPage() {
           total={record.totalGB}
           enabled={record.enable}
           trafficDiff={trafficDiff}
+          speedUp={isOnline(record.email) ? record.traffic?.speedUp : 0}
+          speedDown={isOnline(record.email) ? record.traffic?.speedDown : 0}
         />
       ),
     },
@@ -1435,6 +1437,8 @@ export default function ClientsPage() {
                                     total={row.totalGB}
                                     enabled={row.enable}
                                     trafficDiff={trafficDiff}
+                                    speedUp={isOnline(row.email) ? row.traffic?.speedUp : 0}
+                                    speedDown={isOnline(row.email) ? row.traffic?.speedDown : 0}
                                   />
                                 </div>
                               );

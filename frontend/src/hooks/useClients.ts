@@ -564,8 +564,16 @@ export function useClients() {
         const upd = byEmail.get(row?.email);
         if (!upd) continue;
         const merged: ClientTraffic = { ...(row.traffic || {}) };
-        if (typeof upd.up === 'number') merged.up = upd.up;
-        if (typeof upd.down === 'number') merged.down = upd.down;
+        if (typeof upd.up === 'number') {
+          const prevUp = row.traffic?.up ?? upd.up;
+          merged.speedUp = upd.up >= prevUp ? (upd.up - prevUp) / 5 : 0;
+          merged.up = upd.up;
+        }
+        if (typeof upd.down === 'number') {
+          const prevDown = row.traffic?.down ?? upd.down;
+          merged.speedDown = upd.down >= prevDown ? (upd.down - prevDown) / 5 : 0;
+          merged.down = upd.down;
+        }
         if (typeof upd.total === 'number') merged.total = upd.total;
         if (typeof upd.expiryTime === 'number') merged.expiryTime = upd.expiryTime;
         if (typeof upd.enable === 'boolean') merged.enable = upd.enable;
