@@ -3245,6 +3245,7 @@ show_usage() {
 │  ${blue}d-ui update-dev${plain}            - Update to Dev channel (latest)   │
 │  ${blue}d-ui update-all-geofiles${plain}   - Update all geo files             │
 │  ${blue}d-ui migrateDB [file]${plain}      - Convert .db <-> .dump (SQLite)   │
+│  ${blue}d-ui pgclient${plain}              - Install/Upgrade PostgreSQL tools │
 │  ${blue}d-ui legacy${plain}                - Legacy version                   │
 │  ${blue}d-ui install${plain}               - Install                          │
 │  ${blue}d-ui uninstall${plain}             - Uninstall                        │
@@ -3447,6 +3448,9 @@ if [[ $# > 0 ]]; then
             ;;
         "migrateDB")
             migrate_db "$2" "$3"
+            ;;
+        "pgclient")
+            pg_ensure_client
             ;;
         *) show_usage ;;
     esac

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
@@ -582,6 +583,7 @@ func main() {
 		fmt.Println("    migrate        migrate form other/old d-ui")
 		fmt.Println("    migrate-db     SQLite <-> .dump (--dump/--restore) or copy into PostgreSQL (--dsn)")
 		fmt.Println("    setting        set settings")
+		fmt.Println("    pgclient       install or upgrade PostgreSQL client tools")
 	}
 
 	flag.Parse()
@@ -634,6 +636,28 @@ func main() {
 		default:
 			fmt.Println("nothing to do: pass --dump <file>, --restore <file> --out <db>, or --dsn <postgres-dsn>")
 		}
+	case "pgclient":
+		fmt.Println("Checking PostgreSQL client tools...")
+		cmd := exec.Command("bash", "-c", "command -v pg_dump > /dev/null 2>&1 && command -v pg_restore > /dev/null 2>&1")
+		if err := cmd.Run(); err == nil {
+			fmt.Println("PostgreSQL client tools (pg_dump/pg_restore) are already installed.")
+			return
+		}
+		fmt.Println("Installing PostgreSQL client tools (pg_dump/pg_restore)...")
+		shellCmd := exec.Command("bash", "/usr/bin/d-ui", "pgclient")
+		shellCmd.Stdout = os.Stdout
+		shellCmd.Stderr = os.Stderr
+		if err := shellCmd.Run(); err != nil {
+			localCmd := exec.Command("bash", "./d-ui.sh", "pgclient")
+			localCmd.Stdout = os.Stdout
+			localCmd.Stderr = os.Stderr
+			if err2 := localCmd.Run(); err2 != nil {
+				fmt.Printf("Error installing postgres client tools: %v (fallback err: %v). Please run 'd-ui pgclient' or install postgresql-client manually.\n", err, err2)
+				os.Exit(1)
+			}
+		}
+		fmt.Println("PostgreSQL client tools successfully installed/upgraded.")
+		return
 	case "setting":
 		err := settingCmd.Parse(os.Args[2:])
 		if err != nil {
