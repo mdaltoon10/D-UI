@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"sort"
 	"time"
+	"sync"
 
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
@@ -510,15 +511,27 @@ func partitionLiveIps(ipMap map[string]IPWithTimestamp, observedThisScan map[str
 	return live, historical
 }
 
+var (
+	f2bInstalledMu   sync.Mutex
+	f2bInstalled     bool
+	f2bInstalledTime time.Time
+)
+
 func (j *CheckClientIpJob) checkFail2BanInstalled() bool {
 	if !isFail2BanEnabled() {
 		return false
 	}
-
+	f2bInstalledMu.Lock()
+	defer f2bInstalledMu.Unlock()
+	if !f2bInstalledTime.IsZero() && time.Since(f2bInstalledTime) < 30*time.Second {
+		return f2bInstalled
+	}
 	cmd := "fail2ban-client"
 	args := []string{"-h"}
 	err := exec.CommandContext(context.Background(), cmd, args...).Run()
-	return err == nil
+	f2bInstalled = err == nil
+	f2bInstalledTime = time.Now()
+	return f2bInstalled
 }
 
 func isFail2BanEnabled() bool {
