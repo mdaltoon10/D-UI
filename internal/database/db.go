@@ -664,9 +664,100 @@ func runSeeders(isUsersEmpty bool) error {
 		return err
 	}
 
+	// Self-gated on the "MigrateClientCreatedBy" row.
+	if err := migrateClientCreatedBy(); err != nil {
+		return err
+	}
+
 	// Idempotent, not seeder-gated: bad values can re-enter via a restored
 	// backup, so re-check on every start.
 	return normalizeSettingPaths()
+}
+
+// migrateClientCreatedBy sets the created_by field for clients that don't have it,
+// by looking at the reseller_admins and the inbounds they have access to.
+func migrateClientCreatedBy() error {
+	var history []string
+	if err := db.Model(&model.HistoryOfSeeders{}).Pluck("seeder_name", &history).Error; err != nil {
+		return err
+	}
+	if slices.Contains(history, "MigrateClientCreatedBy") {
+		return nil
+	}
+
+	var resellers []model.ResellerAdmin
+	if err := db.Find(&resellers).Error; err != nil {
+		return err
+	}
+	if len(resellers) == 0 {
+		return db.Create(&model.HistoryOfSeeders{SeederName: "MigrateClientCreatedBy"}).Error
+	}
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		for _, reseller := range resellers {
+			if reseller.Inbounds == "" {
+				continue
+			}
+			var inboundIds []int
+			for _, part := range strings.Split(reseller.Inbounds, ",") {
+				if id, err := strconv.Atoi(strings.TrimSpace(part)); err == nil && id > 0 {
+					inboundIds = append(inboundIds, id)
+				}
+			}
+			if len(inboundIds) == 0 {
+				continue
+			}
+
+			var clientIds []int
+			if err := tx.Table("client_inbounds").Where("inbound_id IN ?", inboundIds).Pluck("client_id", &clientIds).Error; err != nil {
+				return err
+			}
+			if len(clientIds) > 0 {
+				if err := tx.Model(&model.ClientRecord{}).
+					Where("id IN ? AND (created_by IS NULL OR created_by = '')", clientIds).
+					Update("created_by", reseller.Username).Error; err != nil {
+					return err
+				}
+			}
+
+			// Also update JSON settings in the inbounds table
+			var inbounds []model.Inbound
+			if err := tx.Where("id IN ?", inboundIds).Find(&inbounds).Error; err != nil {
+				return err
+			}
+			for _, ib := range inbounds {
+				var settings map[string]interface{}
+				if err := json.Unmarshal([]byte(ib.Settings), &settings); err != nil {
+					continue
+				}
+				clientsInterface, ok := settings["clients"].([]interface{})
+				if !ok {
+					continue
+				}
+				modified := false
+				for _, cIf := range clientsInterface {
+					cMap, ok := cIf.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					cb, _ := cMap["createdBy"].(string)
+					if cb == "" {
+						cMap["createdBy"] = reseller.Username
+						modified = true
+					}
+				}
+				if modified {
+					settings["clients"] = clientsInterface
+					if b, err := json.Marshal(settings); err == nil {
+						if err := tx.Model(&model.Inbound{}).Where("id = ?", ib.Id).Update("settings", string(b)).Error; err != nil {
+							return err
+						}
+					}
+				}
+			}
+		}
+		return tx.Create(&model.HistoryOfSeeders{SeederName: "MigrateClientCreatedBy"}).Error
+	})
 }
 
 // resetIpLimitsWithoutFail2ban zeroes every client's IP limit on hosts where
