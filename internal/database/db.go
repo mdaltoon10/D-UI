@@ -691,48 +691,9 @@ func undoMigrateClientCreatedBy() error {
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
-		// 1. Clear created_by in clients table for ALL clients
-		if err := tx.Model(&model.ClientRecord{}).
-			Where("created_by != ''").
-			Update("created_by", "").Error; err != nil {
-			return err
-		}
-
-		// 2. Clear createdBy in JSON settings for ALL inbounds
-		var inbounds []model.Inbound
-		if err := tx.Find(&inbounds).Error; err != nil {
-			return err
-		}
-		for _, ib := range inbounds {
-			var settings map[string]interface{}
-			if err := json.Unmarshal([]byte(ib.Settings), &settings); err != nil {
-				continue
-			}
-			clientsInterface, ok := settings["clients"].([]interface{})
-			if !ok {
-				continue
-			}
-			modified := false
-			for _, cIf := range clientsInterface {
-				cMap, ok := cIf.(map[string]interface{})
-				if !ok {
-					continue
-				}
-				cb, _ := cMap["createdBy"].(string)
-				if cb != "" {
-					cMap["createdBy"] = ""
-					modified = true
-				}
-			}
-			if modified {
-				settings["clients"] = clientsInterface
-				if b, err := json.Marshal(settings); err == nil {
-					if err := tx.Model(&model.Inbound{}).Where("id = ?", ib.Id).Update("settings", string(b)).Error; err != nil {
-						return err
-					}
-				}
-			}
-		}
+		// We originally had logic here to clear created_by for all clients,
+		// but it was too destructive (it wiped legitimate reseller clients too).
+		// So we do nothing. Users who were affected by v1.5.4 should restore a backup.
 		return tx.Create(&model.HistoryOfSeeders{SeederName: "UndoMigrateClientCreatedBy"}).Error
 	})
 }

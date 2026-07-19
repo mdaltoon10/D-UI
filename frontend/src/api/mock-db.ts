@@ -272,55 +272,15 @@ const DEFAULT_NODES: Node[] = [
 class MockDatabase {
   getInbounds(): Inbound[] {
     const raw = localStorage.getItem('daltoon_ui_inbounds');
-    let inbounds: Inbound[];
     if (!raw) {
-      inbounds = DEFAULT_INBOUNDS;
-      this.saveInbounds(inbounds);
-    } else {
-      try {
-        inbounds = JSON.parse(raw);
-      } catch {
-        inbounds = DEFAULT_INBOUNDS;
-      }
+      this.saveInbounds(DEFAULT_INBOUNDS);
+      return DEFAULT_INBOUNDS;
     }
-
-    // --- Dynamic Self-Repair Migration for missing/undefined createdBy field ---
-    let modified = false;
-    const adminsRaw = localStorage.getItem('daltoon_ui_admins');
-    if (adminsRaw) {
-      try {
-        const admins: ResellerAdmin[] = JSON.parse(adminsRaw);
-        inbounds.forEach((ib) => {
-          try {
-            const settings = JSON.parse(ib.settings);
-            const clients = settings.clients || [];
-            let clientsModified = false;
-            clients.forEach((c: InboundClient) => {
-              if (!c.createdBy) {
-                // Find reseller admin who has access to this inbound ID
-                const creatorAdmin = admins.find((a) => a.inbounds && a.inbounds.includes(ib.id));
-                if (creatorAdmin) {
-                  c.createdBy = creatorAdmin.username;
-                  clientsModified = true;
-                  modified = true;
-                }
-              }
-            });
-            if (clientsModified) {
-              settings.clients = clients;
-              ib.settings = JSON.stringify(settings);
-            }
-          } catch {}
-        });
-      } catch {}
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return DEFAULT_INBOUNDS;
     }
-
-    if (modified) {
-      localStorage.setItem('daltoon_ui_inbounds', JSON.stringify(inbounds));
-    }
-    // ----------------------------------------------------------------------------
-
-    return inbounds;
   }
 
   saveInbounds(inbounds: Inbound[]) {
@@ -1186,7 +1146,7 @@ export function handleMockRequest(url: string, _method: string, requestData: unk
             enable: body.client?.enable !== false,
             flow: body.client?.flow || '',
             password: body.client?.password || body.client?.uuid || '',
-            createdBy: body.client?.createdBy || (currentAdmin ? currentAdmin.username : undefined)
+            createdBy: currentAdmin ? currentAdmin.username : undefined
           };
 
           settings.clients.push(newClient);
