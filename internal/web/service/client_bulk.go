@@ -704,7 +704,7 @@ func (s *ClientService) bulkAdjustInboundClients(
 		if oldInbound.NodeID != nil {
 			return (&NodeService{}).MarkNodeDirtyTx(tx, *oldInbound.NodeID)
 		}
-		return nil
+		return (&NodeService{}).MarkNodesSyncingCentralInboundDirtyTx(tx, oldInbound.Tag)
 	})
 	if txErr != nil {
 		for email := range foundEmails {
@@ -1162,7 +1162,7 @@ func (s *ClientService) bulkDelInboundClients(
 		if oldInbound.NodeID != nil {
 			return (&NodeService{}).MarkNodeDirtyTx(tx, *oldInbound.NodeID)
 		}
-		return nil
+		return (&NodeService{}).MarkNodesSyncingCentralInboundDirtyTx(tx, oldInbound.Tag)
 	})
 	if txErr != nil {
 		for email := range foundEmails {
@@ -1664,7 +1664,7 @@ func (s *ClientService) bulkSetEnableInboundClients(inboundSvc *InboundService, 
 		if oldInbound.NodeID != nil {
 			return (&NodeService{}).MarkNodeDirtyTx(tx, *oldInbound.NodeID)
 		}
-		return nil
+		return (&NodeService{}).MarkNodesSyncingCentralInboundDirtyTx(tx, oldInbound.Tag)
 	})
 	if txErr != nil {
 		for _, ch := range changed {

@@ -163,7 +163,7 @@ func (s *ClientService) delInboundClients(inboundSvc *InboundService, inboundId 
 		if oldInbound.NodeID != nil {
 			return (&NodeService{}).MarkNodeDirtyTx(tx, *oldInbound.NodeID)
 		}
-		return nil
+		return (&NodeService{}).MarkNodesSyncingCentralInboundDirtyTx(tx, oldInbound.Tag)
 	}); txErr != nil {
 		return needRestart, txErr
 	}
@@ -386,7 +386,7 @@ func (s *ClientService) addInboundClient(inboundSvc *InboundService, data *model
 		if oldInbound.NodeID != nil {
 			return (&NodeService{}).MarkNodeDirtyTx(tx, *oldInbound.NodeID)
 		}
-		return nil
+		return (&NodeService{}).MarkNodesSyncingCentralInboundDirtyTx(tx, oldInbound.Tag)
 	}); txErr != nil {
 		return false, txErr
 	}
@@ -725,7 +725,7 @@ func (s *ClientService) UpdateInboundClient(inboundSvc *InboundService, data *mo
 		if oldInbound.NodeID != nil {
 			return (&NodeService{}).MarkNodeDirtyTx(tx, *oldInbound.NodeID)
 		}
-		return nil
+		return (&NodeService{}).MarkNodesSyncingCentralInboundDirtyTx(tx, oldInbound.Tag)
 	}); txErr != nil {
 		return false, txErr
 	}
@@ -901,7 +901,7 @@ func (s *ClientService) DelInboundClientByEmail(inboundSvc *InboundService, inbo
 		if oldInbound.NodeID != nil {
 			return (&NodeService{}).MarkNodeDirtyTx(tx, *oldInbound.NodeID)
 		}
-		return nil
+		return (&NodeService{}).MarkNodesSyncingCentralInboundDirtyTx(tx, oldInbound.Tag)
 	}); txErr != nil {
 		return false, txErr
 	}

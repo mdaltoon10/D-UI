@@ -730,6 +730,13 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 				return
 			}
 		}
+		if inbound.NodeID == nil {
+			if dErr := (&NodeService{}).MarkNodesSyncingCentralInboundDirtyTx(tx, inbound.Tag); dErr != nil {
+				err = dErr
+				tx.Rollback()
+				return
+			}
+		}
 		tx.Commit()
 	}()
 
@@ -886,6 +893,9 @@ func (s *InboundService) DelInbound(id int) (bool, error) {
 		if markDirty && ib.NodeID != nil {
 			return (&NodeService{}).MarkNodeDirtyTx(tx, *ib.NodeID)
 		}
+		if markDirty {
+			return (&NodeService{}).MarkNodesSyncingCentralInboundDirtyTx(tx, ib.Tag)
+		}
 		return nil
 	}); err != nil {
 		return needRestart, err
@@ -979,7 +989,7 @@ func (s *InboundService) SetInboundEnable(id int, enable bool) (bool, error) {
 		if inbound.NodeID != nil {
 			return (&NodeService{}).MarkNodeDirtyTx(tx, *inbound.NodeID)
 		}
-		return nil
+		return (&NodeService{}).MarkNodesSyncingCentralInboundDirtyTx(tx, inbound.Tag)
 	}); err != nil {
 		return false, err
 	}
@@ -1248,6 +1258,9 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 			if err := (&NodeService{}).MarkNodeDirtyTx(tx, *oldInbound.NodeID); err != nil {
 				return err
 			}
+		}
+		if err := (&NodeService{}).MarkNodesSyncingCentralInboundDirtyTx(tx, oldInbound.Tag); err != nil {
+			return err
 		}
 		// (Re)generate the Xray config whenever routing was or is now enabled, so
 		// the egress SOCKS bridge is added, moved, or dropped to match the new

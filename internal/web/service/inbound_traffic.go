@@ -632,6 +632,9 @@ func (s *InboundService) resetClientTrafficLocked(id int, clientEmail string) (b
 		if inbound != nil && inbound.NodeID != nil {
 			return (&NodeService{}).MarkNodeDirtyTx(tx, *inbound.NodeID)
 		}
+		if inbound != nil {
+			return (&NodeService{}).MarkNodesSyncingCentralInboundDirtyTx(tx, inbound.Tag)
+		}
 		return nil
 	}); err != nil {
 		return false, err

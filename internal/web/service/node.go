@@ -741,6 +741,26 @@ func (s *NodeService) MarkNodeDirty(id int) error {
 	return s.MarkNodeDirtyTx(database.GetDB(), id)
 }
 
+func (s *NodeService) MarkNodesSyncingCentralInboundDirtyTx(tx *gorm.DB, tag string) error {
+	if tx == nil {
+		return errors.New("nil db transaction")
+	}
+	if tag == "" {
+		return nil
+	}
+	now := time.Now().UnixMilli()
+	if database.IsPostgres() {
+		return tx.Exec(
+			`UPDATE nodes SET config_dirty = ?, config_dirty_at = ? 
+			 WHERE inbound_sync_mode = 'all' OR (inbound_sync_mode = 'selected' AND inbound_tags::text LIKE ?)`,
+			true, now, "%\""+tag+"\"%").Error
+	}
+	return tx.Exec(
+		`UPDATE nodes SET config_dirty = ?, config_dirty_at = ? 
+		 WHERE inbound_sync_mode = 'all' OR (inbound_sync_mode = 'selected' AND inbound_tags LIKE ?)`,
+		true, now, "%\""+tag+"\"%").Error
+}
+
 func (s *NodeService) MarkNodeDirtyTx(tx *gorm.DB, id int) error {
 	if id <= 0 {
 		return nil

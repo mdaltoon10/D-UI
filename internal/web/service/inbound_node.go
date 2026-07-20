@@ -617,8 +617,23 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 		if !ok {
 			continue
 		}
+		
+		validSettingsEmails := make(map[string]struct{})
+		hasParsedSettings := false
+		if clients, err := s.GetClients(snapIb); err == nil {
+			hasParsedSettings = true
+			for _, client := range clients {
+				if client.Email != "" {
+					validSettingsEmails[strings.ToLower(strings.TrimSpace(client.Email))] = struct{}{}
+				}
+			}
+		}
+
 		snapEmails := make(map[string]struct{}, len(snapIb.ClientStats))
 		for _, cs := range snapIb.ClientStats {
+			if _, isValid := validSettingsEmails[strings.ToLower(strings.TrimSpace(cs.Email))]; hasParsedSettings && !isValid {
+				continue
+			}
 			snapEmails[cs.Email] = struct{}{}
 
 			// Node-wide total, not this inbound's possibly-stale copy (#5274).
