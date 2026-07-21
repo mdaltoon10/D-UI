@@ -96,8 +96,15 @@ func (a *InboundController) getInbounds(c *gin.Context) {
 		database.GetDB().Where("id = ?", resellerId).First(&admin)
 		allowedInbounds := make(map[string]bool)
 		if admin.Inbounds != "" {
-			for _, id := range strings.Split(admin.Inbounds, ",") {
-				allowedInbounds[strings.TrimSpace(id)] = true
+			var allowedIds []int
+			if err := json.Unmarshal([]byte(admin.Inbounds), &allowedIds); err == nil {
+				for _, id := range allowedIds {
+					allowedInbounds[strconv.Itoa(id)] = true
+				}
+			} else {
+				for _, id := range strings.Split(admin.Inbounds, ",") {
+					allowedInbounds[strings.TrimSpace(id)] = true
+				}
 			}
 		}
 		var allowedIb []*model.Inbound
@@ -145,8 +152,15 @@ func (a *InboundController) getInboundsSlim(c *gin.Context) {
 		database.GetDB().Where("id = ?", resellerId).First(&admin)
 		allowedInbounds := make(map[string]bool)
 		if admin.Inbounds != "" {
-			for _, id := range strings.Split(admin.Inbounds, ",") {
-				allowedInbounds[strings.TrimSpace(id)] = true
+			var allowedIds []int
+			if err := json.Unmarshal([]byte(admin.Inbounds), &allowedIds); err == nil {
+				for _, id := range allowedIds {
+					allowedInbounds[strconv.Itoa(id)] = true
+				}
+			} else {
+				for _, id := range strings.Split(admin.Inbounds, ",") {
+					allowedInbounds[strings.TrimSpace(id)] = true
+				}
 			}
 		}
 		var allowedIb []*model.Inbound
@@ -189,8 +203,15 @@ func (a *InboundController) getInboundOptions(c *gin.Context) {
 		database.GetDB().Where("id = ?", resellerId).First(&admin)
 		allowedInbounds := make(map[string]bool)
 		if admin.Inbounds != "" {
-			for _, id := range strings.Split(admin.Inbounds, ",") {
-				allowedInbounds[strings.TrimSpace(id)] = true
+			var allowedIds []int
+			if err := json.Unmarshal([]byte(admin.Inbounds), &allowedIds); err == nil {
+				for _, id := range allowedIds {
+					allowedInbounds[strconv.Itoa(id)] = true
+				}
+			} else {
+				for _, id := range strings.Split(admin.Inbounds, ",") {
+					allowedInbounds[strings.TrimSpace(id)] = true
+				}
 			}
 		}
 		var allowedIb []service.InboundOption
