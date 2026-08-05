@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Modal, Select, Typography, message } from 'antd';
+import { Alert, Modal, Select, Typography } from 'antd';
 
 import { SelectAllClearButtons } from '@/components/form';
 import type { InboundOption } from '@/hooks/useClients';
 import { formatInboundLabel } from '@/lib/inbounds/label';
 import type { BulkAttachResult } from '@/schemas/client';
+import { getMessage } from '@/utils/messageBus';
 
 const MULTI_USER_PROTOCOLS = new Set(['vmess', 'vless', 'trojan', 'hysteria', 'shadowsocks']);
 
@@ -25,7 +26,6 @@ export default function BulkAttachInboundsModal({
   onSubmit,
 }: BulkAttachInboundsModalProps) {
   const { t } = useTranslation();
-  const [messageApi, messageContextHolder] = message.useMessage();
   const [targetIds, setTargetIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -52,11 +52,11 @@ export default function BulkAttachInboundsModal({
       const skipped = result.skipped?.length ?? 0;
       const errors = result.errors?.length ?? 0;
       if (errors > 0) {
-        messageApi.warning(
+        getMessage().warning(
           t('pages.inbounds.attachClientsResultMixed', { attached, skipped, errors }),
         );
       } else {
-        messageApi.success(t('pages.inbounds.attachClientsResult', { attached, skipped }));
+        getMessage().success(t('pages.inbounds.attachClientsResult', { attached, skipped }));
       }
       onOpenChange(false);
     } finally {
@@ -66,7 +66,6 @@ export default function BulkAttachInboundsModal({
 
   return (
     <>
-      {messageContextHolder}
       <Modal
         open={open}
         title={t('pages.clients.attachToInboundsTitle', { count })}

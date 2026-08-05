@@ -1411,7 +1411,7 @@ func (s *InboundService) updateClientTraffics(tx *gorm.DB, oldInbound *model.Inb
 			continue
 		}
 		if _, existed := oldEmails[email]; existed {
-			if err := s.UpdateClientStat(tx, email, &newClients[i]); err != nil {
+			if err := s.UpdateClientStat(tx, oldInbound.Id, email, &newClients[i]); err != nil {
 				return err
 			}
 			continue

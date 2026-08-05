@@ -70,8 +70,11 @@ func (a *ClientController) filterResellerInbounds(c *gin.Context, inboundIds []i
 		allowedMap[id] = true
 	}
 
-	if len(inboundIds) == 0 {
+	if inboundIds == nil {
 		return allowed, nil
+	}
+	if len(inboundIds) == 0 {
+		return []int{}, nil
 	}
 
 	var filtered []int

@@ -15,8 +15,9 @@ func (s *ClientService) GetRecordByEmail(tx *gorm.DB, email string) (*model.Clie
 	if tx == nil {
 		tx = database.GetDB()
 	}
+	email = strings.TrimSpace(email)
 	row := &model.ClientRecord{}
-	err := tx.Where("email = ?", email).First(row).Error
+	err := tx.Where("LOWER(email) = LOWER(?)", email).First(row).Error
 	if err != nil {
 		return nil, err
 	}
@@ -91,11 +92,12 @@ func (s *ClientService) GetInboundIdsForEmail(tx *gorm.DB, email string) ([]int,
 	if tx == nil {
 		tx = database.GetDB()
 	}
+	email = strings.TrimSpace(email)
 	var ids []int
 	err := tx.Table("client_inbounds").
 		Select("client_inbounds.inbound_id").
 		Joins("JOIN clients ON clients.id = client_inbounds.client_id").
-		Where("clients.email = ?", email).
+		Where("LOWER(clients.email) = LOWER(?)", email).
 		Scan(&ids).Error
 	if err != nil {
 		return nil, err
@@ -195,6 +197,7 @@ func (s *ClientService) HasPendingNode(inboundSvc *InboundService, email string)
 // JSON contains an entry with the given email. Driver-portable (no JSON
 // operators) by parsing in Go — fine for the rare fallback path.
 func (s *ClientService) findInboundIdsByClientEmail(email string) ([]int, error) {
+	email = strings.TrimSpace(email)
 	var inbounds []model.Inbound
 	if err := database.GetDB().
 		Select("id, settings").
@@ -217,7 +220,7 @@ func (s *ClientService) findInboundIdsByClientEmail(email string) ([]int, error)
 			if !ok {
 				continue
 			}
-			if cEmail, _ := cm["email"].(string); cEmail == email {
+			if cEmail, _ := cm["email"].(string); strings.EqualFold(strings.TrimSpace(cEmail), email) {
 				out = append(out, ib.Id)
 				break
 			}

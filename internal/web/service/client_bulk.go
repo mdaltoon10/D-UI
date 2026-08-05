@@ -177,6 +177,9 @@ func (s *ClientService) BulkDetach(inboundSvc *InboundService, emails []string, 
 			recordErr("%s: %v", email, err)
 			continue
 		}
+		if len(currentIds) == 0 && rec.Email != "" {
+			currentIds, _ = s.findInboundIdsByClientEmail(rec.Email)
+		}
 		matched := false
 		for _, id := range currentIds {
 			if _, ok := requested[id]; ok {

@@ -147,6 +147,7 @@ func (s *ClientService) SyncInbound(tx *gorm.DB, inboundId int, clients []model.
 		for _, rec := range toCreate {
 			idByEmail[rec.Email] = rec.Id
 			ct := xray.ClientTraffic{
+				InboundId:  inboundId,
 				Email:      rec.Email,
 				Total:      rec.TotalGB,
 				ExpiryTime: rec.ExpiryTime,

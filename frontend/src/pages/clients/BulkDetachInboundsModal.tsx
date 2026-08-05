@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Modal, Select, Typography, message } from 'antd';
+import { Alert, Modal, Select, Typography } from 'antd';
 
 import { SelectAllClearButtons } from '@/components/form';
 import type { InboundOption } from '@/hooks/useClients';
 import { formatInboundLabel } from '@/lib/inbounds/label';
 import type { BulkDetachResult } from '@/schemas/client';
+import { getMessage } from '@/utils/messageBus';
 
 const MULTI_USER_PROTOCOLS = new Set(['vmess', 'vless', 'trojan', 'hysteria', 'shadowsocks']);
 
@@ -25,7 +26,6 @@ export default function BulkDetachInboundsModal({
   onSubmit,
 }: BulkDetachInboundsModalProps) {
   const { t } = useTranslation();
-  const [messageApi, messageContextHolder] = message.useMessage();
   const [targetIds, setTargetIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -52,11 +52,11 @@ export default function BulkDetachInboundsModal({
       const skipped = result.skipped?.length ?? 0;
       const errors = result.errors?.length ?? 0;
       if (errors > 0) {
-        messageApi.warning(
+        getMessage().warning(
           t('pages.clients.detachFromInboundsResultMixed', { detached, skipped, errors }),
         );
       } else {
-        messageApi.success(t('pages.clients.detachFromInboundsResult', { detached, skipped }));
+        getMessage().success(t('pages.clients.detachFromInboundsResult', { detached, skipped }));
       }
       onOpenChange(false);
     } finally {
@@ -66,7 +66,6 @@ export default function BulkDetachInboundsModal({
 
   return (
     <>
-      {messageContextHolder}
       <Modal
         open={open}
         title={t('pages.clients.detachFromInboundsTitle', { count })}

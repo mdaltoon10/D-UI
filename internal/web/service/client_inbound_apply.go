@@ -45,7 +45,7 @@ func (s *ClientService) delInboundClients(inboundSvc *InboundService, inboundId 
 	wanted := make(map[string]struct{}, len(recs))
 	for _, rec := range recs {
 		if rec.Email != "" {
-			wanted[rec.Email] = struct{}{}
+			wanted[strings.ToLower(strings.TrimSpace(rec.Email))] = struct{}{}
 		}
 	}
 
@@ -67,7 +67,8 @@ func (s *ClientService) delInboundClients(inboundSvc *InboundService, inboundId 
 			continue
 		}
 		email, _ := c["email"].(string)
-		if _, hit := wanted[email]; hit && email != "" {
+		emailKey := strings.ToLower(strings.TrimSpace(email))
+		if _, hit := wanted[emailKey]; hit && emailKey != "" {
 			enable, _ := c["enable"].(bool)
 			removed = append(removed, removedClient{email: email, needApiDel: enable})
 			continue
@@ -669,7 +670,7 @@ func (s *ClientService) UpdateInboundClient(inboundSvc *InboundService, data *mo
 					}
 				}
 				if emailUnchanged || targetExists == 0 {
-					if e := inboundSvc.UpdateClientStat(tx, oldEmail, &clients[0]); e != nil {
+					if e := inboundSvc.UpdateClientStat(tx, data.Id, oldEmail, &clients[0]); e != nil {
 						return e
 					}
 					if e := inboundSvc.UpdateClientIPs(tx, oldEmail, clients[0].Email); e != nil {
@@ -688,7 +689,7 @@ func (s *ClientService) UpdateInboundClient(inboundSvc *InboundService, data *mo
 							return e
 						}
 					}
-					if e := inboundSvc.UpdateClientStat(tx, clients[0].Email, &clients[0]); e != nil {
+					if e := inboundSvc.UpdateClientStat(tx, data.Id, clients[0].Email, &clients[0]); e != nil {
 						return e
 					}
 				}
@@ -818,7 +819,7 @@ func (s *ClientService) DelInboundClientByEmail(inboundSvc *InboundService, inbo
 		if !ok {
 			continue
 		}
-		if cEmail, ok := c["email"].(string); ok && cEmail == email {
+		if cEmail, ok := c["email"].(string); ok && strings.EqualFold(strings.TrimSpace(cEmail), strings.TrimSpace(email)) {
 			found = true
 			needApiDel, _ = c["enable"].(bool)
 		} else {

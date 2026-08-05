@@ -468,8 +468,14 @@ func (s *InboundService) AddClientStat(tx *gorm.DB, inboundId int, client *model
 		Create(&clientTraffic).Error
 }
 
-func (s *InboundService) UpdateClientStat(tx *gorm.DB, email string, client *model.Client) error {
+func (s *InboundService) UpdateClientStat(tx *gorm.DB, inboundId int, email string, client *model.Client) error {
+	if email != "" && email != client.Email {
+		if err := tx.Model(xray.ClientTraffic{}).Where("email = ?", email).Update("email", client.Email).Error; err != nil {
+			return err
+		}
+	}
 	ct := xray.ClientTraffic{
+		InboundId:  inboundId,
 		Email:      client.Email,
 		Total:      client.TotalGB,
 		ExpiryTime: client.ExpiryTime,

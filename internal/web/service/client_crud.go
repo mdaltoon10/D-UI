@@ -699,6 +699,9 @@ func (s *ClientService) Detach(inboundSvc *InboundService, id int, inboundIds []
 	if err != nil {
 		return false, err
 	}
+	if len(currentIds) == 0 && existing.Email != "" {
+		currentIds, _ = s.findInboundIdsByClientEmail(existing.Email)
+	}
 	have := make(map[int]struct{}, len(currentIds))
 	for _, x := range currentIds {
 		have[x] = struct{}{}
