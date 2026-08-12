@@ -79,16 +79,6 @@
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-.is-ultra .sub-link-row {
-  background: rgba(0, 0, 0, 0.3);
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
-.is-ultra .sub-link-row:hover {
-  background: rgba(0, 0, 0, 0.45);
-  border-color: rgba(255, 255, 255, 0.15);
-}
-
 .sub-link-tag {
   margin: 0;
   flex-shrink: 0;

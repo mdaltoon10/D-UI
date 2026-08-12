@@ -5,11 +5,8 @@ import (
 
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
-	"github.com/mdaltoon10/D-UI/v3/internal/logger"
-	"github.com/mdaltoon10/D-UI/v3/internal/xray"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 func (s *ClientService) SyncInbound(tx *gorm.DB, inboundId int, clients []model.Client) error {
@@ -59,6 +56,9 @@ func (s *ClientService) SyncInbound(tx *gorm.DB, inboundId int, clients []model.
 		}
 
 		incoming := clients[i].ToRecord()
+		if strings.TrimSpace(incoming.ClientGuid) == "" {
+			incoming.ClientGuid = model.LegacyClientGuidForEmail(email)
+		}
 		row, ok := existing[email]
 		if !ok {
 			if _, dup := pending[email]; !dup {
@@ -69,6 +69,9 @@ func (s *ClientService) SyncInbound(tx *gorm.DB, inboundId int, clients []model.
 		}
 
 		before := *row
+		if strings.TrimSpace(row.ClientGuid) == "" && incoming.ClientGuid != "" {
+			row.ClientGuid = incoming.ClientGuid
+		}
 		if incoming.UUID != "" {
 			row.UUID = incoming.UUID
 		}
@@ -77,6 +80,12 @@ func (s *ClientService) SyncInbound(tx *gorm.DB, inboundId int, clients []model.
 		}
 		if incoming.Auth != "" {
 			row.Auth = incoming.Auth
+		}
+		if incoming.Secret != "" {
+			row.Secret = incoming.Secret
+		}
+		if incoming.AdTag != "" {
+			row.AdTag = incoming.AdTag
 		}
 		row.Flow = incoming.Flow
 		if incoming.Security != "" {
@@ -98,13 +107,12 @@ func (s *ClientService) SyncInbound(tx *gorm.DB, inboundId int, clients []model.
 		row.KeepAlive = incoming.KeepAlive
 		row.SubID = incoming.SubID
 		row.LimitIP = incoming.LimitIP
+		row.UploadMbps = incoming.UploadMbps
+		row.DownloadMbps = incoming.DownloadMbps
 		row.TotalGB = incoming.TotalGB
 		row.ExpiryTime = incoming.ExpiryTime
 		row.Enable = incoming.Enable
 		row.TgID = incoming.TgID
-		if incoming.CreatedBy != "" {
-			row.CreatedBy = incoming.CreatedBy
-		}
 		if incoming.Group != "" {
 			row.Group = incoming.Group
 		}
@@ -129,15 +137,6 @@ func (s *ClientService) SyncInbound(tx *gorm.DB, inboundId int, clients []model.
 			UpdateColumn("updated_at", preservedUpdatedAt).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&xray.ClientTraffic{}).Where("email = ?", email).
-			Updates(map[string]any{
-				"total":       row.TotalGB,
-				"expiry_time": row.ExpiryTime,
-				"enable":      row.Enable,
-				"reset":       row.Reset,
-			}).Error; err != nil {
-			logger.Warning("SyncInbound update client_traffics:", err)
-		}
 	}
 
 	if len(toCreate) > 0 {
@@ -146,20 +145,6 @@ func (s *ClientService) SyncInbound(tx *gorm.DB, inboundId int, clients []model.
 		}
 		for _, rec := range toCreate {
 			idByEmail[rec.Email] = rec.Id
-			ct := xray.ClientTraffic{
-				InboundId:  inboundId,
-				Email:      rec.Email,
-				Total:      rec.TotalGB,
-				ExpiryTime: rec.ExpiryTime,
-				Enable:     rec.Enable,
-				Reset:      rec.Reset,
-			}
-			if err := tx.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "email"}},
-				DoUpdates: clause.AssignmentColumns([]string{"enable", "total", "expiry_time", "reset"}),
-			}).Create(&ct).Error; err != nil {
-				logger.Warning("SyncInbound create client_traffics:", err)
-			}
 		}
 	}
 

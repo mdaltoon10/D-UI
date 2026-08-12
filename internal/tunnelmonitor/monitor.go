@@ -62,26 +62,26 @@ func DefaultConfig() Config {
 	}
 }
 
-// ConfigFromEnv builds Config from DUI_TUNNEL_HEALTH_* environment variables.
+// ConfigFromEnv builds Config from XUI_TUNNEL_HEALTH_* environment variables.
 //
 // Supported variables:
-//   - DUI_TUNNEL_HEALTH_MONITOR=true
-//   - DUI_TUNNEL_HEALTH_URL=https://www.cloudflare.com/cdn-cgi/trace
-//   - DUI_TUNNEL_HEALTH_PROXY=socks5://127.0.0.1:1080
-//   - DUI_TUNNEL_HEALTH_INTERVAL=30s
-//   - DUI_TUNNEL_HEALTH_TIMEOUT=10s
-//   - DUI_TUNNEL_HEALTH_FAILURES=3
-//   - DUI_TUNNEL_HEALTH_COOLDOWN=5m
+//   - XUI_TUNNEL_HEALTH_MONITOR=true
+//   - XUI_TUNNEL_HEALTH_URL=https://www.cloudflare.com/cdn-cgi/trace
+//   - XUI_TUNNEL_HEALTH_PROXY=socks5://127.0.0.1:1080
+//   - XUI_TUNNEL_HEALTH_INTERVAL=30s
+//   - XUI_TUNNEL_HEALTH_TIMEOUT=10s
+//   - XUI_TUNNEL_HEALTH_FAILURES=3
+//   - XUI_TUNNEL_HEALTH_COOLDOWN=5m
 func ConfigFromEnv() Config {
 	cfg := DefaultConfig()
 
-	cfg.Enabled = parseBool(os.Getenv("DUI_TUNNEL_HEALTH_MONITOR"))
-	cfg.URL = firstNonEmpty(os.Getenv("DUI_TUNNEL_HEALTH_URL"), cfg.URL)
-	cfg.ProxyURL = strings.TrimSpace(os.Getenv("DUI_TUNNEL_HEALTH_PROXY"))
-	cfg.Interval = parseDurationEnv("DUI_TUNNEL_HEALTH_INTERVAL", cfg.Interval)
-	cfg.Timeout = parseDurationEnv("DUI_TUNNEL_HEALTH_TIMEOUT", cfg.Timeout)
-	cfg.Cooldown = parseDurationEnv("DUI_TUNNEL_HEALTH_COOLDOWN", cfg.Cooldown)
-	cfg.FailureThreshold = parseIntEnv("DUI_TUNNEL_HEALTH_FAILURES", cfg.FailureThreshold)
+	cfg.Enabled = parseBool(os.Getenv("XUI_TUNNEL_HEALTH_MONITOR"))
+	cfg.URL = firstNonEmpty(os.Getenv("XUI_TUNNEL_HEALTH_URL"), cfg.URL)
+	cfg.ProxyURL = strings.TrimSpace(os.Getenv("XUI_TUNNEL_HEALTH_PROXY"))
+	cfg.Interval = parseDurationEnv("XUI_TUNNEL_HEALTH_INTERVAL", cfg.Interval)
+	cfg.Timeout = parseDurationEnv("XUI_TUNNEL_HEALTH_TIMEOUT", cfg.Timeout)
+	cfg.Cooldown = parseDurationEnv("XUI_TUNNEL_HEALTH_COOLDOWN", cfg.Cooldown)
+	cfg.FailureThreshold = parseIntEnv("XUI_TUNNEL_HEALTH_FAILURES", cfg.FailureThreshold)
 
 	return cfg.Normalize()
 }

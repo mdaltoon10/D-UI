@@ -166,13 +166,13 @@ func TestMonitorSuccessResetsFailures(t *testing.T) {
 }
 
 func TestConfigFromEnvParsesValues(t *testing.T) {
-	t.Setenv("DUI_TUNNEL_HEALTH_MONITOR", "true")
-	t.Setenv("DUI_TUNNEL_HEALTH_URL", "https://example.com/health")
-	t.Setenv("DUI_TUNNEL_HEALTH_PROXY", "socks5://127.0.0.1:1080")
-	t.Setenv("DUI_TUNNEL_HEALTH_INTERVAL", "15s")
-	t.Setenv("DUI_TUNNEL_HEALTH_TIMEOUT", "3s")
-	t.Setenv("DUI_TUNNEL_HEALTH_FAILURES", "4")
-	t.Setenv("DUI_TUNNEL_HEALTH_COOLDOWN", "2m")
+	t.Setenv("XUI_TUNNEL_HEALTH_MONITOR", "true")
+	t.Setenv("XUI_TUNNEL_HEALTH_URL", "https://example.com/health")
+	t.Setenv("XUI_TUNNEL_HEALTH_PROXY", "socks5://127.0.0.1:1080")
+	t.Setenv("XUI_TUNNEL_HEALTH_INTERVAL", "15s")
+	t.Setenv("XUI_TUNNEL_HEALTH_TIMEOUT", "3s")
+	t.Setenv("XUI_TUNNEL_HEALTH_FAILURES", "4")
+	t.Setenv("XUI_TUNNEL_HEALTH_COOLDOWN", "2m")
 
 	cfg := ConfigFromEnv()
 

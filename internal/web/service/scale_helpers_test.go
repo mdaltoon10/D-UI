@@ -12,7 +12,7 @@ import (
 	"github.com/mdaltoon10/D-UI/v3/internal/config"
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
-	duilogger "github.com/mdaltoon10/D-UI/v3/internal/logger"
+	xuilogger "github.com/mdaltoon10/D-UI/v3/internal/logger"
 	"github.com/mdaltoon10/D-UI/v3/internal/xray"
 
 	"github.com/op/go-logging"
@@ -20,14 +20,14 @@ import (
 )
 
 // setupScaleDB initializes the DB for a scale benchmark on either Postgres
-// (DUI_DB_TYPE=postgres + DUI_DB_DSN) or SQLite (DUI_SCALE_TEST=1, temp file;
-// DUI_SCALE_DB_PATH persists the DB for manual smoke runs), and registers
+// (XUI_DB_TYPE=postgres + XUI_DB_DSN) or SQLite (XUI_SCALE_TEST=1, temp file;
+// XUI_SCALE_DB_PATH persists the DB for manual smoke runs), and registers
 // cleanup. Skips the test when neither backend is configured.
 func setupScaleDB(t *testing.T) {
 	t.Helper()
-	duilogger.InitLogger(logging.ERROR)
+	xuilogger.InitLogger(logging.ERROR)
 
-	if os.Getenv("DUI_DB_TYPE") == "postgres" && strings.TrimSpace(os.Getenv("DUI_DB_DSN")) != "" {
+	if os.Getenv("XUI_DB_TYPE") == "postgres" && strings.TrimSpace(os.Getenv("XUI_DB_DSN")) != "" {
 		if err := database.InitDB(""); err != nil {
 			t.Fatalf("InitDB(postgres): %v", err)
 		}
@@ -35,9 +35,9 @@ func setupScaleDB(t *testing.T) {
 		return
 	}
 
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("DUI_SCALE_TEST"))) {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("XUI_SCALE_TEST"))) {
 	case "1", "true", "yes":
-		dbPath := strings.TrimSpace(os.Getenv("DUI_SCALE_DB_PATH"))
+		dbPath := strings.TrimSpace(os.Getenv("XUI_SCALE_DB_PATH"))
 		if dbPath == "" {
 			dbPath = filepath.Join(t.TempDir(), "scale.db")
 		}
@@ -48,26 +48,26 @@ func setupScaleDB(t *testing.T) {
 		return
 	}
 
-	t.Skip("set DUI_SCALE_TEST=1 (sqlite) or DUI_DB_TYPE=postgres + DUI_DB_DSN (postgres) to run the scale benchmark")
+	t.Skip("set XUI_SCALE_TEST=1 (sqlite) or XUI_DB_TYPE=postgres + XUI_DB_DSN (postgres) to run the scale benchmark")
 }
 
-// scaleSizes returns the default size ladder unless DUI_SCALE_SIZES overrides
+// scaleSizes returns the default size ladder unless XUI_SCALE_SIZES overrides
 // it with a comma-separated list (e.g. "500000" or "10000,100000,500000").
 func scaleSizes(t *testing.T, def ...int) []int {
 	t.Helper()
-	raw := strings.TrimSpace(os.Getenv("DUI_SCALE_SIZES"))
+	raw := strings.TrimSpace(os.Getenv("XUI_SCALE_SIZES"))
 	if raw == "" {
 		return def
 	}
 	var out []int
-	for _, part := range strings.Split(raw, ",") {
+	for part := range strings.SplitSeq(raw, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
 		}
 		n, err := strconv.Atoi(part)
 		if err != nil || n <= 0 {
-			t.Fatalf("DUI_SCALE_SIZES: invalid size %q", part)
+			t.Fatalf("XUI_SCALE_SIZES: invalid size %q", part)
 		}
 		out = append(out, n)
 	}

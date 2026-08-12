@@ -68,7 +68,6 @@ var ErrClientNotInInbound = errors.New("client not found in inbound")
 type ClientCreatePayload struct {
 	Client     model.Client `json:"client"`
 	InboundIds []int        `json:"inboundIds"`
-	AdminId    int          `json:"adminId"`
 }
 
 const sqlInChunk = 400

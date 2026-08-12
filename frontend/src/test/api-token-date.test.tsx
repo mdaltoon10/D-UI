@@ -1,8 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AllSetting } from '@/models/setting';
-import SecurityTab from '@/pages/settings/SecurityTab';
+import { ThemeProvider } from '@/hooks/useTheme';
+import ApiTokenTab from '@/pages/settings/ApiTokenTab';
 import { HttpUtil } from '@/utils';
 
 describe('API token creation date', () => {
@@ -26,8 +26,11 @@ describe('API token creation date', () => {
       ],
     });
 
-    render(<SecurityTab allSetting={{} as AllSetting} updateSetting={vi.fn()} saveSetting={vi.fn()} />);
-    fireEvent.click(screen.getByRole('tab', { name: /API Token/ }));
+    render(
+      <ThemeProvider>
+        <ApiTokenTab />
+      </ThemeProvider>,
+    );
 
     expect(await screen.findByText('seconds-token')).toBeTruthy();
     expect(screen.getByText('legacy-milliseconds-token')).toBeTruthy();

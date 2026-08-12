@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	duilogger "github.com/mdaltoon10/D-UI/v3/internal/logger"
+	xuilogger "github.com/mdaltoon10/D-UI/v3/internal/logger"
 	"github.com/mdaltoon10/D-UI/v3/internal/util/json_util"
 
 	"github.com/op/go-logging"
@@ -14,7 +14,7 @@ import (
 func TestMain(m *testing.M) {
 	// ComputeHotDiff logs the section that blocks a hot apply; the package
 	// logger must exist before any test exercises a blocked path.
-	duilogger.InitLogger(logging.ERROR)
+	xuilogger.InitLogger(logging.ERROR)
 	os.Exit(m.Run())
 }
 
@@ -142,6 +142,12 @@ func TestComputeHotDiff_StaticSectionChangeNeedsRestart(t *testing.T) {
 	newCfg.Observatory = json_util.RawMessage(`{"subjectSelector":["wg"]}`)
 	if _, ok := ComputeHotDiff(makeHotConfig(), newCfg); ok {
 		t.Fatal("observatory change must force a restart")
+	}
+
+	newCfg = makeHotConfig()
+	newCfg.Env = json_util.RawMessage(`{"XRAY_DNS_PATH":"/tmp/dns"}`)
+	if _, ok := ComputeHotDiff(makeHotConfig(), newCfg); ok {
+		t.Fatal("env change must force a restart: env vars are read only at process start")
 	}
 }
 
@@ -336,4 +342,26 @@ func TestComputeHotDiff_RoutingStrategyChangeNeedsRestart(t *testing.T) {
 	if _, ok := ComputeHotDiff(makeHotConfig(), newCfg); ok {
 		t.Fatal("domainStrategy change must force a restart")
 	}
+}
+
+func TestComputeHotDiff_PublicPlaintextVLESSNeedsRestart(t *testing.T) {
+	publicPlaintext := `{"protocol":"vless","tag":"legacy-vless","settings":{"address":"1.2.3.4","port":443,"id":"` + testVLESSID + `","encryption":"none"},"streamSettings":{"network":"tcp","security":"none"}}`
+
+	t.Run("added outbound", func(t *testing.T) {
+		newCfg := makeHotConfig()
+		newCfg.OutboundConfigs = json_util.RawMessage(`[{"protocol":"freedom","tag":"direct"},{"protocol":"blackhole","tag":"blocked"},` + publicPlaintext + `]`)
+		if _, ok := ComputeHotDiff(makeHotConfig(), newCfg); ok {
+			t.Fatal("adding public plaintext VLESS must force a full restart")
+		}
+	})
+
+	t.Run("changed outbound", func(t *testing.T) {
+		oldCfg := makeHotConfig()
+		oldCfg.OutboundConfigs = json_util.RawMessage(`[{"protocol":"freedom","tag":"direct"},{"protocol":"blackhole","tag":"blocked"},{"protocol":"socks","tag":"legacy-vless"}]`)
+		newCfg := makeHotConfig()
+		newCfg.OutboundConfigs = json_util.RawMessage(`[{"protocol":"freedom","tag":"direct"},{"protocol":"blackhole","tag":"blocked"},` + publicPlaintext + `]`)
+		if _, ok := ComputeHotDiff(oldCfg, newCfg); ok {
+			t.Fatal("changing an outbound to public plaintext VLESS must force a full restart")
+		}
+	})
 }

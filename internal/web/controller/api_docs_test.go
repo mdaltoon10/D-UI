@@ -91,8 +91,14 @@ func TestAPIRoutesDocumented(t *testing.T) {
 			basePath = "/panel/api/clients"
 		case "group.go":
 			basePath = "/panel/api/clients"
+		case "admins.go":
+			basePath = "/panel/api/admins"
+		case "admin_roles.go":
+			basePath = "/panel/api/admin-roles"
 		case "server.go":
 			basePath = "/panel/api/server"
+		case "strict_ip_limit_authority.go":
+			basePath = "/panel/ip-limit/v1"
 		case "node.go":
 			basePath = "/panel/api/nodes"
 		case "host.go":
@@ -132,6 +138,7 @@ func TestAPIRoutesDocumented(t *testing.T) {
 		spaPages := map[string]bool{
 			"/": true, "/panel/": true, "/panel/inbounds": true,
 			"/panel/clients": true, "/panel/groups": true,
+			"/panel/admins": true, "/panel/admin-roles": true,
 			"/panel/nodes": true, "/panel/settings": true,
 			"/panel/xray": true, "/panel/outbound": true,
 			"/panel/routing": true, "/panel/api-docs": true,

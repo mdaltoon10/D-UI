@@ -13,8 +13,8 @@ import (
 func setupBulkDB(t *testing.T) {
 	t.Helper()
 	dbDir := t.TempDir()
-	t.Setenv("DUI_DB_FOLDER", dbDir)
-	if err := database.InitDB(filepath.Join(dbDir, "d-ui.db")); err != nil {
+	t.Setenv("XUI_DB_FOLDER", dbDir)
+	if err := database.InitDB(filepath.Join(dbDir, "x-ui.db")); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	t.Cleanup(func() { _ = database.CloseDB() })
@@ -26,7 +26,15 @@ func clientsSettings(t *testing.T, clients []model.Client) string {
 	if err != nil {
 		t.Fatalf("marshal settings: %v", err)
 	}
-	return string(b)
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil {
+		t.Fatalf("unmarshal settings: %v", err)
+	}
+	b2, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal settings again: %v", err)
+	}
+	return string(b2)
 }
 
 func emailsOf(clients []model.Client) []string {

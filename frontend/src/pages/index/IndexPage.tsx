@@ -2,39 +2,52 @@ import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Button,
+  Card,
+  Col,
   ConfigProvider,
   Layout,
   message,
   Modal,
   Result,
+  Row,
+  Space,
   Spin,
+  Statistic,
+  Tag,
+  Tooltip,
 } from 'antd';
 import {
-  CopyOutlined,
+  BarsOutlined,
+  ControlOutlined,
+  CloudServerOutlined,
   CloudDownloadOutlined,
-  DashboardOutlined,
-  DatabaseOutlined,
-  HddOutlined,
+  CloudUploadOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  AreaChartOutlined,
+  GlobalOutlined,
   SwapOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+  ThunderboltOutlined,
+  DesktopOutlined,
+  DatabaseOutlined,
+  ForkOutlined,
+  CopyOutlined,
+  TelegramFilled,
 } from '@ant-design/icons';
 
-import { HttpUtil, CPUFormatter, SizeFormatter, ClipboardManager, FileManager } from '@/utils';
-import { USAGE_CRIT_COLOR, USAGE_CRIT_PERCENT, USAGE_WARN_COLOR, USAGE_WARN_PERCENT } from '@/models/status';
+import { HttpUtil, SizeFormatter, TimeFormatter, ClipboardManager, FileManager } from '@/utils';
+import { formatPanelVersion } from '@/lib/panel-version';
+import { activateOnKey } from '@/utils/a11y';
 import { useTheme } from '@/hooks/useTheme';
 import { useStatusQuery } from '@/api/queries/useStatusQuery';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import AppSidebar from '@/layouts/AppSidebar';
 import { LazyMount } from '@/components/utility';
 import { setMessageInstance } from '@/utils/messageBus';
-import OverviewActionBar from './OverviewActionBar';
-import VitalTile from './VitalTile';
-import ThroughputCard from './ThroughputCard';
-import ConnectionsCard from './ConnectionsCard';
-import SystemStrip from './SystemStrip';
-import { mean, peak, useOverviewHistory } from './useOverviewHistory';
+import StatusCard from './StatusCard';
+import XrayStatusCard from './XrayStatusCard';
 import type { PanelUpdateInfo } from './PanelUpdateModal';
-import ResellerDashboard from './ResellerDashboard';
-
 const JsonEditor = lazy(() => import('@/components/form/JsonEditor'));
 const PanelUpdateModal = lazy(() => import('./PanelUpdateModal'));
 const LogModal = lazy(() => import('./LogModal'));
@@ -76,8 +89,6 @@ export default function IndexPage() {
   const [loading, setLoading] = useState(false);
   const [loadingTip, setLoadingTip] = useState(t('loading'));
 
-  const history = useOverviewHistory(status, fetched && !fetchError);
-
   useEffect(() => {
     HttpUtil.post<{ accessLogEnable?: boolean; devChannelEnable?: boolean }>(
       '/panel/api/setting/defaultSettings',
@@ -90,21 +101,6 @@ export default function IndexPage() {
     HttpUtil.get<PanelUpdateInfo>('/panel/api/server/getPanelUpdateInfo').then((msg) => {
       if (msg?.success && msg.obj) setPanelUpdateInfo(msg.obj);
     });
-  }, []);
-
-  const isReseller = (typeof window !== 'undefined' && typeof window.X_UI_BASE_PATH !== 'undefined')
-    ? !!window.X_UI_IS_RESELLER
-    : !!localStorage.getItem('daltoon_current_admin');
-
-  const currentAdminRaw = useMemo(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('daltoon_current_admin');
-      if (stored) return stored;
-      if (window.X_UI_RESELLER_USER) {
-        return JSON.stringify({ username: window.X_UI_RESELLER_USER });
-      }
-    }
-    return '{}';
   }, []);
 
   const displayVersion = useMemo(
@@ -121,50 +117,18 @@ export default function IndexPage() {
   );
 
   const stopXray = useCallback(async () => {
-    setBusy({ busy: true, tip: t('pages.index.stoppingXray', { defaultValue: 'Stopping Xray...' }) });
-    try {
-      const res = await HttpUtil.post('/panel/api/server/stopXrayService', undefined, { silent: true });
-      if (res?.success) {
-        messageApi.success(res.msg || t('pages.index.stoppedSuccess', { defaultValue: 'Xray stopped successfully.' }));
-      } else {
-        messageApi.info(t('pages.index.stopXrayNotice', { defaultValue: 'Xray service is stopping.' }));
-      }
-    } catch {
-      messageApi.info(t('pages.index.stopXrayNotice', { defaultValue: 'Xray service is stopping.' }));
-    } finally {
-      setTimeout(async () => {
-        try {
-          await refresh();
-        } catch {
-          // ignore transient errors during xray stop
-        }
-        setBusy({ busy: false });
-      }, 1000);
-    }
-  }, [messageApi, refresh, setBusy, t]);
+    await HttpUtil.post('/panel/api/server/stopXrayService');
+    await refresh();
+  }, [refresh]);
 
   const restartXray = useCallback(async () => {
-    setBusy({ busy: true, tip: t('pages.index.restartingXray', { defaultValue: 'Restarting Xray...' }) });
-    try {
-      const res = await HttpUtil.post('/panel/api/server/restartXrayService', undefined, { silent: true });
-      if (res?.success) {
-        messageApi.success(res.msg || t('pages.index.restartedSuccess', { defaultValue: 'Xray restarted successfully.' }));
-      } else {
-        messageApi.info(t('pages.index.restartingXrayNotice', { defaultValue: 'Xray service is restarting. Connection may briefly pause.' }));
-      }
-    } catch {
-      messageApi.info(t('pages.index.restartingXrayNotice', { defaultValue: 'Xray service is restarting. Connection may briefly pause.' }));
-    } finally {
-      setTimeout(async () => {
-        try {
-          await refresh();
-        } catch {
-          // ignore transient errors during xray restart
-        }
-        setBusy({ busy: false });
-      }, 1500);
-    }
-  }, [messageApi, refresh, setBusy, t]);
+    await HttpUtil.post('/panel/api/server/restartXrayService');
+    await refresh();
+  }, [refresh]);
+
+  function openPanelVersion() {
+    setPanelUpdateOpen(true);
+  }
 
   async function handleChannelChange(dev: boolean) {
     const res = await HttpUtil.post('/panel/api/server/setUpdateChannel', { dev });
@@ -172,6 +136,10 @@ export default function IndexPage() {
     setDevChannelEnable(dev);
     const msg = await HttpUtil.get<PanelUpdateInfo>('/panel/api/server/getPanelUpdateInfo');
     if (msg?.success && msg.obj) setPanelUpdateInfo(msg.obj);
+  }
+
+  function openTelegram() {
+    window.open('https://t.me/HeimdallStudio', '_blank', 'noopener,noreferrer');
   }
 
   async function openConfig() {
@@ -197,30 +165,11 @@ export default function IndexPage() {
 
   const pageClass = `index-page ${isDark ? 'is-dark' : ''} ${isUltra ? 'is-ultra' : ''}`.trim();
 
-  const totalDisk = status.disk.total;
-  const freeDisk = Math.max(0, totalDisk - status.disk.current);
-
-  const health = useMemo(() => {
-    const items = [
-      { name: t('pages.index.cpu'), value: status.cpu.percent },
-      { name: t('pages.index.memory'), value: status.mem.percent },
-      { name: t('pages.index.swap'), value: status.swap.percent },
-      { name: t('pages.index.storage'), value: status.disk.percent },
-    ];
-    const list = (xs: typeof items) => xs.map((i) => `${i.name} ${i.value.toFixed(0)}%`).join(', ');
-    const crit = items.filter((i) => i.value >= USAGE_CRIT_PERCENT);
-    if (crit.length) return { text: t('pages.index.healthCritical', { list: list(crit) }), color: USAGE_CRIT_COLOR };
-    const warm = items.filter((i) => i.value >= USAGE_WARN_PERCENT);
-    if (warm.length) return { text: t('pages.index.healthWarm', { list: list(warm) }), color: USAGE_WARN_COLOR };
-    return null;
-  }, [status, t]);
-
   return (
     <ConfigProvider theme={antdThemeConfig}>
       {messageContextHolder}
       <Layout className={pageClass}>
-        <AppSidebar />
-
+        
         <Layout className="content-shell">
           <Layout.Content className="content-area">
             <Spin
@@ -238,112 +187,286 @@ export default function IndexPage() {
                   subTitle={fetchError}
                   extra={<Button type="primary" onClick={refresh}>{t('refresh')}</Button>}
                 />
-              ) : isReseller ? (
-                <ResellerDashboard currentAdminRaw={currentAdminRaw || '{}'} status={status} />
               ) : (
-                <div className="ov-page">
-                  <OverviewActionBar
-                    status={status}
-                    isMobile={isMobile}
-                    accessLogEnable={accessLogEnable}
-                    panelVersion={displayVersion}
-                    latestVersion={panelUpdateInfo.latestVersion}
-                    updateAvailable={panelUpdateInfo.updateAvailable}
-                    onStopXray={stopXray}
-                    onRestartXray={restartXray}
-                    onOpenLogs={() => setLogsOpen(true)}
-                    onOpenXrayLogs={() => setXrayLogsOpen(true)}
-                    onOpenConfig={openConfig}
-                    onOpenBackup={() => setBackupOpen(true)}
-                    onOpenSystemHistory={() => setSysHistoryOpen(true)}
-                    onOpenXrayMetrics={() => setXrayMetricsOpen(true)}
-                    onOpenPanelUpdate={() => setPanelUpdateOpen(true)}
-                    onOpenVersionSwitch={() => setVersionOpen(true)}
-                  />
+                <Row gutter={[isMobile ? 8 : 16, 12]}>
+                  <Col span={24}>
+                    <StatusCard status={status} isMobile={isMobile} />
+                  </Col>
 
-                  {health && (
-                    <div className="ov-health" style={{ color: health.color }}>
-                      <span className="ov-health-mark" />
-                      {health.text}
-                    </div>
-                  )}
-
-                  <hr className="ov-rule" />
-
-                  <div className="ov-vitals">
-                    <VitalTile
-                      icon={<DashboardOutlined />}
-                      label={t('pages.index.cpu')}
-                      percent={status.cpu.percent}
-                      statusColor={status.cpu.color}
-                      detail={`${CPUFormatter.cpuCoreFormat(status.cpuCores)} / ${status.logicalPro}T · ${CPUFormatter.cpuSpeedFormat(status.cpuSpeedMhz)}`}
-                      footLeft={`${t('pages.index.avg')} ${mean(history.series.cpu).toFixed(0)}%`}
-                      footRight={`${t('pages.index.peak')} ${peak(history.series.cpu).toFixed(0)}%`}
-                      data={history.series.cpu}
-                      isMobile={isMobile}
-                    />
-
-                    <VitalTile
-                      icon={<DatabaseOutlined />}
-                      label={t('pages.index.memory')}
-                      percent={status.mem.percent}
-                      statusColor={status.mem.color}
-                      detail={`${SizeFormatter.sizeFormat(status.mem.current)} / ${SizeFormatter.sizeFormat(status.mem.total)}`}
-                      footLeft={`${t('pages.index.avg')} ${mean(history.series.mem).toFixed(0)}%`}
-                      footRight={`${t('pages.index.peak')} ${peak(history.series.mem).toFixed(0)}%`}
-                      data={history.series.mem}
-                      isMobile={isMobile}
-                    />
-
-                    <VitalTile
-                      icon={<SwapOutlined />}
-                      label={t('pages.index.swap')}
-                      percent={status.swap.percent}
-                      statusColor={status.swap.color}
-                      detail={`${SizeFormatter.sizeFormat(status.swap.current)} / ${SizeFormatter.sizeFormat(status.swap.total)}`}
-                      footLeft={`${t('pages.index.avg')} ${mean(history.series.swap).toFixed(1)}%`}
-                      footRight={`${t('pages.index.peak')} ${peak(history.series.swap).toFixed(0)}%`}
-                      data={history.series.swap}
-                      isMobile={isMobile}
-                    />
-
-                    <VitalTile
-                      icon={<HddOutlined />}
-                      label={t('pages.index.storage')}
-                      percent={status.disk.percent}
-                      statusColor={status.disk.color}
-                      detail={`${SizeFormatter.sizeFormat(status.disk.current)} / ${SizeFormatter.sizeFormat(totalDisk)}`}
-                      footLeft={`${t('pages.index.free')} ${SizeFormatter.sizeFormat(freeDisk)}`}
-                      footRight={`${t('pages.index.avg')} ${mean(history.series.diskUsage).toFixed(1)}%`}
-                      data={history.series.diskUsage}
-                      isMobile={isMobile}
-                    />
-                  </div>
-
-                  <div className="ov-mid">
-                    <ThroughputCard
+                  <Col xs={24} lg={12}>
+                    <XrayStatusCard
                       status={status}
-                      up={history.series.netUp}
-                      down={history.series.netDown}
-                      labels={history.labels}
                       isMobile={isMobile}
+                      accessLogEnable={accessLogEnable}
+                      onStopXray={stopXray}
+                      onRestartXray={restartXray}
+                      onOpenXrayLogs={() => setXrayLogsOpen(true)}
+                      onOpenLogs={() => setLogsOpen(true)}
+                      onOpenVersionSwitch={() => setVersionOpen(true)}
                     />
+                  </Col>
 
-                    <ConnectionsCard
-                      status={status}
-                      tcp={history.series.tcpCount}
-                      udp={history.series.udpCount}
-                      labels={history.labels}
-                      isMobile={isMobile}
+                  <Col xs={24} lg={12}>
+                    <Card
+                      title={t('menu.link')}
+                      hoverable
+                      actions={[
+                        <Space className="action" key="logs" role="button" tabIndex={0} aria-label={t('pages.index.logs')} onClick={() => setLogsOpen(true)} onKeyDown={activateOnKey(() => setLogsOpen(true))}>
+                          <BarsOutlined />
+                          {!isMobile && <span>{t('pages.index.logs')}</span>}
+                        </Space>,
+                        <Space className="action" key="config" role="button" tabIndex={0} aria-label={t('pages.index.config')} onClick={openConfig} onKeyDown={activateOnKey(openConfig)}>
+                          <ControlOutlined />
+                          {!isMobile && <span>{t('pages.index.config')}</span>}
+                        </Space>,
+                        <Space className="action" key="backup" role="button" tabIndex={0} aria-label={t('pages.index.backupTitle')} onClick={() => setBackupOpen(true)} onKeyDown={activateOnKey(() => setBackupOpen(true))}>
+                          <CloudServerOutlined />
+                          {!isMobile && <span>{t('pages.index.backupTitle')}</span>}
+                        </Space>,
+                      ]}
                     />
-                  </div>
+                  </Col>
 
-                  <SystemStrip
-                    status={status}
-                    showIp={showIp}
-                    onToggleIp={() => setShowIp((prev) => !prev)}
-                  />
-                </div>
+                  <Col xs={24} lg={12}>
+                    <Card
+                      title={
+                        <Space>
+                          <span className="heimdall-brand-text">HEIMDALL</span>
+                          {isMobile && displayVersion && (
+                            <Tag color={panelUpdateInfo.updateAvailable ? 'orange' : 'green'}>
+                              {panelUpdateInfo.updateAvailable
+                                ? formatPanelVersion(panelUpdateInfo.latestVersion)
+                                : formatPanelVersion(displayVersion)}
+                            </Tag>
+                          )}
+                        </Space>
+                      }
+                      hoverable
+                      actions={[
+                        <Space
+                          className="action"
+                          key="tg"
+                          role="button"
+                          tabIndex={0}
+                          aria-label="@HeimdallStudio"
+                          onClick={openTelegram}
+                          onKeyDown={activateOnKey(openTelegram)}
+                        >
+                          <TelegramFilled className="tg-icon" aria-hidden="true" />
+                          {!isMobile && <span>@HeimdallStudio</span>}
+                        </Space>,
+                        <Space
+                          key="panel-version"
+                          className={`action ${panelUpdateInfo.updateAvailable ? 'action-update' : ''}`}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={t('pages.index.updatePanel')}
+                          onClick={openPanelVersion}
+                          onKeyDown={activateOnKey(openPanelVersion)}
+                        >
+                          <CloudDownloadOutlined />
+                          {!isMobile && (
+                            <span>
+                              {panelUpdateInfo.updateAvailable
+                                ? `${t('update')} ${formatPanelVersion(panelUpdateInfo.latestVersion)}`
+                                : formatPanelVersion(displayVersion)}
+                            </span>
+                          )}
+                        </Space>,
+                      ]}
+                    />
+                  </Col>
+
+                  <Col xs={24} lg={12}>
+                    <Card
+                      title={t('pages.index.charts')}
+                      hoverable
+                      actions={[
+                        <Space
+                          className="action"
+                          key="sys-history"
+                          role="button"
+                          tabIndex={0}
+                          aria-label={t('pages.index.systemHistoryTitle')}
+                          onClick={() => setSysHistoryOpen(true)}
+                          onKeyDown={activateOnKey(() => setSysHistoryOpen(true))}
+                        >
+                          <AreaChartOutlined />
+                          {!isMobile && <span>{t('pages.index.systemHistoryTitle')}</span>}
+                        </Space>,
+                        <Space
+                          className="action"
+                          key="xray-metrics"
+                          role="button"
+                          tabIndex={0}
+                          aria-label={t('pages.index.xrayMetricsTitle')}
+                          onClick={() => setXrayMetricsOpen(true)}
+                          onKeyDown={activateOnKey(() => setXrayMetricsOpen(true))}
+                        >
+                          <AreaChartOutlined />
+                          {!isMobile && <span>{t('pages.index.xrayMetricsTitle')}</span>}
+                        </Space>,
+                      ]}
+                    />
+                  </Col>
+
+                  <Col xs={24} lg={12}>
+                    <Card title={t('pages.index.operationHours')} hoverable>
+                      <Row gutter={isMobile ? [8, 8] : 0}>
+                        <Col span={12}>
+                          <Statistic
+                            title="Xray"
+                            value={TimeFormatter.formatSecond(status.appStats.uptime)}
+                            prefix={<ThunderboltOutlined />}
+                          />
+                        </Col>
+                        <Col span={12}>
+                          <Statistic
+                            title="OS"
+                            value={TimeFormatter.formatSecond(status.uptime)}
+                            prefix={<DesktopOutlined />}
+                          />
+                        </Col>
+                      </Row>
+                    </Card>
+                  </Col>
+
+                  <Col xs={24} lg={12}>
+                    <Card title={t('usage')} hoverable>
+                      <Row gutter={isMobile ? [8, 8] : 0}>
+                        <Col span={12}>
+                          <Statistic
+                            title={t('pages.index.memory')}
+                            value={SizeFormatter.sizeFormat(status.appStats.mem)}
+                            prefix={<DatabaseOutlined />}
+                          />
+                        </Col>
+                        <Col span={12}>
+                          <Statistic
+                            title={t('pages.index.threads')}
+                            value={status.appStats.threads}
+                            prefix={<ForkOutlined />}
+                          />
+                        </Col>
+                      </Row>
+                    </Card>
+                  </Col>
+
+                  <Col xs={24} lg={12}>
+                    <Card title={t('pages.index.overallSpeed')} hoverable>
+                      <Row gutter={isMobile ? [8, 8] : 0}>
+                        <Col span={12}>
+                          <Statistic
+                            title={t('pages.index.upload')}
+                            value={SizeFormatter.sizeFormat(status.netIO.up)}
+                            prefix={<ArrowUpOutlined />}
+                            suffix="/s"
+                          />
+                        </Col>
+                        <Col span={12}>
+                          <Statistic
+                            title={t('pages.index.download')}
+                            value={SizeFormatter.sizeFormat(status.netIO.down)}
+                            prefix={<ArrowDownOutlined />}
+                            suffix="/s"
+                          />
+                        </Col>
+                      </Row>
+                    </Card>
+                  </Col>
+
+                  <Col xs={24} lg={12}>
+                    <Card title={t('pages.index.totalData')} hoverable>
+                      <Row gutter={isMobile ? [8, 8] : 0}>
+                        <Col span={12}>
+                          <Statistic
+                            title={t('pages.index.sent')}
+                            value={SizeFormatter.sizeFormat(status.netTraffic.sent)}
+                            prefix={<CloudUploadOutlined />}
+                          />
+                        </Col>
+                        <Col span={12}>
+                          <Statistic
+                            title={t('pages.index.received')}
+                            value={SizeFormatter.sizeFormat(status.netTraffic.recv)}
+                            prefix={<CloudDownloadOutlined />}
+                          />
+                        </Col>
+                      </Row>
+                    </Card>
+                  </Col>
+
+                  <Col xs={24} lg={12}>
+                    <Card
+                      title={t('pages.index.ipAddresses')}
+                      hoverable
+                      extra={
+                        <Tooltip
+                          title={t('pages.index.toggleIpVisibility')}
+                          placement={isMobile ? 'topRight' : 'top'}
+                        >
+                          {showIp ? (
+                            <EyeOutlined
+                              className="ip-toggle-icon"
+                              role="button"
+                              tabIndex={0}
+                              aria-label={t('pages.index.toggleIpVisibility')}
+                              onClick={() => setShowIp(false)}
+                              onKeyDown={activateOnKey(() => setShowIp(false))}
+                            />
+                          ) : (
+                            <EyeInvisibleOutlined
+                              className="ip-toggle-icon"
+                              role="button"
+                              tabIndex={0}
+                              aria-label={t('pages.index.toggleIpVisibility')}
+                              onClick={() => setShowIp(true)}
+                              onKeyDown={activateOnKey(() => setShowIp(true))}
+                            />
+                          )}
+                        </Tooltip>
+                      }
+                    >
+                      <Row className={showIp ? 'ip-visible' : 'ip-hidden'} gutter={isMobile ? [8, 8] : 0}>
+                        <Col span={isMobile ? 24 : 12}>
+                          <Statistic
+                            title="IPv4"
+                            value={status.publicIP.ipv4}
+                            prefix={<GlobalOutlined />}
+                          />
+                        </Col>
+                        <Col span={isMobile ? 24 : 12}>
+                          <Statistic
+                            title="IPv6"
+                            value={status.publicIP.ipv6}
+                            prefix={<GlobalOutlined />}
+                          />
+                        </Col>
+                      </Row>
+                    </Card>
+                  </Col>
+
+                  <Col xs={24} lg={12}>
+                    <Card title={t('pages.index.connectionCount')} hoverable>
+                      <Row gutter={isMobile ? [8, 8] : 0}>
+                        <Col span={12}>
+                          <Statistic
+                            title="TCP"
+                            value={status.tcpCount}
+                            prefix={<SwapOutlined />}
+                          />
+                        </Col>
+                        <Col span={12}>
+                          <Statistic
+                            title="UDP"
+                            value={status.udpCount}
+                            prefix={<SwapOutlined />}
+                          />
+                        </Col>
+                      </Row>
+                    </Card>
+                  </Col>
+                </Row>
               )}
             </Spin>
           </Layout.Content>

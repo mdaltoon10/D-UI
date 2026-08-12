@@ -72,3 +72,13 @@
 @media (prefers-reduced-motion: reduce) {
   .xray-error-dot { animation: none; }
 }
+
+/* SECX UI POLISH: global compact switch guard */
+.ant-switch {
+  width: auto !important;
+  flex: 0 0 auto;
+}
+
+.ant-form-item-control-input-content > .ant-switch {
+  display: inline-flex;
+}

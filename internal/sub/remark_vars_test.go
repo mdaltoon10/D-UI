@@ -639,3 +639,24 @@ func TestEmailOnFirstLinkOnly(t *testing.T) {
 		t.Fatalf("second link should still carry the inbound name: %q", second)
 	}
 }
+
+func TestRemarkVarValueFactor(t *testing.T) {
+	ctx := remarkContext{
+		inbound: &model.Inbound{
+			UsageMultiplier: 3,
+		},
+	}
+	if got := remarkVarValue("FACTOR", ctx); got != "3x" {
+		t.Fatalf("FACTOR = %q, want 3x", got)
+	}
+
+	ctx.inbound.UsageMultiplier = 2.5
+	if got := remarkVarValue("FACTOR", ctx); got != "2.50x" {
+		t.Fatalf("decimal FACTOR = %q, want 2.50x", got)
+	}
+
+	ctx.inbound.UsageMultiplier = 0
+	if got := remarkVarValue("FACTOR", ctx); got != "1x" {
+		t.Fatalf("default FACTOR = %q, want 1x", got)
+	}
+}

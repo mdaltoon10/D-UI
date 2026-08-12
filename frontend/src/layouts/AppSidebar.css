@@ -209,11 +209,6 @@
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.sider-nav::-webkit-scrollbar {
-  display: none;
 }
 
 .sider-utility {
@@ -314,19 +309,46 @@ body.dark .ant-drawer-body .drawer-menu .ant-menu-item-group-list {
   color: var(--ant-color-primary) !important;
 }
 
-/* Ensure all sidebar menu icons are consistent and nicely sized */
-.sider-nav .anticon,
-.sider-utility .anticon,
-.drawer-menu .anticon {
-  font-size: 16px !important;
+
+/* HEIMDALL SIDEBAR DARK ICON FIX */
+
+body.dark .sidebar-donate,
+body.dark .sidebar-theme-cycle,
+body.dark .sider-version,
+body.dark .sider-version-text,
+body.dark .drawer-close {
+  color: rgb(226 232 240 / 82%) !important;
 }
 
-/* SafetyOutlined icon is visually smaller/thinner, make it match other icons exactly */
-.sider-nav .anticon-safety,
-.sider-utility .anticon-safety,
-.drawer-menu .anticon-safety,
-.ant-menu-submenu-title .anticon-safety,
-.ant-menu-item .anticon-safety {
-  font-size: 16px !important;
-  transform: none !important;
+body.dark .sidebar-donate .anticon,
+body.dark .sidebar-theme-cycle .anticon,
+body.dark .sider-version .anticon,
+body.dark .drawer-close .anticon {
+  color: inherit !important;
+}
+
+body.dark .sidebar-donate:hover,
+body.dark .sidebar-donate:focus-visible,
+body.dark .sidebar-theme-cycle:hover,
+body.dark .sidebar-theme-cycle:focus-visible,
+body.dark .sider-version:hover,
+body.dark .sider-version:focus-visible,
+body.dark .drawer-close:hover,
+body.dark .drawer-close:focus-visible {
+  color: #ffffff !important;
+}
+
+html[data-theme="ultra-dark"] body.dark .sidebar-donate,
+html[data-theme="ultra-dark"] body.dark .sidebar-theme-cycle,
+html[data-theme="ultra-dark"] body.dark .sider-version,
+html[data-theme="ultra-dark"] body.dark .sider-version-text,
+html[data-theme="ultra-dark"] body.dark .drawer-close {
+  color: rgb(241 245 249 / 88%) !important;
+}
+
+html[data-theme="ultra-dark"] body.dark .sidebar-donate:hover,
+html[data-theme="ultra-dark"] body.dark .sidebar-theme-cycle:hover,
+html[data-theme="ultra-dark"] body.dark .sider-version:hover,
+html[data-theme="ultra-dark"] body.dark .drawer-close:hover {
+  color: #ffffff !important;
 }

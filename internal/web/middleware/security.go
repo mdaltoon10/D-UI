@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"net/http"
 
-	"github.com/mdaltoon10/D-UI/v3/internal/logger"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/session"
 
 	"github.com/gin-gonic/gin"
@@ -50,7 +49,6 @@ func CSRFMiddleware() gin.HandlerFunc {
 			return
 		}
 		if !session.ValidateCSRFToken(c) {
-			logger.Warningf("CSRFMiddleware: ValidateCSRFToken failed for %s %s. Expected token vs actual mismatch or missing session.", c.Request.Method, c.Request.URL.Path)
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}

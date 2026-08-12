@@ -1,4 +1,5 @@
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'WS';
+export type ApiAuthMode = 'bearer-or-cookie' | 'cookie-only' | 'public';
 export type ParamLocation =
   | 'path'
   | 'query'
@@ -9,6 +10,7 @@ export type ParamLocation =
   | 'body (multipart)';
 export type ParamType =
   | 'string'
+  | 'string[]'
   | 'integer'
   | 'integer[]'
   | 'number'
@@ -30,9 +32,14 @@ export interface EndpointParam {
 export interface Endpoint {
   method: HttpMethod;
   path: string;
+  auth?: ApiAuthMode;
   summary: string;
   description?: string;
   deprecated?: boolean;
+  successStatus?: number;
+  successDescription?: string;
+  emptyResponse?: boolean;
+  emptyAuthErrorResponse?: boolean;
   params?: EndpointParam[];
   body?: string;
   response?: string;
@@ -50,6 +57,7 @@ export interface SubscriptionHeader {
 export interface Section {
   id: string;
   title: string;
+  auth?: ApiAuthMode;
   description?: string;
   subHeader?: SubscriptionHeader[];
   endpoints: Endpoint[];
@@ -60,11 +68,12 @@ export const sections: readonly Section[] = [
     id: 'authentication',
     title: 'Authentication',
     description:
-      'Two authentication modes are supported. UI sessions use a cookie set by the login endpoint. Programmatic clients (bots, scripts, remote panels) authenticate with a Bearer token taken from Settings → Security → API Token. Both work for every endpoint under /panel/api/*.',
+      'UI sessions use a cookie set by the login endpoint. Programmatic clients authenticate with a Bearer token from Settings → Security → API Token. Most protected panel APIs accept either mode; operations explicitly marked browser-session-only reject Bearer tokens.',
     endpoints: [
       {
         method: 'POST',
         path: '/login',
+        auth: 'public',
         summary: 'Authenticate with username + password and receive a session cookie. Required before any cookie-based API call.',
         params: [
           { name: 'username', in: 'body', type: 'string', desc: 'Panel admin username.' },
@@ -80,12 +89,14 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/logout',
+        auth: 'cookie-only',
         summary: 'Clear the session cookie. Requires the CSRF header for browser sessions.',
         response: '{\n  "success": true\n}',
       },
       {
         method: 'GET',
         path: '/csrf-token',
+        auth: 'cookie-only',
         summary: 'Mint a CSRF token for the current session. The SPA replays it in the X-CSRF-Token header on unsafe requests. Bearer-token callers can skip this — the middleware short-circuits CSRF for authenticated API requests.',
         response:
           '{\n  "success": true,\n  "obj": "csrf-token-string"\n}',
@@ -93,8 +104,42 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/getTwoFactorEnable',
+        auth: 'public',
         summary: 'Returns whether 2FA is enabled on the panel — used by the login page to decide whether to show the OTP field.',
         response: '{\n  "success": true,\n  "obj": false\n}',
+      },
+    ],
+  },
+
+
+  {
+    id: 'custom-panel',
+    title: 'Custom Panel Compatibility',
+    description:
+      'Compatibility endpoint for external sales bots and panel integrations. Authentication is accepted only through X-API-Key using an enabled, unexpired delegated token with the custom-panel:manage scope. The delegated administrator’s current RBAC, inbound allowlist, client limits, ownership, groups, and feature flags remain enforced on every request.',
+    endpoints: [
+      {
+        method: 'POST',
+        path: '/api',
+        summary:
+          'Execute one custom-panel action. Supported actions are create_user, get_user, remove_user, reset_user, extend_user, modify_user, change_status, count_users, revoke_sub, extra_volume, and extra_time. Business-level success and failure responses use HTTP 200; a missing or invalid API key returns HTTP 401.',
+        params: [
+          { name: 'X-API-Key', in: 'header', type: 'string', desc: 'Delegated API token with the custom-panel:manage scope.' },
+          { name: 'action', in: 'body (json)', type: 'string', desc: 'One of the eleven supported custom-panel actions.' },
+          { name: 'username', in: 'body (json)', type: 'string', desc: 'Client email identifier. Required by every user-specific action.', optional: true },
+          { name: 'data_limit', in: 'body (json)', type: 'integer', desc: 'Traffic quota in bytes.', optional: true },
+          { name: 'expire', in: 'body (json)', type: 'integer', desc: 'Unix expiration timestamp in seconds.', optional: true },
+          { name: 'note', in: 'body (json)', type: 'string', desc: 'Client comment.', optional: true },
+          { name: 'config', in: 'body (json)', type: 'object', desc: 'Partial modify_user payload containing status, data_limit, expire, or note.', optional: true },
+          { name: 'status', in: 'body (json)', type: 'string', desc: 'active or disabled.', optional: true },
+          { name: 'volume', in: 'body (json)', type: 'integer', desc: 'Additional traffic quota in bytes.', optional: true },
+          { name: 'time', in: 'body (json)', type: 'integer', desc: 'Additional validity in whole days.', optional: true },
+        ],
+        body: '{\n  "action": "get_user",\n  "username": "alice"\n}',
+        response:
+          '{\n  "status": "success",\n  "username": "alice",\n  "data_limit": 53687091200,\n  "expire": 1767225600,\n  "used_traffic": 1073741824,\n  "subscription_url": "https://panel.example/sub/example-sub-id",\n  "links": ["vless://..."],\n  "configs": ["vless://..."]\n}',
+        errorResponse:
+          '{\n  "status": "error",\n  "message": "User not found"\n}',
       },
     ],
   },
@@ -103,7 +148,7 @@ export const sections: readonly Section[] = [
     id: 'inbounds',
     title: 'Inbounds',
     description:
-      'Manage inbound configurations and their clients. All endpoints live under /panel/api/inbounds and require a logged-in session or Bearer token. Link-generating endpoints honour forwarded headers only when the request comes from a configured trusted proxy.',
+      'Manage inbound configurations and their clients. All endpoints live under /panel/api/inbounds and require a logged-in session or a trusted service credential. Delegated user tokens are denied on this group until a dedicated inbound scope is introduced. Link-generating endpoints honour forwarded headers only when the request comes from a configured trusted proxy.',
     endpoints: [
       {
         method: 'GET',
@@ -262,12 +307,6 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'GET',
-        path: '/panel/api/server/fail2banStatus',
-        summary: 'Reports whether per-client IP limits can be enforced on this host. The panel uses it to gate the "IP Limit" field, since enforcement depends on Fail2ban being installed.',
-        response: '{\n  "success": true,\n  "obj": {\n    "enabled": true,\n    "installed": true,\n    "usable": true,\n    "windows": false\n  }\n}',
-      },
-      {
-        method: 'GET',
         path: '/panel/api/server/cpuHistory/:bucket',
         summary: 'Legacy: aggregated CPU history. Use /history/cpu/:bucket instead — same data with a uniform {t, v} shape.',
         params: [
@@ -321,7 +360,7 @@ export const sections: readonly Section[] = [
       {
         method: 'GET',
         path: '/panel/api/server/getPanelUpdateInfo',
-        summary: 'Check whether a newer d-ui release is available on GitHub.',
+        summary: 'Check whether a newer HEIMDALL release is available on GitHub.',
       },
       {
         method: 'GET',
@@ -338,7 +377,7 @@ export const sections: readonly Section[] = [
       {
         method: 'GET',
         path: '/panel/api/server/getDb',
-        summary: 'Stream the SQLite database file as an attachment. Use as a manual backup.',
+        summary: 'Stream a full database backup as an attachment: the SQLite .db file on SQLite panels, or a pg_dump custom-format archive (.dump) on PostgreSQL panels. Use as a manual backup.',
       },
       {
         method: 'GET',
@@ -403,14 +442,6 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'POST',
-        path: '/panel/api/server/installXray/:version',
-        summary: 'Download and install the specified Xray version. Pass "latest" for the newest release.',
-        params: [
-          { name: 'version', in: 'path', type: 'string', desc: 'Xray tag (e.g. v25.10.31) or "latest".' },
-        ],
-      },
-      {
-        method: 'POST',
         path: '/panel/api/server/updatePanel',
         summary: 'Self-update the panel to the latest version. The server restarts on success.',
         response: '{\n  "success": true,\n  "obj": {\n    "runId": "1735689600123456789"\n  }\n}',
@@ -468,9 +499,9 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/panel/api/server/importDB',
-        summary: 'Restore the panel DB from an uploaded SQLite file (multipart form, field name "db"). The panel restarts after restore. Destructive.',
+        summary: 'Restore the panel DB from an uploaded backup (multipart form, field name "db"). SQLite panels accept a SQLite database (.db) or a SQLite migration dump (.dump); PostgreSQL panels accept a pg_dump archive (.dump), a SQLite database (.db), or a SQLite migration dump. The panel restarts after restore. Destructive.',
         params: [
-          { name: 'db', in: 'body (multipart)', type: 'file', desc: 'SQLite database file to upload.' },
+          { name: 'db', in: 'body (multipart)', type: 'file', desc: 'Database backup or migration file to upload.' },
         ],
       },
       {
@@ -540,6 +571,39 @@ export const sections: readonly Section[] = [
           { name: 'ips', in: 'body (json)', type: 'object[]', desc: 'Array of InboundClientIps to merge.' },
         ],
       },
+      {
+        method: 'POST',
+        path: '/panel/api/server/strictIPLimitParent',
+        summary: 'Internal node-provisioning endpoint used by a managing panel to configure this node\'s upstream Strict IP Limit authority. Requires the normal authenticated node API path; not intended for interactive clients.',
+        params: [
+          { name: 'url', in: 'body (json)', type: 'string', desc: 'Parent Strict-B lease authority URL.' },
+          { name: 'token', in: 'body (json)', type: 'string', desc: 'Dedicated Strict-B relay credential.' },
+          { name: 'parentGuid', in: 'body (json)', type: 'string', desc: 'Stable GUID of the direct parent panel.' },
+          { name: 'tlsVerifyMode', in: 'body (json)', type: 'string', desc: 'TLS verification mode inherited from node transport settings.' },
+          { name: 'pinnedCertSha256', in: 'body (json)', type: 'string', desc: 'Optional pinned parent certificate hash.', optional: true },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: 'strict-ip-limit-authority',
+    title: 'Strict IP Limit Authority',
+    description:
+      'Internal synchronous authority endpoint used only between HEIMDALL panels for Strict IP Limit lease acquire, renew, and release decisions. Authentication uses the dedicated Strict-B authority header provisioned to direct child nodes.',
+    endpoints: [
+      {
+        method: 'POST',
+        path: '/panel/ip-limit/v1/lease',
+        summary: 'Resolve one authenticated Strict-B lease operation at the root authority, or relay it to the configured parent until the root is reached.',
+        params: [
+          { name: 'X-Heimdall-IPLimit-Auth', in: 'header', type: 'string', desc: 'Dedicated per-child Strict-B authority credential.' },
+          { name: 'operation', in: 'body (json)', type: 'string', desc: 'acquire or release.' },
+          { name: 'clientGuid', in: 'body (json)', type: 'string', desc: 'Stable logical ClientGuid.' },
+          { name: 'ip', in: 'body (json)', type: 'string', desc: 'Canonical client source IP.' },
+          { name: 'holderKey', in: 'body (json)', type: 'string', desc: 'Node-local holder identity used for lease lifecycle tracking.' },
+        ],
+      },
     ],
   },
 
@@ -547,8 +611,135 @@ export const sections: readonly Section[] = [
     id: 'clients',
     title: 'Clients',
     description:
-      'Manage clients as first-class entities that can be attached to one or more inbounds. A single client row drives the settings.clients entry in every inbound it belongs to. Endpoints live under /panel/api/clients.',
+      'Manage clients as first-class entities that can be attached to one or more inbounds. A single client row drives the settings.clients entry in every inbound it belongs to. Delegated tokens may use the standard list/get/traffic/link/activity reads with clients:read and add/bulkCreate with clients:create; every other route remains denied to delegated tokens. The selected administrator’s live RBAC scope is always applied in addition to the token scope.',
     endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/clients/:email/activity',
+        summary:
+          'Return the current Activity epoch as a paginated list ordered by most recently observed destination. Only observed destination, source IP, logical upload bytes, and logical download bytes are exposed.',
+        params: [
+          {
+            name: 'email',
+            in: 'path',
+            type: 'string',
+            desc: 'Client email.',
+          },
+          {
+            name: 'page',
+            in: 'query',
+            type: 'integer',
+            desc: 'Page number starting at 1.',
+            optional: true,
+            defaultValue: 1,
+          },
+          {
+            name: 'pageSize',
+            in: 'query',
+            type: 'integer',
+            desc: 'Rows per page. Maximum 200.',
+            optional: true,
+            defaultValue: 100,
+          },
+        ],
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "enabled": true,\n    "generation": 3,\n    "dataEpoch": 2,\n    "items": [\n      {\n        "destination": "example.com",\n        "sourceIp": "203.0.113.10",\n        "uploadBytes": 1024,\n        "downloadBytes": 4096\n      }\n    ],\n    "total": 1,\n    "page": 1,\n    "pageSize": 100\n  }\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/clients/:email/activity/status',
+        summary:
+          'Return the opt-in Activity monitoring state for one client. A client that has never enabled monitoring is returned as disabled with generation 0 and dataEpoch 1.',
+        params: [
+          {
+            name: 'email',
+            in: 'path',
+            type: 'string',
+            desc: 'Client email.',
+          },
+        ],
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "clientId": 12,\n    "enabled": false,\n    "generation": 0,\n    "dataEpoch": 1\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/activity/node-sync',
+        summary:
+          'Internal parent-to-child Activity synchronization endpoint. Applies authoritative monitoring states by canonical client email, then returns idempotent absolute Activity snapshots for this panel and any descendants already merged into it. Used by the node traffic-sync job.',
+        params: [
+          {
+            name: 'states',
+            in: 'body (json)',
+            type: 'object[]',
+            desc: 'Authoritative client Activity states containing email, enabled, generation, and dataEpoch.',
+          },
+          {
+            name: 'cursors',
+            in: 'body (json)',
+            type: 'object',
+            desc: 'Incremental local and remote cursors from the previous successful synchronization.',
+          },
+          {
+            name: 'limit',
+            in: 'body (json)',
+            type: 'integer',
+            desc: 'Maximum number of Activity snapshot rows returned in this page.',
+            optional: true,
+          },
+        ],
+        body:
+          '{\n  "states": [\n    {\n      "email": "alice@example.com",\n      "enabled": true,\n      "generation": 3,\n      "dataEpoch": 2\n    }\n  ],\n  "cursors": {\n    "local": { "updatedAt": 0, "id": 0 },\n    "remote": { "updatedAt": 0, "id": 0 }\n  },\n  "limit": 500\n}',
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "items": [\n      {\n        "originGuid": "node-guid",\n        "email": "alice@example.com",\n        "dataEpoch": 2,\n        "sourceIp": "203.0.113.10",\n        "destination": "example.com",\n        "uploadBytes": 1024,\n        "downloadBytes": 4096,\n        "lastSeen": 1700000000000\n      }\n    ],\n    "cursors": {\n      "local": { "updatedAt": 1700000000000, "id": 10 },\n      "remote": { "updatedAt": 1700000000000, "id": 20 }\n    },\n    "hasMore": false\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/:email/activity/start',
+        summary:
+          'Enable destination Activity monitoring for one client. The monitored-client allowlist is updated without restarting Xray. Repeated Start requests are idempotent.',
+        params: [
+          {
+            name: 'email',
+            in: 'path',
+            type: 'string',
+            desc: 'Client email.',
+          },
+        ],
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "clientId": 12,\n    "enabled": true,\n    "generation": 1,\n    "dataEpoch": 1\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/:email/activity/stop',
+        summary:
+          'Stop collecting new Activity events while preserving existing destination history. Repeated Stop requests are idempotent and do not restart Xray.',
+        params: [
+          {
+            name: 'email',
+            in: 'path',
+            type: 'string',
+            desc: 'Client email.',
+          },
+        ],
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "clientId": 12,\n    "enabled": false,\n    "generation": 2,\n    "dataEpoch": 1\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/:email/activity/reset',
+        summary:
+          'Permanently delete the client Activity destination history. The current enabled or disabled monitoring state is preserved; generation and dataEpoch are advanced to reject delayed pre-reset events.',
+        params: [
+          {
+            name: 'email',
+            in: 'path',
+            type: 'string',
+            desc: 'Client email.',
+          },
+        ],
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "clientId": 12,\n    "enabled": true,\n    "generation": 3,\n    "dataEpoch": 2\n  }\n}',
+      },
       {
         method: 'GET',
         path: '/panel/api/clients/list',
@@ -896,10 +1087,191 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'admins',
+    title: 'Admins',
+    auth: 'cookie-only',
+    description:
+      'Manage Heimdall panel administrator accounts from an active browser session. Bearer API tokens are rejected. Access follows administrator RBAC permissions, and password hashes are never returned.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/admins/current',
+        summary: 'Return the currently logged-in panel administrator with role metadata and effective role permissions for frontend RBAC.',
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "id": 2,\n    "username": "operator-a",\n    "status": "active",\n    "roleId": 3,\n    "role": {\n      "id": 3,\n      "name": "Operator",\n      "slug": "operator",\n      "is_owner": false,\n      "permissions": "{...}"\n    }\n  }\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/admins/list',
+        summary: 'List panel administrators with role metadata, status, data limit, used bytes, and owned-client count. Passwords are never returned.',
+        response:
+          '{\n  "success": true,\n  "obj": [\n    {\n      "id": 2,\n      "username": "operator-a",\n      "roleId": 3,\n      "roleName": "Operator",\n      "roleSlug": "operator",\n      "status": "active",\n      "dataLimit": 0,\n      "usedBytes": 0,\n      "totalUsers": 12\n    }\n  ]\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/admins/stats',
+        summary: 'Return administrator counters used by the Admins page summary cards.',
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "totalAdmins": 3,\n    "activeAdmins": 2,\n    "disabledAdmins": 1,\n    "limitedAdmins": 0\n  }\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/admins/get/:id',
+        summary: 'Fetch one administrator by numeric ID. Password hashes are never returned.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Admin ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/admins/add',
+        summary: 'Create a new administrator. The owner role cannot be assigned through this endpoint.',
+        params: [
+          { name: 'username', in: 'body (json)', type: 'string', desc: 'Unique admin username.' },
+          { name: 'password', in: 'body (json)', type: 'string', desc: 'Plaintext password. Stored as a bcrypt hash.' },
+          { name: 'roleId', in: 'body (json)', type: 'integer', desc: 'Existing non-owner role ID.' },
+          { name: 'status', in: 'body (json)', type: 'string', desc: 'active or disabled.', optional: true },
+          { name: 'dataLimit', in: 'body (json)', type: 'number', desc: 'Admin-level data limit in bytes. 0 means unlimited.', optional: true },
+        ],
+        body:
+          '{\n  "username": "operator-a",\n  "password": "strong-password",\n  "roleId": 3,\n  "status": "active",\n  "dataLimit": 0,\n  "telegramId": "",\n  "discordWebhook": "",\n  "supportUrl": "",\n  "profileTitle": "",\n  "subscriptionDomain": "",\n  "subscriptionTemplatePath": "",\n  "note": "",\n  "notificationFilters": {},\n  "permissionOverrides": {}\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/admins/update/:id',
+        summary: 'Update a non-owner administrator. Leave password empty to keep the existing password. Owner admins cannot be modified here.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Admin ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/admins/del/:id',
+        summary: 'Delete a non-owner administrator. Deletion is blocked when the admin owns clients.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Admin ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/admins/enable/:id',
+        summary: 'Enable a non-owner administrator account.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Admin ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/admins/disable/:id',
+        summary: 'Disable a non-owner administrator account and bump its login epoch so existing sessions are invalidated.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Admin ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/admins/resetUsage/:id',
+        summary: 'Reset admin-level used bytes to zero.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Admin ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/admins/users/disableActive/:id',
+        summary: 'Disable every currently-active client owned by the selected administrator. Updates runtime users, stored inbound settings, client records, traffic enable flags, and remote node state when applicable.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Administrator ID.' },
+        ],
+        response: '{\n  "success": true,\n  "obj": {\n    "count": 12\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/admins/users/activateDisabled/:id',
+        summary: 'Activate every currently-disabled client owned by the selected administrator. Returns the number of clients changed and requests an Xray restart when needed.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Administrator ID.' },
+        ],
+        response: '{\n  "success": true,\n  "obj": {\n    "count": 12\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/admins/users/removeAll/:id',
+        summary: 'Remove every client owned by the selected administrator using the optimized bulk-delete pipeline. This is destructive and removes runtime users, inbound links, client records, traffic rows, IP rows, and activity rows.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Administrator ID.' },
+        ],
+        response: '{\n  "success": true,\n  "obj": {\n    "count": 12,\n    "deleted": 12\n  }\n}',
+      },
+    ],
+  },
+
+  {
+    id: 'admin-roles',
+    title: 'Admin Roles',
+    auth: 'cookie-only',
+    description:
+      'Manage Heimdall dashboard roles and RBAC presets from an active browser session. Bearer API tokens are rejected. Access follows role-management RBAC permissions; built-in and owner roles retain their backend protections.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/admin-roles/list',
+        summary: 'List admin roles with decoded permissions, limits, feature flags, access settings, and assigned-admin count.',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/admin-roles/get/:id',
+        summary: 'Fetch one admin role by numeric ID.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Role ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/admin-roles/add',
+        summary: 'Create a custom admin role. The role slug is derived from the role name.',
+        params: [
+          { name: 'name', in: 'body (json)', type: 'string', desc: 'Unique role name.' },
+          { name: 'permissions', in: 'body (json)', type: 'object', desc: 'Permission matrix.', optional: true },
+          { name: 'limits', in: 'body (json)', type: 'object', desc: 'Role limits.', optional: true },
+          { name: 'features', in: 'body (json)', type: 'object', desc: 'Role feature flags.', optional: true },
+          { name: 'access', in: 'body (json)', type: 'object', desc: 'Allowed inbound access constraints.', optional: true },
+        ],
+        body:
+          '{\n  "name": "operator-custom",\n  "permissions": {},\n  "limits": {},\n  "features": {},\n  "access": {\n    "allowAllInbounds": true,\n    "allowed_inbound_ids": null\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/admin-roles/update/:id',
+        summary: 'Update a non-owner role. Built-in roles can keep their protected identity; owner role is read-only.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Role ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/admin-roles/duplicate/:id',
+        summary: 'Duplicate an existing role into a new custom role copy.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Source role ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/admin-roles/del/:id',
+        summary: 'Delete a custom role. Owner and built-in roles cannot be deleted, and assigned roles are protected.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Role ID.' },
+        ],
+      },
+    ],
+  },
+
+  {
     id: 'nodes',
     title: 'Nodes',
     description:
-      'Manage remote d-ui panels acting as nodes for a central panel. All endpoints under /panel/api/nodes.',
+      'Manage remote HEIMDALL panels acting as nodes for a central panel. All endpoints under /panel/api/nodes.',
     endpoints: [
       {
         method: 'GET',
@@ -1029,26 +1401,26 @@ export const sections: readonly Section[] = [
         method: 'GET',
         path: '/panel/api/hosts/list',
         summary: 'List every host across all inbounds, grouped by inbound then ordered by sort order.',
-        responseSchema: 'Host',
+        responseSchema: 'HostGroup',
         responseSchemaArray: true,
       },
       {
         method: 'GET',
-        path: '/panel/api/hosts/get/:id',
-        summary: 'Fetch a single host by ID.',
+        path: '/panel/api/hosts/get/:groupId',
+        summary: 'Fetch a single host group by Group ID.',
         params: [
-          { name: 'id', in: 'path', type: 'number', desc: 'Host ID.' },
+          { name: 'groupId', in: 'path', type: 'string', desc: 'Host Group ID.' },
         ],
-        responseSchema: 'Host',
+        responseSchema: 'HostGroup',
       },
       {
         method: 'GET',
         path: '/panel/api/hosts/byInbound/:inboundId',
-        summary: "Fetch one inbound's hosts, ordered by sort order then id.",
+        summary: "Fetch one inbound's hosts, grouped by host group.",
         params: [
           { name: 'inboundId', in: 'path', type: 'number', desc: 'Inbound ID.' },
         ],
-        responseSchema: 'Host',
+        responseSchema: 'HostGroup',
         responseSchemaArray: true,
       },
       {
@@ -1060,54 +1432,64 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/panel/api/hosts/add',
-        summary: 'Create a host on an inbound. inboundId and remark are required; security defaults to "same" (inherit the inbound).',
-        body: '{\n  "inboundId": 1,\n  "remark": "cdn-front",\n  "address": "cdn.example.com",\n  "port": 8443,\n  "security": "same",\n  "sni": "",\n  "tags": ["CDN"]\n}',
+        summary: 'Create a host group on inbounds.',
+        body: '{\n  "inboundIds": [1],\n  "remark": "cdn-front",\n  "hosts": ["cdn.example.com"],\n  "port": 8443,\n  "security": "same",\n  "tags": ["CDN"]\n}',
         responseSchema: 'Host',
+        responseSchemaArray: true,
       },
       {
         method: 'POST',
-        path: '/panel/api/hosts/update/:id',
-        summary: 'Replace a host’s content. The inbound and sort order are immutable here (use /reorder for ordering).',
+        path: '/panel/api/hosts/update/:groupId',
+        summary: 'Replace a host group’s content.',
         params: [
-          { name: 'id', in: 'path', type: 'number', desc: 'Host ID.' },
+          { name: 'groupId', in: 'path', type: 'string', desc: 'Host Group ID.' },
         ],
-        body: '{\n  "inboundId": 1,\n  "remark": "cdn-front",\n  "address": "cdn.example.com",\n  "port": 8443,\n  "security": "same",\n  "sni": "",\n  "tags": ["CDN"]\n}',
+        body: '{\n  "inboundIds": [1],\n  "remark": "cdn-front",\n  "hosts": ["cdn.example.com"],\n  "port": 8443,\n  "security": "same",\n  "tags": ["CDN"]\n}',
         responseSchema: 'Host',
+        responseSchemaArray: true,
       },
       {
         method: 'POST',
-        path: '/panel/api/hosts/del/:id',
-        summary: 'Delete a host.',
+        path: '/panel/api/hosts/del/:groupId',
+        summary: 'Delete a host group.',
         params: [
-          { name: 'id', in: 'path', type: 'number', desc: 'Host ID.' },
+          { name: 'groupId', in: 'path', type: 'string', desc: 'Host Group ID.' },
         ],
       },
       {
         method: 'POST',
-        path: '/panel/api/hosts/setEnable/:id',
-        summary: 'Enable or disable a single host (disabled hosts are skipped in subscriptions).',
+        path: '/panel/api/hosts/setEnable/:groupId',
+        summary: 'Enable or disable a host group.',
         params: [
-          { name: 'id', in: 'path', type: 'number', desc: 'Host ID.' },
+          { name: 'groupId', in: 'path', type: 'string', desc: 'Host Group ID.' },
         ],
         body: '{\n  "enable": true\n}',
       },
       {
         method: 'POST',
         path: '/panel/api/hosts/reorder',
-        summary: 'Set host sort order by the position of each id in the array.',
-        body: '{\n  "ids": [3, 1, 2]\n}',
+        summary: 'Set host group sort order by the position of each groupId in the array.',
+        body: '{\n  "ids": ["abc-123", "def-456"]\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/hosts/bulk/add',
+        summary: 'Add a host group to inbounds (same as /add).',
+        body: '{\n  "inboundIds": [1, 2],\n  "hosts": ["cdn.example.com", "cdn2.example.com:443"],\n  "remark": "Cloudflare CDN",\n  "port": 0,\n  "security": "same",\n  "isDisabled": false\n}',
+        responseSchema: 'Host',
+        responseSchemaArray: true,
       },
       {
         method: 'POST',
         path: '/panel/api/hosts/bulk/setEnable',
-        summary: 'Enable or disable many hosts in one call.',
-        body: '{\n  "ids": [1, 2, 3],\n  "enable": false\n}',
+        summary: 'Enable or disable many host groups in one call.',
+        body: '{\n  "ids": ["abc-123", "def-456"],\n  "enable": false\n}',
       },
       {
         method: 'POST',
         path: '/panel/api/hosts/bulk/del',
-        summary: 'Delete many hosts in one call.',
-        body: '{\n  "ids": [1, 2, 3]\n}',
+        summary: 'Delete many host groups in one call.',
+        body: '{\n  "ids": ["abc-123", "def-456"]\n}',
       },
     ],
   },
@@ -1163,7 +1545,7 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/panel/api/setting/restartPanel',
-        summary: 'Restart the entire d-ui process after a 3-second grace period. The connection drops immediately; the panel comes back online ~5-10 seconds later.',
+        summary: 'Restart the entire HEIMDALL process after a 3-second grace period. The connection drops immediately; the panel comes back online ~5-10 seconds later.',
       },
       {
         method: 'POST',
@@ -1188,30 +1570,41 @@ export const sections: readonly Section[] = [
   {
     id: 'api-tokens',
     title: 'API Tokens',
+    auth: 'cookie-only',
     description:
-      'Manage Bearer tokens used for programmatic auth (bots, central panels acting on this node, CI). Each token has a unique name and an enabled flag — disable to revoke without deleting, delete to revoke permanently. Tokens are stored as SHA-256 hashes and the plaintext is returned only once, in the create response — it cannot be retrieved afterwards, so copy it then. Send one as <code>Authorization: Bearer &lt;token&gt;</code> on any /panel/api/* request — the token is a full-admin credential.',
+      'Owner-only browser interface for API credentials. For delegated tokens, the owner selects an active non-owner administrator, explicit scopes, and an optional expiry. Every request is evaluated as that administrator using their current role, ownership, groups, limits, and feature flags, then intersected with the token scopes. Disabling the administrator, changing their role, expiring/disabling the token, or deleting it takes effect on the next request. Token values are stored only as SHA-256 hashes and plaintext is returned once at creation. Service tokens used by trusted remote panels retain their full integration contract and should be created only for machine-to-machine panel infrastructure.',
     endpoints: [
       {
         method: 'GET',
         path: '/panel/api/setting/apiTokens',
-        summary: 'List every API token, enabled or not. The token value is never returned — only metadata.',
-        response: '{\n  "success": true,\n  "obj": [\n    {\n      "id": 1,\n      "name": "default",\n      "enabled": true,\n      "createdAt": 1736000000\n    }\n  ]\n}',
+        summary: 'Owner-only list of all delegated and legacy service tokens. Plaintext values and stored hashes are never returned.',
+        response: '{\n  "success": true,\n  "obj": [\n    {\n      "id": 2,\n      "name": "telegram-operator-a",\n      "kind": "delegated",\n      "subjectAdminId": 3,\n      "subjectUsername": "operator-a",\n      "subjectRoleName": "Operator",\n      "scopes": ["clients:create", "clients:read"],\n      "expiresAt": 1767536000,\n      "expired": false,\n      "enabled": true,\n      "createdAt": 1736000000\n    }\n  ]\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/setting/apiTokens/subjects',
+        summary: 'List active non-owner administrators eligible to receive a delegated token. Returns only ID, username, and role metadata.',
+        response: '{\n  "success": true,\n  "obj": [\n    {\n      "id": 3,\n      "username": "operator-a",\n      "roleId": 2,\n      "roleName": "Operator"\n    }\n  ]\n}',
       },
       {
         method: 'POST',
         path: '/panel/api/setting/apiTokens/create',
-        summary: 'Mint a new API token. Name must be unique and 1-64 characters; the token string is server-generated and returned only in this response — it is stored hashed and cannot be retrieved later.',
+        summary: 'Mint an owner-created delegated or service token and return plaintext exactly once. The backend always records the logged-in owner as creator. For backward compatibility, omitting kind creates a service token; new user automation should explicitly send kind=delegated.',
         params: [
-          { name: 'name', in: 'body', type: 'string', desc: 'Human-readable label, e.g. "central-panel-a".' },
+          { name: 'name', in: 'body', type: 'string', desc: 'Unique human-readable label (1-64 characters).' },
+          { name: 'kind', in: 'body', type: 'string', desc: 'delegated for user automation or service for trusted panel infrastructure. Omitted means service for legacy callers.', optional: true },
+          { name: 'subjectAdminId', in: 'body', type: 'integer', desc: 'Required for delegated tokens: active non-owner panel administrator ID.', optional: true },
+          { name: 'scopes', in: 'body', type: 'string[]', desc: 'Required for delegated tokens: one or both of clients:read and clients:create.', optional: true },
+          { name: 'expiresAt', in: 'body', type: 'integer', desc: 'Optional Unix-seconds expiry. 0 means no expiry.', optional: true },
         ],
-        body: '{\n  "name": "central-panel-a"\n}',
+        body: '{\n  "name": "telegram-operator-a",\n  "kind": "delegated",\n  "subjectAdminId": 3,\n  "scopes": ["clients:read", "clients:create"],\n  "expiresAt": 1767536000\n}',
         responseSchema: 'ApiTokenView',
         errorResponse: '{\n  "success": false,\n  "msg": "a token with that name already exists"\n}',
       },
       {
         method: 'POST',
         path: '/panel/api/setting/apiTokens/delete/:id',
-        summary: 'Permanently delete a token. Any caller using it stops authenticating immediately.',
+        summary: 'Owner-only permanent token revocation. Any caller using it stops authenticating immediately.',
         params: [
           { name: 'id', in: 'path', type: 'number', desc: 'Token row ID.' },
         ],
@@ -1220,7 +1613,7 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/panel/api/setting/apiTokens/setEnabled/:id',
-        summary: 'Toggle a token enabled/disabled without deleting it. Disabled tokens are rejected by checkAPIAuth on the next request.',
+        summary: 'Owner-only enable/disable toggle. Disabled tokens are rejected by checkAPIAuth on the next request.',
         params: [
           { name: 'id', in: 'path', type: 'number', desc: 'Token row ID.' },
           { name: 'enabled', in: 'body', type: 'boolean', desc: 'New enabled state.' },
@@ -1305,7 +1698,7 @@ export const sections: readonly Section[] = [
         params: [
           { name: 'outbound', in: 'body (form)', type: 'string', desc: 'JSON-encoded single outbound to test (required).' },
           { name: 'allOutbounds', in: 'body (form)', type: 'string', desc: 'JSON array of all outbounds — used to resolve dialerProxy chains.' },
-          { name: 'mode', in: 'body (form)', type: 'string', desc: '"tcp" for a fast dial-only probe (parallel-safe). Default/empty uses a full HTTP probe through a temp xray instance.' },
+          { name: 'mode', in: 'body (form)', type: 'string', desc: '"tcp" for a fast dial-only probe (parallel-safe), "real" for a real-delay probe whose delay is the full request time including tunnel establishment. Default/empty uses a full HTTP probe reporting the warm per-request round-trip. Both HTTP variants run through a temp xray instance.' },
         ],
         body: 'outbound={"protocol":"freedom","settings":{}}&mode=tcp',
       },
@@ -1316,7 +1709,7 @@ export const sections: readonly Section[] = [
         params: [
           { name: 'outbounds', in: 'body (form)', type: 'string', desc: 'JSON array of outbound configs to test (required).' },
           { name: 'allOutbounds', in: 'body (form)', type: 'string', desc: 'JSON array of all outbounds — used to resolve dialerProxy chains.' },
-          { name: 'mode', in: 'body (form)', type: 'string', desc: '"tcp" for fast dial-only probes (UDP-transport outbounds are still probed over HTTP). Default/empty routes a real HTTP request through each outbound.' },
+          { name: 'mode', in: 'body (form)', type: 'string', desc: '"tcp" for fast dial-only probes (UDP-transport outbounds are still probed over HTTP), "real" for real-delay probes whose delay is the full request time including tunnel establishment. Default/empty routes an HTTP request through each outbound and reports the warm per-request round-trip.' },
         ],
         body: 'outbounds=[{"tag":"direct","protocol":"freedom","settings":{}}]&mode=http',
       },
@@ -1392,7 +1785,7 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/panel/api/xray/outbound-subs/:id/del',
-        summary: 'Delete an outbound subscription by id (POST alias of DELETE for axios-friendly clients).',
+        summary: 'Delete an outbound subscription by id (POST alias of DELETE for clients that cannot send DELETE).',
         params: [
           { name: 'id', in: 'path', type: 'integer', desc: 'Subscription id.' },
         ],
@@ -1471,37 +1864,49 @@ export const sections: readonly Section[] = [
   {
     id: 'websocket',
     title: 'WebSocket',
+    auth: 'cookie-only',
     description:
-      'Real-time status updates via WebSocket. Connect once at <code>ws://<panel>/ws</code> to receive a stream of JSON messages without polling. Requires an authenticated session cookie (Bearer token auth is not supported). Each message has a <code>type</code> field that identifies the payload shape.',
+      'Real-time updates over a browser-session-authenticated WebSocket. Connect at <code>ws://&lt;panel&gt;/ws</code> or <code>wss://&lt;panel&gt;/ws</code>. Messages use the envelope <code>{ type, payload, time }</code>; documented events are also exposed through the <code>x-websocket-events</code> OpenAPI extension.',
     endpoints: [
       {
         method: 'GET',
         path: '/ws',
-        summary: 'Upgrade an HTTP connection to a WebSocket. Requires an authenticated session cookie (Bearer token auth is not supported here). Returns 101 Switching Protocols on success. The server then pushes JSON messages described below.',
+        successStatus: 101,
+        successDescription: 'Switching Protocols',
+        emptyResponse: true,
+        emptyAuthErrorResponse: true,
+        summary: 'Upgrade an authenticated browser-session HTTP connection to WebSocket.',
+        description: 'Bearer API tokens are rejected. Successful connections receive JSON messages with type, payload, and Unix-millisecond time fields. Documented event examples are available in x-websocket-events.',
       },
       {
         method: 'WS',
-        path: '→ type: status',
+        path: 'status',
         summary: 'Server health snapshot pushed every 2 seconds. Contains CPU, memory, swap, disk, network IO, load, and Xray state — same shape as <code>GET /panel/api/server/status</code>.',
-        response: '{\n  "type": "status",\n  "data": { "cpu": 12.5, "mem": { "current": 2147483648, "total": 8589934592 }, "xray": { "state": "running" } }\n}',
+        response: '{\n  "type": "status",\n  "payload": { "cpu": 12.5, "mem": { "current": 2147483648, "total": 8589934592 }, "xray": { "state": "running" } },\n  "time": 1710000000000\n}',
       },
       {
         method: 'WS',
-        path: '→ type: xrayState',
+        path: 'xray_state',
         summary: 'Xray process state change. Fired when Xray starts, stops, or encounters an error.',
-        response: '{\n  "type": "xrayState",\n  "data": "running"\n}',
+        response: '{\n  "type": "xray_state",\n  "payload": { "state": "running", "errorMsg": "" },\n  "time": 1710000000000\n}',
       },
       {
         method: 'WS',
-        path: '→ type: notification',
+        path: 'notification',
         summary: 'In-panel toast notification. Fired on Xray stop/restart, DB import, panel restart, etc.',
-        response: '{\n  "type": "notification",\n  "title": "Xray service restarted",\n  "body": "Xray has been restarted successfully",\n  "severity": "success"\n}',
+        response: '{\n  "type": "notification",\n  "payload": { "title": "Xray service restarted", "message": "Xray has been restarted successfully", "level": "success" },\n  "time": 1710000000000\n}',
       },
       {
         method: 'WS',
-        path: '→ type: invalidate',
+        path: 'presence',
+        summary: 'Authoritative local online-client snapshot pushed only when the set changes. An empty onlineClients array immediately clears stale online badges.',
+        response: '{\n  "type": "presence",\n  "payload": { "onlineClients": ["alice@example.test"] },\n  "time": 1710000000000\n}',
+      },
+      {
+        method: 'WS',
+        path: 'invalidate',
         summary: 'Instructs the UI to re-fetch a resource. Fired when another admin session modifies data (e.g. toggling inbound enable).',
-        response: '{\n  "type": "invalidate",\n  "resource": "inbounds"\n}',
+        response: '{\n  "type": "invalidate",\n  "payload": { "type": "inbounds" },\n  "time": 1710000000000\n}',
       },
     ],
   },

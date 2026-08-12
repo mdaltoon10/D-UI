@@ -15,9 +15,8 @@ func (s *ClientService) GetRecordByEmail(tx *gorm.DB, email string) (*model.Clie
 	if tx == nil {
 		tx = database.GetDB()
 	}
-	email = strings.TrimSpace(email)
 	row := &model.ClientRecord{}
-	err := tx.Where("LOWER(email) = LOWER(?)", email).First(row).Error
+	err := tx.Where("email = ?", email).First(row).Error
 	if err != nil {
 		return nil, err
 	}
@@ -92,12 +91,11 @@ func (s *ClientService) GetInboundIdsForEmail(tx *gorm.DB, email string) ([]int,
 	if tx == nil {
 		tx = database.GetDB()
 	}
-	email = strings.TrimSpace(email)
 	var ids []int
 	err := tx.Table("client_inbounds").
 		Select("client_inbounds.inbound_id").
 		Joins("JOIN clients ON clients.id = client_inbounds.client_id").
-		Where("LOWER(clients.email) = LOWER(?)", email).
+		Where("clients.email = ?", email).
 		Scan(&ids).Error
 	if err != nil {
 		return nil, err
@@ -126,9 +124,14 @@ func (s *ClientService) GetInboundIdsForRecord(id int) ([]int, error) {
 }
 
 func (s *ClientService) List() ([]ClientWithAttachments, error) {
+	return s.ListForScope(ClientAccessScope{Mode: ClientAccessAll})
+}
+
+func (s *ClientService) ListForScope(scope ClientAccessScope) ([]ClientWithAttachments, error) {
 	db := database.GetDB()
 	var rows []model.ClientRecord
-	if err := db.Order("id ASC").Find(&rows).Error; err != nil {
+	query := applyClientAccessScope(db.Order("id ASC"), scope, "email")
+	if err := query.Find(&rows).Error; err != nil {
 		return nil, err
 	}
 	if len(rows) == 0 {
@@ -167,17 +170,16 @@ func (s *ClientService) List() ([]ClientWithAttachments, error) {
 		}
 		overlayGlobalTrafficValues(db, stats)
 		for i := range stats {
-			trafficByEmail[strings.ToLower(strings.TrimSpace(stats[i].Email))] = &stats[i]
+			trafficByEmail[stats[i].Email] = &stats[i]
 		}
 	}
 
 	out := make([]ClientWithAttachments, 0, len(rows))
 	for i := range rows {
-		emailKey := strings.ToLower(strings.TrimSpace(rows[i].Email))
 		out = append(out, ClientWithAttachments{
 			ClientRecord: rows[i],
 			InboundIds:   attachments[rows[i].Id],
-			Traffic:      trafficByEmail[emailKey],
+			Traffic:      trafficByEmail[rows[i].Email],
 		})
 	}
 	return out, nil
@@ -198,7 +200,6 @@ func (s *ClientService) HasPendingNode(inboundSvc *InboundService, email string)
 // JSON contains an entry with the given email. Driver-portable (no JSON
 // operators) by parsing in Go — fine for the rare fallback path.
 func (s *ClientService) findInboundIdsByClientEmail(email string) ([]int, error) {
-	email = strings.TrimSpace(email)
 	var inbounds []model.Inbound
 	if err := database.GetDB().
 		Select("id, settings").
@@ -221,7 +222,7 @@ func (s *ClientService) findInboundIdsByClientEmail(email string) ([]int, error)
 			if !ok {
 				continue
 			}
-			if cEmail, _ := cm["email"].(string); strings.EqualFold(strings.TrimSpace(cEmail), email) {
+			if cEmail, _ := cm["email"].(string); cEmail == email {
 				out = append(out, ib.Id)
 				break
 			}

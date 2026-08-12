@@ -205,6 +205,9 @@ func (s *InboundService) buildTargetClientFromSource(source model.Client, target
 	nowTs := time.Now().UnixMilli()
 	target := source
 	target.Email = email
+	// Copy creates a distinct logical client, not another attachment of the
+	// source identity. addInboundClient will mint a fresh ClientGuid.
+	target.ClientGuid = ""
 	target.CreatedAt = nowTs
 	target.UpdatedAt = nowTs
 
@@ -212,6 +215,7 @@ func (s *InboundService) buildTargetClientFromSource(source model.Client, target
 	target.Password = ""
 	target.Auth = ""
 	target.Flow = ""
+	target.Secret = ""
 
 	targetProtocol := targetInbound.Protocol
 	switch targetProtocol {
@@ -227,6 +231,8 @@ func (s *InboundService) buildTargetClientFromSource(source model.Client, target
 		target.Password = s.generateRandomCredential(targetProtocol)
 	case model.Hysteria:
 		target.Auth = s.generateRandomCredential(targetProtocol)
+	case model.MTProto:
+		target.Secret = model.GenerateFakeTLSSecret(mtprotoDomainFromSettings(targetInbound.Settings))
 	default:
 		target.ID = s.generateRandomCredential(targetProtocol)
 	}

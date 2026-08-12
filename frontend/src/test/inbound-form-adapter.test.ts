@@ -9,6 +9,7 @@ import {
 import { InboundDbFieldsSchema, InboundFormSchema } from '@/schemas/forms/inbound-form';
 import { normalizeXhttpForWire } from '@/lib/xray/stream-wire-normalize';
 import { SockoptStreamSettingsSchema } from '@/schemas/protocols/stream/sockopt';
+import { createSubscriptionProfileDraft } from '@/lib/xray/subscription-profile';
 
 // Round-trip: raw DB row → InboundFormValues → wire payload, asserting
 // that the JSON-stringified settings/streamSettings/sniffing in the
@@ -154,6 +155,35 @@ describe('transportless streamSettings (wireguard / tunnel)', () => {
       expect(stream.sockopt?.tproxy).toBe('tproxy');
     }
   });
+
+  it.each(['wireguard', 'tunnel'] as const)(
+    'strips stale Multi Profile state from the %s wire payload',
+    (protocol) => {
+      const values = rawInboundToFormValues({
+        port: protocol === 'wireguard' ? 51820 : 12345,
+        protocol,
+        settings: protocol === 'wireguard'
+          ? {
+            secretKey: 'cE9mYWtlLXNlY3JldC1rZXktZm9yLXVuaXQtdGVzdA==',
+            peers: [],
+            clients: [],
+          }
+          : {
+            allowedNetwork: 'tcp,udp',
+            followRedirect: true,
+            portMap: {},
+          },
+        streamSettings: {
+          security: 'none',
+          externalProxy: [createSubscriptionProfileDraft(8443)],
+        },
+        sniffing: { enabled: false },
+      });
+
+      const payload = formValuesToWirePayload(values);
+      expect(JSON.parse(payload.streamSettings)).not.toHaveProperty('externalProxy');
+    },
+  );
 
   it('still rejects a present-but-invalid network value', () => {
     const result = InboundFormSchema.safeParse({
@@ -306,6 +336,23 @@ describe('subSortIndex', () => {
   });
 });
 
+
+describe('usageMultiplier', () => {
+  it('usageMultiplier round-trips through inbound adapter payload', () => {
+    const values = rawInboundToFormValues({ ...vlessRow, usageMultiplier: 2.5 });
+    expect(values.usageMultiplier).toBe(2.5);
+
+    const payload = formValuesToWirePayload(values);
+    expect(payload.usageMultiplier).toBe(2.5);
+  });
+
+  it('usageMultiplier defaults to 1 and clamps to the supported range', () => {
+    expect(rawInboundToFormValues({ ...vlessRow, usageMultiplier: undefined }).usageMultiplier).toBe(1);
+    expect(rawInboundToFormValues({ ...vlessRow, usageMultiplier: 0 }).usageMultiplier).toBe(1);
+    expect(rawInboundToFormValues({ ...vlessRow, usageMultiplier: 99 }).usageMultiplier).toBe(10);
+  });
+});
+
 describe('legacy xhttp session keys on edit (#5621)', () => {
   const legacyXhttpRow: RawInboundRow = {
     ...vlessRow,
@@ -351,5 +398,37 @@ describe('legacy xhttp session keys on edit (#5621)', () => {
     expect(out.sessionIDKey).toBe('x_raw');
     expect(out.sessionPlacement).toBeUndefined();
     expect(out.sessionKey).toBeUndefined();
+  });
+});
+
+describe('xhttp xmux maxConcurrency survives a load/re-save round-trip', () => {
+  const xmuxRow: RawInboundRow = {
+    ...vlessRow,
+    streamSettings: {
+      network: 'xhttp',
+      security: 'none',
+      xhttpSettings: {
+        path: '/xh',
+        mode: 'auto',
+        xmux: { maxConcurrency: '1-2' },
+      },
+    },
+  };
+
+  it('rawInboundToFormValues does not resurrect a non-zero maxConnections', () => {
+    const values = rawInboundToFormValues(xmuxRow);
+    const xhttp = (values.streamSettings as unknown as Record<string, Record<string, unknown>>).xhttpSettings;
+    expect(xhttp.enableXmux).toBe(true);
+    const xmux = xhttp.xmux as Record<string, unknown>;
+    expect(xmux.maxConcurrency).toBe('1-2');
+    expect(xmux.maxConnections).toBe(0);
+  });
+
+  it('formValuesToWirePayload keeps maxConcurrency on an unedited re-save', () => {
+    const values = rawInboundToFormValues(xmuxRow);
+    const payload = formValuesToWirePayload(values);
+    const stream = JSON.parse(payload.streamSettings) as Record<string, Record<string, unknown>>;
+    const xmux = stream.xhttpSettings.xmux as Record<string, unknown>;
+    expect(xmux.maxConcurrency).toBe('1-2');
   });
 });

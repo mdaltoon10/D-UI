@@ -17,26 +17,26 @@ import (
 	"github.com/mdaltoon10/D-UI/v3/internal/config"
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
-	duilogger "github.com/mdaltoon10/D-UI/v3/internal/logger"
+	xuilogger "github.com/mdaltoon10/D-UI/v3/internal/logger"
 	"github.com/mdaltoon10/D-UI/v3/internal/xray"
 )
 
 const scaleTargetSubId = "scale-target-sub"
 
 // setupScaleSubDB mirrors the service package's scale gating: Postgres via
-// DUI_DB_TYPE/DUI_DB_DSN, SQLite via DUI_SCALE_TEST=1, skip otherwise.
+// XUI_DB_TYPE/XUI_DB_DSN, SQLite via XUI_SCALE_TEST=1, skip otherwise.
 func setupScaleSubDB(t *testing.T) {
 	t.Helper()
-	duilogger.InitLogger(logging.ERROR)
+	xuilogger.InitLogger(logging.ERROR)
 
-	if os.Getenv("DUI_DB_TYPE") == "postgres" && strings.TrimSpace(os.Getenv("DUI_DB_DSN")) != "" {
+	if os.Getenv("XUI_DB_TYPE") == "postgres" && strings.TrimSpace(os.Getenv("XUI_DB_DSN")) != "" {
 		if err := database.InitDB(""); err != nil {
 			t.Fatalf("InitDB(postgres): %v", err)
 		}
 		t.Cleanup(func() { _ = database.CloseDB() })
 		return
 	}
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("DUI_SCALE_TEST"))) {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("XUI_SCALE_TEST"))) {
 	case "1", "true", "yes":
 		if err := database.InitDB(filepath.Join(t.TempDir(), "scale.db")); err != nil {
 			t.Fatalf("InitDB(sqlite): %v", err)
@@ -44,24 +44,24 @@ func setupScaleSubDB(t *testing.T) {
 		t.Cleanup(func() { _ = database.CloseDB() })
 		return
 	}
-	t.Skip("set DUI_SCALE_TEST=1 (sqlite) or DUI_DB_TYPE=postgres + DUI_DB_DSN (postgres) to run the scale benchmark")
+	t.Skip("set XUI_SCALE_TEST=1 (sqlite) or XUI_DB_TYPE=postgres + XUI_DB_DSN (postgres) to run the scale benchmark")
 }
 
 func scaleSubSizes(t *testing.T, def ...int) []int {
 	t.Helper()
-	raw := strings.TrimSpace(os.Getenv("DUI_SCALE_SIZES"))
+	raw := strings.TrimSpace(os.Getenv("XUI_SCALE_SIZES"))
 	if raw == "" {
 		return def
 	}
 	var out []int
-	for _, part := range strings.Split(raw, ",") {
+	for part := range strings.SplitSeq(raw, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
 		}
 		n, err := strconv.Atoi(part)
 		if err != nil || n <= 0 {
-			t.Fatalf("DUI_SCALE_SIZES: invalid size %q", part)
+			t.Fatalf("XUI_SCALE_SIZES: invalid size %q", part)
 		}
 		out = append(out, n)
 	}

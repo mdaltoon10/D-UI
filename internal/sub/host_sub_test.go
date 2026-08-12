@@ -2,6 +2,7 @@ package sub
 
 import (
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,8 +14,8 @@ import (
 func seedSubDB(t *testing.T) {
 	t.Helper()
 	dbDir := t.TempDir()
-	t.Setenv("DUI_DB_FOLDER", dbDir)
-	if err := database.InitDB(filepath.Join(dbDir, "d-ui.db")); err != nil {
+	t.Setenv("XUI_DB_FOLDER", dbDir)
+	if err := database.InitDB(filepath.Join(dbDir, "x-ui.db")); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	t.Cleanup(func() { _ = database.CloseDB() })
@@ -121,9 +122,9 @@ func TestSub_DisabledHostSkipped(t *testing.T) {
 	}
 }
 
-// #4 — when both hosts and a legacy externalProxy are set, hosts win and the
-// externalProxy entry is ignored.
-func TestSub_HostAndExternalProxy_Precedence(t *testing.T) {
+// #4 — Heimdall rule: when both Managed Hosts and explicit Subscription
+// Profiles are set, Subscription Profiles win and Hosts are ignored.
+func TestSub_SubscriptionProfilesOverrideHosts(t *testing.T) {
 	seedSubDB(t)
 	stream := `{"network":"ws","security":"tls","wsSettings":{"path":"/base","host":"base.host"},"tlsSettings":{"serverName":"base.sni"},"externalProxy":[{"forceTls":"tls","dest":"legacy.cdn.com","port":7443,"remark":"L"}]}`
 	ib := seedSubInbound(t, "s1", "p", 4434, 1, stream)
@@ -134,11 +135,11 @@ func TestSub_HostAndExternalProxy_Precedence(t *testing.T) {
 		t.Fatalf("GetSubs: %v", err)
 	}
 	joined := strings.Join(links, "\n")
-	if !strings.Contains(joined, "host.cdn.com:8443") {
-		t.Fatalf("host should win: %s", joined)
+	if strings.Contains(joined, "host.cdn.com:8443") {
+		t.Fatalf("hosts must not override explicit subscription profiles: %s", joined)
 	}
-	if strings.Contains(joined, "legacy.cdn.com") {
-		t.Fatalf("externalProxy must be ignored when hosts exist: %s", joined)
+	if !strings.Contains(joined, "legacy.cdn.com") {
+		t.Fatalf("subscription profiles should win over hosts: %s", joined)
 	}
 }
 
@@ -270,6 +271,28 @@ func TestSub_HostAllowInsecure(t *testing.T) {
 	}
 }
 
+// A host's Final Mask reaches the raw share link as the fm param, merged with
+// any inbound-level mask (#5831).
+func TestSub_HostFinalMask_RawLink(t *testing.T) {
+	seedSubDB(t)
+	ib := seedSubInbound(t, "s1", "fmh", 4455, 1,
+		`{"network":"tcp","security":"tls","tlsSettings":{"serverName":"base.sni"},"finalmask":{"tcp":[{"type":"sudoku"}]}}`)
+	seedHost(t, &model.Host{
+		InboundId: ib.Id, SortOrder: 0, Remark: "FM", Address: "fm.cdn.com", Port: 8443, Security: "tls",
+		FinalMask: `{"tcp":[{"type":"fragment"}]}`,
+	})
+
+	links, _, _, _, err := NewSubService("").GetSubs("s1", "req.example.com")
+	if err != nil {
+		t.Fatalf("GetSubs: %v", err)
+	}
+	joined := strings.Join(links, "\n")
+	wantFm := "fm=" + url.QueryEscape(`{"tcp":[{"type":"sudoku"},{"type":"fragment"}]}`)
+	if !strings.Contains(joined, wantFm) {
+		t.Fatalf("raw link should merge the host Final Mask into fm.\n got: %s\nwant substring: %s", joined, wantFm)
+	}
+}
+
 // A host's sockoptParams is injected into the JSON output stream (sockopt is
 // stripped from the base stream, re-added per host).
 func TestSub_HostSockoptJSON(t *testing.T) {
@@ -360,5 +383,43 @@ func TestSub_ExcludeFromSubTypes(t *testing.T) {
 	}
 	if strings.Contains(yaml, "clashless.cdn.com") {
 		t.Fatalf("host excluded from clash must not appear in GetClash:\n%s", yaml)
+	}
+}
+
+func TestSub_SubscriptionProfileClientStreamOverridesJSON(t *testing.T) {
+	seedSubDB(t)
+
+	stream := `{"network":"tcp","security":"none","tcpSettings":{"header":{"type":"none"}},"externalProxy":[{"enabled":true,"forceTls":"same","dest":"profile.cdn.com","port":8443,"remark":"profile-client-overrides","sockopt":{"tcpFastOpen":true,"domainStrategy":"UseIP","acceptProxyProtocol":true,"V6Only":true,"trustedXForwardedFor":["127.0.0.1"]},"mux":{"enabled":true,"concurrency":4,"xudpConcurrency":8,"xudpProxyUDP443":"allow"},"finalmask":{"tcp":[{"type":"fragment"}]}}]}`
+
+	seedSubInbound(t, "s1", "profile-overrides", 4462, 1, stream)
+
+	service := NewSubJsonService("", "", "", NewSubService(""))
+	out, _, err := service.GetJson("s1", "req.example.com")
+	if err != nil {
+		t.Fatalf("GetJson: %v", err)
+	}
+
+	for _, want := range []string{
+		`"sockopt"`,
+		`"tcpFastOpen": true`,
+		`"domainStrategy": "UseIP"`,
+		`"mux"`,
+		`"concurrency": 4`,
+		`"finalmask"`,
+		`"type": "fragment"`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("JSON is missing %q:\n%s", want, out)
+		}
+	}
+
+	for _, forbidden := range []string{
+		`"acceptProxyProtocol"`,
+		`"V6Only"`,
+		`"trustedXForwardedFor"`,
+	} {
+		if strings.Contains(out, forbidden) {
+			t.Fatalf("listener-only Sockopt key leaked %q:\n%s", forbidden, out)
+		}
 	}
 }

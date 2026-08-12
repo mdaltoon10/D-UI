@@ -27,14 +27,11 @@
     },
     "schemas": {
       "AllSetting": {
-        "description": "AllSetting contains all configuration settings for the d-ui panel including web server, Telegram bot, and subscription settings.",
         "properties": {
           "datepicker": {
-            "description": "Date picker format",
             "type": "string"
           },
           "expireDiff": {
-            "description": "Expiration warning threshold in days",
             "minimum": 0,
             "type": "integer"
           },
@@ -44,10 +41,6 @@
           },
           "externalTrafficInformURI": {
             "description": "URI for external traffic reporting",
-            "type": "string"
-          },
-          "ipLimitPolicy": {
-            "description": "Policy for IP limit enforcement: kick_oldest or block_newest",
             "type": "string"
           },
           "ldapAutoCreate": {
@@ -75,11 +68,9 @@
             "type": "integer"
           },
           "ldapEnable": {
-            "description": "LDAP settings",
             "type": "boolean"
           },
           "ldapFlagField": {
-            "description": "Generic flag configuration",
             "type": "string"
           },
           "ldapHost": {
@@ -112,7 +103,6 @@
             "type": "boolean"
           },
           "ldapUserAttr": {
-            "description": "e.g., mail or uid",
             "type": "string"
           },
           "ldapUserFilter": {
@@ -122,17 +112,14 @@
             "type": "string"
           },
           "pageSize": {
-            "description": "UI settings\nNumber of items per page in lists (0 disables pagination)",
             "maximum": 1000,
             "minimum": 0,
             "type": "integer"
           },
           "panelOutbound": {
-            "description": "Xray outbound tag for the panel's own outbound HTTP (update checks/downloads, Telegram, geo updates, outbound-subscription fetches)",
             "type": "string"
           },
           "remarkTemplate": {
-            "description": "Subscription remark template ({{VAR}} tokens) rendered per client",
             "type": "string"
           },
           "restartXrayOnClientDisable": {
@@ -140,55 +127,44 @@
             "type": "boolean"
           },
           "sessionMaxAge": {
-            "description": "Session maximum age in minutes (cap at one year)",
             "maximum": 525600,
             "minimum": 1,
             "type": "integer"
           },
           "smtpCpu": {
-            "description": "CPU threshold for email notifications",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
           },
           "smtpEnable": {
-            "description": "Email (SMTP) notification settings\nEnable email notifications",
             "type": "boolean"
           },
           "smtpEnabledEvents": {
-            "description": "Comma-separated event types to send via email",
             "type": "string"
           },
           "smtpEncryptionType": {
-            "description": "SMTP encryption: none, starttls, tls",
             "type": "string"
           },
           "smtpHost": {
-            "description": "SMTP server host",
             "type": "string"
           },
           "smtpMemory": {
-            "description": "Memory threshold for email notifications",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
           },
           "smtpPassword": {
-            "description": "SMTP password",
             "type": "string"
           },
           "smtpPort": {
-            "description": "SMTP server port",
             "maximum": 65535,
             "minimum": 1,
             "type": "integer"
           },
           "smtpTo": {
-            "description": "Comma-separated recipient emails",
             "type": "string"
           },
           "smtpUsername": {
-            "description": "SMTP username",
             "type": "string"
           },
           "subAnnounce": {
@@ -219,6 +195,10 @@
             "description": "Clash/Mihomo subscription server URI",
             "type": "string"
           },
+          "subClientImportFormat": {
+            "description": "Default non-HTML /sub import format: normal or json",
+            "type": "string"
+          },
           "subDomain": {
             "description": "Domain for subscription server validation",
             "type": "string"
@@ -236,7 +216,6 @@
             "type": "boolean"
           },
           "subHideSettings": {
-            "description": "Hide server settings in happ subscription (Only for Happ)",
             "type": "boolean"
           },
           "subIncyEnableRouting": {
@@ -252,7 +231,6 @@
             "type": "boolean"
           },
           "subJsonFinalMask": {
-            "description": "JSON subscription global finalmask (tcp/udp masks + quicParams)",
             "type": "string"
           },
           "subJsonMux": {
@@ -301,7 +279,6 @@
             "type": "string"
           },
           "subThemeDir": {
-            "description": "Absolute path to a folder containing a custom subscription page template",
             "type": "string"
           },
           "subTitle": {
@@ -319,102 +296,79 @@
             "type": "integer"
           },
           "tgBotAPIServer": {
-            "description": "Custom API server for Telegram bot",
             "type": "string"
           },
           "tgBotBackup": {
-            "description": "Enable database backup via Telegram",
             "type": "boolean"
           },
           "tgBotChatId": {
-            "description": "Telegram chat ID for notifications",
             "type": "string"
           },
           "tgBotEnable": {
-            "description": "Telegram bot settings\nEnable Telegram bot notifications",
             "type": "boolean"
           },
           "tgBotProxy": {
-            "description": "Proxy URL for Telegram bot",
             "type": "string"
           },
           "tgBotToken": {
-            "description": "Telegram bot token",
             "type": "string"
           },
           "tgCpu": {
-            "description": "CPU usage threshold for alerts (percent)",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
           },
           "tgEnabledEvents": {
-            "description": "Comma-separated event types to send via Telegram",
             "type": "string"
           },
           "tgLang": {
-            "description": "Telegram bot language",
             "type": "string"
           },
           "tgMemory": {
-            "description": "Memory usage threshold for alerts (percent)",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
           },
           "tgRunTime": {
-            "description": "Cron schedule for Telegram notifications",
             "type": "string"
           },
           "timeLocation": {
-            "description": "Security settings\nTime zone location",
             "type": "string"
           },
           "trafficDiff": {
-            "description": "Traffic warning threshold percentage",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
           },
           "trustedProxyCIDRs": {
-            "description": "Trusted reverse proxy IPs/CIDRs for forwarded headers",
             "type": "string"
           },
           "twoFactorEnable": {
-            "description": "Enable two-factor authentication",
             "type": "boolean"
           },
           "twoFactorToken": {
-            "description": "Two-factor authentication token",
             "type": "string"
           },
           "warpUpdateInterval": {
-            "description": "WARP",
             "minimum": 0,
             "type": "integer"
           },
           "webBasePath": {
-            "description": "Base path for web panel URLs",
             "type": "string"
           },
           "webCertFile": {
-            "description": "Path to SSL certificate file for web server",
             "type": "string"
           },
           "webDomain": {
-            "description": "Web server domain for domain validation",
             "type": "string"
           },
           "webKeyFile": {
-            "description": "Path to SSL private key file for web server",
             "type": "string"
           },
           "webListen": {
-            "description": "Web server settings\nWeb server listen IP address",
             "type": "string"
           },
           "webPort": {
-            "description": "Web server port number",
             "maximum": 65535,
             "minimum": 1,
             "type": "integer"
@@ -425,7 +379,6 @@
           "expireDiff",
           "externalTrafficInformEnable",
           "externalTrafficInformURI",
-          "ipLimitPolicy",
           "ldapAutoCreate",
           "ldapAutoDelete",
           "ldapBaseDN",
@@ -469,6 +422,7 @@
           "subClashPath",
           "subClashRules",
           "subClashURI",
+          "subClientImportFormat",
           "subDomain",
           "subEnable",
           "subEnableRouting",
@@ -520,14 +474,11 @@
         "type": "object"
       },
       "AllSettingView": {
-        "description": "AllSettingView is the browser-safe settings read model. Secret values\nare redacted from the embedded write model and represented by presence\nflags so the UI can show configured/not configured state.",
         "properties": {
           "datepicker": {
-            "description": "Date picker format",
             "type": "string"
           },
           "expireDiff": {
-            "description": "Expiration warning threshold in days",
             "minimum": 0,
             "type": "integer"
           },
@@ -560,10 +511,6 @@
           "hasWarpSecret": {
             "type": "boolean"
           },
-          "ipLimitPolicy": {
-            "description": "Policy for IP limit enforcement: kick_oldest or block_newest",
-            "type": "string"
-          },
           "ldapAutoCreate": {
             "type": "boolean"
           },
@@ -589,11 +536,9 @@
             "type": "integer"
           },
           "ldapEnable": {
-            "description": "LDAP settings",
             "type": "boolean"
           },
           "ldapFlagField": {
-            "description": "Generic flag configuration",
             "type": "string"
           },
           "ldapHost": {
@@ -626,7 +571,6 @@
             "type": "boolean"
           },
           "ldapUserAttr": {
-            "description": "e.g., mail or uid",
             "type": "string"
           },
           "ldapUserFilter": {
@@ -636,17 +580,14 @@
             "type": "string"
           },
           "pageSize": {
-            "description": "UI settings\nNumber of items per page in lists (0 disables pagination)",
             "maximum": 1000,
             "minimum": 0,
             "type": "integer"
           },
           "panelOutbound": {
-            "description": "Xray outbound tag for the panel's own outbound HTTP (update checks/downloads, Telegram, geo updates, outbound-subscription fetches)",
             "type": "string"
           },
           "remarkTemplate": {
-            "description": "Subscription remark template ({{VAR}} tokens) rendered per client",
             "type": "string"
           },
           "restartXrayOnClientDisable": {
@@ -654,55 +595,44 @@
             "type": "boolean"
           },
           "sessionMaxAge": {
-            "description": "Session maximum age in minutes (cap at one year)",
             "maximum": 525600,
             "minimum": 1,
             "type": "integer"
           },
           "smtpCpu": {
-            "description": "CPU threshold for email notifications",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
           },
           "smtpEnable": {
-            "description": "Email (SMTP) notification settings\nEnable email notifications",
             "type": "boolean"
           },
           "smtpEnabledEvents": {
-            "description": "Comma-separated event types to send via email",
             "type": "string"
           },
           "smtpEncryptionType": {
-            "description": "SMTP encryption: none, starttls, tls",
             "type": "string"
           },
           "smtpHost": {
-            "description": "SMTP server host",
             "type": "string"
           },
           "smtpMemory": {
-            "description": "Memory threshold for email notifications",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
           },
           "smtpPassword": {
-            "description": "SMTP password",
             "type": "string"
           },
           "smtpPort": {
-            "description": "SMTP server port",
             "maximum": 65535,
             "minimum": 1,
             "type": "integer"
           },
           "smtpTo": {
-            "description": "Comma-separated recipient emails",
             "type": "string"
           },
           "smtpUsername": {
-            "description": "SMTP username",
             "type": "string"
           },
           "subAnnounce": {
@@ -733,6 +663,10 @@
             "description": "Clash/Mihomo subscription server URI",
             "type": "string"
           },
+          "subClientImportFormat": {
+            "description": "Default non-HTML /sub import format: normal or json",
+            "type": "string"
+          },
           "subDomain": {
             "description": "Domain for subscription server validation",
             "type": "string"
@@ -750,7 +684,6 @@
             "type": "boolean"
           },
           "subHideSettings": {
-            "description": "Hide server settings in happ subscription (Only for Happ)",
             "type": "boolean"
           },
           "subIncyEnableRouting": {
@@ -766,7 +699,6 @@
             "type": "boolean"
           },
           "subJsonFinalMask": {
-            "description": "JSON subscription global finalmask (tcp/udp masks + quicParams)",
             "type": "string"
           },
           "subJsonMux": {
@@ -815,7 +747,6 @@
             "type": "string"
           },
           "subThemeDir": {
-            "description": "Absolute path to a folder containing a custom subscription page template",
             "type": "string"
           },
           "subTitle": {
@@ -833,102 +764,79 @@
             "type": "integer"
           },
           "tgBotAPIServer": {
-            "description": "Custom API server for Telegram bot",
             "type": "string"
           },
           "tgBotBackup": {
-            "description": "Enable database backup via Telegram",
             "type": "boolean"
           },
           "tgBotChatId": {
-            "description": "Telegram chat ID for notifications",
             "type": "string"
           },
           "tgBotEnable": {
-            "description": "Telegram bot settings\nEnable Telegram bot notifications",
             "type": "boolean"
           },
           "tgBotProxy": {
-            "description": "Proxy URL for Telegram bot",
             "type": "string"
           },
           "tgBotToken": {
-            "description": "Telegram bot token",
             "type": "string"
           },
           "tgCpu": {
-            "description": "CPU usage threshold for alerts (percent)",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
           },
           "tgEnabledEvents": {
-            "description": "Comma-separated event types to send via Telegram",
             "type": "string"
           },
           "tgLang": {
-            "description": "Telegram bot language",
             "type": "string"
           },
           "tgMemory": {
-            "description": "Memory usage threshold for alerts (percent)",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
           },
           "tgRunTime": {
-            "description": "Cron schedule for Telegram notifications",
             "type": "string"
           },
           "timeLocation": {
-            "description": "Security settings\nTime zone location",
             "type": "string"
           },
           "trafficDiff": {
-            "description": "Traffic warning threshold percentage",
             "maximum": 100,
             "minimum": 0,
             "type": "integer"
           },
           "trustedProxyCIDRs": {
-            "description": "Trusted reverse proxy IPs/CIDRs for forwarded headers",
             "type": "string"
           },
           "twoFactorEnable": {
-            "description": "Enable two-factor authentication",
             "type": "boolean"
           },
           "twoFactorToken": {
-            "description": "Two-factor authentication token",
             "type": "string"
           },
           "warpUpdateInterval": {
-            "description": "WARP",
             "minimum": 0,
             "type": "integer"
           },
           "webBasePath": {
-            "description": "Base path for web panel URLs",
             "type": "string"
           },
           "webCertFile": {
-            "description": "Path to SSL certificate file for web server",
             "type": "string"
           },
           "webDomain": {
-            "description": "Web server domain for domain validation",
             "type": "string"
           },
           "webKeyFile": {
-            "description": "Path to SSL private key file for web server",
             "type": "string"
           },
           "webListen": {
-            "description": "Web server settings\nWeb server listen IP address",
             "type": "string"
           },
           "webPort": {
-            "description": "Web server port number",
             "maximum": 65535,
             "minimum": 1,
             "type": "integer"
@@ -946,7 +854,6 @@
           "hasTgBotToken",
           "hasTwoFactorToken",
           "hasWarpSecret",
-          "ipLimitPolicy",
           "ldapAutoCreate",
           "ldapAutoDelete",
           "ldapBaseDN",
@@ -990,6 +897,7 @@
           "subClashPath",
           "subClashRules",
           "subClashURI",
+          "subClientImportFormat",
           "subDomain",
           "subEnable",
           "subEnableRouting",
@@ -1043,28 +951,41 @@
       "ApiToken": {
         "properties": {
           "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "createdByAdminId": {
+            "nullable": true,
             "type": "integer"
           },
           "enabled": {
             "type": "boolean"
           },
+          "expiresAt": {
+            "format": "int64",
+            "type": "integer"
+          },
           "id": {
             "type": "integer"
+          },
+          "kind": {
+            "type": "string"
           },
           "name": {
             "type": "string"
           },
-          "token": {
-            "description": "SHA-256 hash; the plaintext is shown only once at creation",
-            "type": "string"
+          "subjectAdminId": {
+            "nullable": true,
+            "type": "integer"
           }
         },
         "required": [
           "createdAt",
           "enabled",
+          "expiresAt",
           "id",
-          "name",
-          "token"
+          "kind",
+          "name"
         ],
         "type": "object"
       },
@@ -1072,56 +993,112 @@
         "properties": {
           "createdAt": {
             "example": 1736000000,
+            "format": "int64",
+            "type": "integer"
+          },
+          "createdByAdminId": {
+            "example": 1,
+            "nullable": true,
             "type": "integer"
           },
           "enabled": {
             "example": true,
             "type": "boolean"
           },
+          "expired": {
+            "example": false,
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "example": 1767536000,
+            "format": "int64",
+            "type": "integer"
+          },
           "id": {
             "example": 2,
             "type": "integer"
           },
+          "kind": {
+            "example": "delegated",
+            "type": "string"
+          },
           "name": {
-            "example": "central-panel-a",
+            "example": "telegram-bot-a",
+            "type": "string"
+          },
+          "scopes": {
+            "example": [
+              "clients:read",
+              "clients:create"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subjectAdminId": {
+            "example": 3,
+            "nullable": true,
+            "type": "integer"
+          },
+          "subjectRoleName": {
+            "example": "Operator",
+            "type": "string"
+          },
+          "subjectUsername": {
+            "example": "operator-a",
             "type": "string"
           },
           "token": {
-            "example": "new-token-string",
+            "example": "hmd_d_new-token-string",
             "type": "string"
           }
         },
         "required": [
           "createdAt",
           "enabled",
+          "expired",
+          "expiresAt",
           "id",
-          "name"
+          "kind",
+          "name",
+          "scopes"
         ],
         "type": "object"
       },
       "Client": {
         "description": "Client represents a client configuration for Xray inbounds with traffic limits and settings.",
         "properties": {
+          "adTag": {
+            "example": "0123456789abcdef0123456789abcdef",
+            "type": "string"
+          },
           "allowedIPs": {
+            "description": "WireGuard allowed IPs",
             "items": {
               "type": "string"
             },
             "type": "array"
           },
           "auth": {
-            "description": "Auth password (Hysteria)",
+            "description": "Authentication password",
+            "type": "string"
+          },
+          "clientGuid": {
+            "description": "Stable logical-client identity; independent of protocol credentials/email",
             "type": "string"
           },
           "comment": {
             "description": "Client comment",
             "type": "string"
           },
-          "createdBy": {
-            "description": "Username of the ResellerAdmin who created it",
-            "type": "string"
-          },
           "created_at": {
             "description": "Creation timestamp",
+            "format": "int64",
+            "type": "integer"
+          },
+          "downloadMbps": {
+            "description": "Aggregate download limit in Mbps; 0 means unlimited",
             "type": "integer"
           },
           "email": {
@@ -1134,10 +1111,11 @@
           },
           "expiryTime": {
             "description": "Expiration timestamp",
+            "format": "int64",
             "type": "integer"
           },
           "flow": {
-            "description": "Flow control (XTLS)",
+            "description": "Flow control",
             "type": "string"
           },
           "group": {
@@ -1149,10 +1127,11 @@
             "type": "string"
           },
           "keepAlive": {
+            "description": "WireGuard persistent keepalive",
             "type": "integer"
           },
           "limitIp": {
-            "description": "IP limit for this client",
+            "description": "Concurrent IP limit; 0 means unlimited",
             "type": "integer"
           },
           "password": {
@@ -1160,12 +1139,15 @@
             "type": "string"
           },
           "preSharedKey": {
+            "description": "WireGuard pre-shared key",
             "type": "string"
           },
           "privateKey": {
+            "description": "WireGuard private key",
             "type": "string"
           },
           "publicKey": {
+            "description": "WireGuard public key",
             "type": "string"
           },
           "reset": {
@@ -1178,11 +1160,15 @@
                 "$ref": "#/components/schemas/ClientReverse"
               }
             ],
-            "description": "VLESS simple reverse proxy settings",
+            "description": "Reverse proxy settings",
             "nullable": true
           },
+          "secret": {
+            "example": "ee1234567890abcdef1234567890abcd7777772e636c6f7564666c6172652e636f6d",
+            "type": "string"
+          },
           "security": {
-            "description": "Security method (e.g., \"auto\", \"aes-128-gcm\")",
+            "description": "Security method",
             "type": "string"
           },
           "subId": {
@@ -1191,19 +1177,27 @@
           },
           "tgId": {
             "description": "Telegram user ID for notifications",
+            "format": "int64",
             "type": "integer"
           },
           "totalGB": {
             "description": "Total traffic limit in GB",
+            "format": "int64",
             "type": "integer"
           },
           "updated_at": {
             "description": "Last update timestamp",
+            "format": "int64",
+            "type": "integer"
+          },
+          "uploadMbps": {
+            "description": "Aggregate upload limit in Mbps; 0 means unlimited",
             "type": "integer"
           }
         },
         "required": [
           "comment",
+          "downloadMbps",
           "email",
           "enable",
           "expiryTime",
@@ -1212,7 +1206,8 @@
           "security",
           "subId",
           "tgId",
-          "totalGB"
+          "totalGB",
+          "uploadMbps"
         ],
         "type": "object"
       },
@@ -1222,6 +1217,7 @@
             "type": "integer"
           },
           "createdAt": {
+            "format": "int64",
             "type": "integer"
           },
           "flowOverride": {
@@ -1241,20 +1237,33 @@
       },
       "ClientRecord": {
         "properties": {
+          "adTag": {
+            "type": "string"
+          },
           "allowedIPs": {
             "type": "string"
           },
           "auth": {
             "type": "string"
           },
+          "clientGuid": {
+            "type": "string"
+          },
           "comment": {
             "type": "string"
           },
           "createdAt": {
+            "format": "int64",
             "type": "integer"
           },
-          "createdBy": {
-            "type": "string"
+          "createdByAdminId": {
+            "type": "integer"
+          },
+          "disabledByOwnerAdminId": {
+            "type": "integer"
+          },
+          "downloadMbps": {
+            "type": "integer"
           },
           "email": {
             "type": "string"
@@ -1263,6 +1272,7 @@
             "type": "boolean"
           },
           "expiryTime": {
+            "format": "int64",
             "type": "integer"
           },
           "flow": {
@@ -1278,6 +1288,9 @@
             "type": "integer"
           },
           "limitIp": {
+            "type": "integer"
+          },
+          "ownerAdminId": {
             "type": "integer"
           },
           "password": {
@@ -1296,6 +1309,9 @@
             "type": "integer"
           },
           "reverse": {},
+          "secret": {
+            "type": "string"
+          },
           "security": {
             "type": "string"
           },
@@ -1303,12 +1319,18 @@
             "type": "string"
           },
           "tgId": {
+            "format": "int64",
             "type": "integer"
           },
           "totalGB": {
+            "format": "int64",
             "type": "integer"
           },
           "updatedAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "uploadMbps": {
             "type": "integer"
           },
           "uuid": {
@@ -1316,11 +1338,15 @@
           }
         },
         "required": [
+          "adTag",
           "allowedIPs",
           "auth",
+          "clientGuid",
           "comment",
           "createdAt",
-          "createdBy",
+          "createdByAdminId",
+          "disabledByOwnerAdminId",
+          "downloadMbps",
           "email",
           "enable",
           "expiryTime",
@@ -1329,17 +1355,20 @@
           "id",
           "keepAlive",
           "limitIp",
+          "ownerAdminId",
           "password",
           "preSharedKey",
           "privateKey",
           "publicKey",
           "reset",
           "reverse",
+          "secret",
           "security",
           "subId",
           "tgId",
           "totalGB",
           "updatedAt",
+          "uploadMbps",
           "uuid"
         ],
         "type": "object"
@@ -1360,6 +1389,7 @@
         "properties": {
           "down": {
             "example": 2097152,
+            "format": "int64",
             "type": "integer"
           },
           "email": {
@@ -1372,6 +1402,7 @@
           },
           "expiryTime": {
             "example": 1735689600000,
+            "format": "int64",
             "type": "integer"
           },
           "id": {
@@ -1384,6 +1415,7 @@
           },
           "lastOnline": {
             "example": 1735680000000,
+            "format": "int64",
             "type": "integer"
           },
           "reset": {
@@ -1396,10 +1428,12 @@
           },
           "total": {
             "example": 10737418240,
+            "format": "int64",
             "type": "integer"
           },
           "up": {
             "example": 1048576,
+            "format": "int64",
             "type": "integer"
           },
           "uuid": {
@@ -1455,7 +1489,6 @@
         "type": "object"
       },
       "Host": {
-        "description": "Host is an override endpoint attached to an inbound: at subscription time each\nenabled host renders one share link/proxy with its own address/port/TLS/etc.,\nsuperseding the legacy externalProxy array. Free-JSON fields are stored as\ntext and parsed in the sub layer; slice fields use the json serializer.",
         "properties": {
           "address": {
             "example": "cdn.example.com",
@@ -1471,6 +1504,7 @@
             "type": "array"
           },
           "createdAt": {
+            "format": "int64",
             "type": "integer"
           },
           "echConfigList": {
@@ -1487,6 +1521,9 @@
             "type": "string"
           },
           "fingerprint": {
+            "type": "string"
+          },
+          "groupId": {
             "type": "string"
           },
           "hostHeader": {
@@ -1583,6 +1620,7 @@
             "type": "array"
           },
           "updatedAt": {
+            "format": "int64",
             "type": "integer"
           },
           "verifyPeerCertByName": {
@@ -1603,6 +1641,7 @@
           "excludeFromSubTypes",
           "finalMask",
           "fingerprint",
+          "groupId",
           "hostHeader",
           "id",
           "inboundId",
@@ -1630,6 +1669,175 @@
         ],
         "type": "object"
       },
+      "HostGroup": {
+        "properties": {
+          "allowInsecure": {
+            "type": "boolean"
+          },
+          "alpn": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "echConfigList": {
+            "type": "string"
+          },
+          "excludeFromSubTypes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "finalMask": {
+            "type": "string"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "hostHeader": {
+            "type": "string"
+          },
+          "hosts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "inboundIds": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "isDisabled": {
+            "type": "boolean"
+          },
+          "isHidden": {
+            "type": "boolean"
+          },
+          "keepSniBlank": {
+            "type": "boolean"
+          },
+          "mihomoIpVersion": {
+            "enum": [
+              "dual",
+              "ipv4",
+              "ipv6",
+              "ipv4-prefer",
+              "ipv6-prefer"
+            ],
+            "type": "string"
+          },
+          "mihomoX25519": {
+            "type": "boolean"
+          },
+          "muxParams": {
+            "type": "string"
+          },
+          "nodeGuids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "overrideSniFromAddress": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "pinnedPeerCertSha256": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "port": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "remark": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "security": {
+            "enum": [
+              "same",
+              "tls",
+              "none",
+              "reality"
+            ],
+            "type": "string"
+          },
+          "serverDescription": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "shuffleHost": {
+            "type": "boolean"
+          },
+          "sni": {
+            "type": "string"
+          },
+          "sockoptParams": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "verifyPeerCertByName": {
+            "type": "string"
+          },
+          "vlessRoute": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "allowInsecure",
+          "alpn",
+          "echConfigList",
+          "excludeFromSubTypes",
+          "finalMask",
+          "fingerprint",
+          "groupId",
+          "hostHeader",
+          "hosts",
+          "inboundIds",
+          "isDisabled",
+          "isHidden",
+          "keepSniBlank",
+          "mihomoIpVersion",
+          "mihomoX25519",
+          "muxParams",
+          "nodeGuids",
+          "overrideSniFromAddress",
+          "path",
+          "pinnedPeerCertSha256",
+          "port",
+          "remark",
+          "security",
+          "serverDescription",
+          "shuffleHost",
+          "sni",
+          "sockoptParams",
+          "sortOrder",
+          "tags",
+          "verifyPeerCertByName",
+          "vlessRoute"
+        ],
+        "type": "object"
+      },
       "Inbound": {
         "description": "Inbound represents an Xray inbound configuration with traffic statistics and settings.",
         "properties": {
@@ -1642,6 +1850,7 @@
           },
           "down": {
             "description": "Download traffic in bytes",
+            "format": "int64",
             "type": "integer"
           },
           "enable": {
@@ -1651,6 +1860,7 @@
           },
           "expiryTime": {
             "description": "Expiration timestamp",
+            "format": "int64",
             "type": "integer"
           },
           "fallbackParent": {
@@ -1669,6 +1879,7 @@
           },
           "lastTrafficResetTime": {
             "description": "Last traffic reset timestamp",
+            "format": "int64",
             "type": "integer"
           },
           "listen": {
@@ -1736,7 +1947,7 @@
             "type": "string"
           },
           "total": {
-            "description": "Total traffic limit in bytes",
+            "format": "int64",
             "type": "integer"
           },
           "trafficReset": {
@@ -1752,7 +1963,13 @@
           },
           "up": {
             "description": "Upload traffic in bytes",
+            "format": "int64",
             "type": "integer"
+          },
+          "usageMultiplier": {
+            "description": "Billable usage multiplier; 1.00 means real usage",
+            "example": 1,
+            "type": "number"
           }
         },
         "required": [
@@ -1775,7 +1992,8 @@
           "tag",
           "total",
           "trafficReset",
-          "up"
+          "up",
+          "usageMultiplier"
         ],
         "type": "object"
       },
@@ -1842,11 +2060,18 @@
       },
       "InboundOption": {
         "properties": {
+          "enable": {
+            "example": true,
+            "type": "boolean"
+          },
           "id": {
             "example": 1,
             "type": "integer"
           },
           "listen": {
+            "type": "string"
+          },
+          "mtprotoDomain": {
             "type": "string"
           },
           "nodeAddress": {
@@ -1898,6 +2123,7 @@
           }
         },
         "required": [
+          "enable",
           "id",
           "port",
           "protocol",
@@ -1909,17 +2135,12 @@
         "type": "object"
       },
       "Msg": {
-        "description": "Msg represents a standard API response message with success status, message text, and optional data object.",
         "properties": {
           "msg": {
-            "description": "Response message text",
             "type": "string"
           },
-          "obj": {
-            "description": "Optional data object"
-          },
+          "obj": {},
           "success": {
-            "description": "Indicates if the operation was successful",
             "type": "boolean"
           }
         },
@@ -1931,7 +2152,7 @@
         "type": "object"
       },
       "Node": {
-        "description": "Node represents a remote d-ui panel registered with the central panel.\nThe central panel polls each node's existing /panel/api/server/status\nendpoint over HTTP using the per-node ApiToken to populate the runtime\nstatus fields below.",
+        "description": "Node represents a remote 3x-ui panel registered with the central panel.\nThe central panel polls each node's existing /panel/api/server/status\nendpoint over HTTP using the per-node ApiToken to populate the runtime\nstatus fields below.",
         "properties": {
           "activeCount": {
             "example": 23,
@@ -1960,6 +2181,7 @@
             "type": "boolean"
           },
           "configDirtyAt": {
+            "format": "int64",
             "type": "integer"
           },
           "cpuPct": {
@@ -1968,6 +2190,7 @@
           },
           "createdAt": {
             "example": 1700000000,
+            "format": "int64",
             "type": "integer"
           },
           "depletedCount": {
@@ -2013,6 +2236,7 @@
           "lastHeartbeat": {
             "description": "unix seconds, 0 = never",
             "example": 1700000000,
+            "format": "int64",
             "type": "integer"
           },
           "latencyMs": {
@@ -2029,10 +2253,12 @@
           },
           "netDown": {
             "example": 2097152,
+            "format": "int64",
             "type": "integer"
           },
           "netUp": {
             "example": 1048576,
+            "format": "int64",
             "type": "integer"
           },
           "onlineCount": {
@@ -2089,10 +2315,12 @@
           },
           "updatedAt": {
             "example": 1700000000,
+            "format": "int64",
             "type": "integer"
           },
           "uptimeSecs": {
             "example": 86400,
+            "format": "int64",
             "type": "integer"
           },
           "xrayError": {
@@ -2154,6 +2382,7 @@
         "description": "OutboundTraffics tracks traffic statistics for Xray outbound connections.",
         "properties": {
           "down": {
+            "format": "int64",
             "type": "integer"
           },
           "id": {
@@ -2163,9 +2392,11 @@
             "type": "string"
           },
           "total": {
+            "format": "int64",
             "type": "integer"
           },
           "up": {
+            "format": "int64",
             "type": "integer"
           }
         },
@@ -2187,6 +2418,7 @@
           },
           "finishedAt": {
             "example": 1735689612,
+            "format": "int64",
             "type": "integer"
           },
           "runId": {
@@ -2233,6 +2465,7 @@
           },
           "uptimeSecs": {
             "example": 86400,
+            "format": "int64",
             "type": "integer"
           },
           "xrayError": {
@@ -2360,7 +2593,7 @@
         "type": "object"
       },
       "Setting": {
-        "description": "Setting stores key-value configuration settings for the d-ui panel.",
+        "description": "Setting stores key-value configuration settings for the 3x-ui panel.",
         "properties": {
           "id": {
             "type": "integer"
@@ -2380,21 +2613,85 @@
         "type": "object"
       },
       "User": {
-        "description": "User represents a user account in the d-ui panel.",
+        "description": "User represents an administrator account in the Heimdall panel.",
         "properties": {
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "dataLimit": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "discordWebhook": {
+            "type": "string"
+          },
           "id": {
             "type": "integer"
           },
+          "note": {
+            "type": "string"
+          },
+          "notificationFilters": {
+            "type": "string"
+          },
           "password": {
             "type": "string"
+          },
+          "permissionOverrides": {
+            "type": "string"
+          },
+          "profileTitle": {
+            "type": "string"
+          },
+          "roleId": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "subscriptionDomain": {
+            "type": "string"
+          },
+          "subscriptionTemplatePath": {
+            "type": "string"
+          },
+          "supportUrl": {
+            "type": "string"
+          },
+          "telegramId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "usedBytes": {
+            "format": "int64",
+            "type": "integer"
           },
           "username": {
             "type": "string"
           }
         },
         "required": [
+          "createdAt",
+          "dataLimit",
+          "discordWebhook",
           "id",
+          "note",
+          "notificationFilters",
           "password",
+          "permissionOverrides",
+          "profileTitle",
+          "roleId",
+          "status",
+          "subscriptionDomain",
+          "subscriptionTemplatePath",
+          "supportUrl",
+          "telegramId",
+          "updatedAt",
+          "usedBytes",
           "username"
         ],
         "type": "object"
@@ -2412,23 +2709,39 @@
   "tags": [
     {
       "name": "Authentication",
-      "description": "Two authentication modes are supported. UI sessions use a cookie set by the login endpoint. Programmatic clients (bots, scripts, remote panels) authenticate with a Bearer token taken from Settings → Security → API Token. Both work for every endpoint under /panel/api/*."
+      "description": "UI sessions use a cookie set by the login endpoint. Programmatic clients authenticate with a Bearer token from Settings → Security → API Token. Most protected panel APIs accept either mode; operations explicitly marked browser-session-only reject Bearer tokens."
+    },
+    {
+      "name": "Custom Panel Compatibility",
+      "description": "Compatibility endpoint for external sales bots and panel integrations. Authentication is accepted only through X-API-Key using an enabled, unexpired delegated token with the custom-panel:manage scope. The delegated administrator’s current RBAC, inbound allowlist, client limits, ownership, groups, and feature flags remain enforced on every request."
     },
     {
       "name": "Inbounds",
-      "description": "Manage inbound configurations and their clients. All endpoints live under /panel/api/inbounds and require a logged-in session or Bearer token. Link-generating endpoints honour forwarded headers only when the request comes from a configured trusted proxy."
+      "description": "Manage inbound configurations and their clients. All endpoints live under /panel/api/inbounds and require a logged-in session or a trusted service credential. Delegated user tokens are denied on this group until a dedicated inbound scope is introduced. Link-generating endpoints honour forwarded headers only when the request comes from a configured trusted proxy."
     },
     {
       "name": "Server",
       "description": "System status, log retrieval, certificate generators, Xray binary management, and backup/restore. All under /panel/api/server."
     },
     {
+      "name": "Strict IP Limit Authority",
+      "description": "Internal synchronous authority endpoint used only between HEIMDALL panels for Strict IP Limit lease acquire, renew, and release decisions. Authentication uses the dedicated Strict-B authority header provisioned to direct child nodes."
+    },
+    {
       "name": "Clients",
-      "description": "Manage clients as first-class entities that can be attached to one or more inbounds. A single client row drives the settings.clients entry in every inbound it belongs to. Endpoints live under /panel/api/clients."
+      "description": "Manage clients as first-class entities that can be attached to one or more inbounds. A single client row drives the settings.clients entry in every inbound it belongs to. Delegated tokens may use the standard list/get/traffic/link/activity reads with clients:read and add/bulkCreate with clients:create; every other route remains denied to delegated tokens. The selected administrator’s live RBAC scope is always applied in addition to the token scope."
+    },
+    {
+      "name": "Admins",
+      "description": "Manage Heimdall panel administrator accounts from an active browser session. Bearer API tokens are rejected. Access follows administrator RBAC permissions, and password hashes are never returned."
+    },
+    {
+      "name": "Admin Roles",
+      "description": "Manage Heimdall dashboard roles and RBAC presets from an active browser session. Bearer API tokens are rejected. Access follows role-management RBAC permissions; built-in and owner roles retain their backend protections."
     },
     {
       "name": "Nodes",
-      "description": "Manage remote d-ui panels acting as nodes for a central panel. All endpoints under /panel/api/nodes."
+      "description": "Manage remote HEIMDALL panels acting as nodes for a central panel. All endpoints under /panel/api/nodes."
     },
     {
       "name": "Hosts",
@@ -2444,7 +2757,7 @@
     },
     {
       "name": "API Tokens",
-      "description": "Manage Bearer tokens used for programmatic auth (bots, central panels acting on this node, CI). Each token has a unique name and an enabled flag — disable to revoke without deleting, delete to revoke permanently. Tokens are stored as SHA-256 hashes and the plaintext is returned only once, in the create response — it cannot be retrieved afterwards, so copy it then. Send one as <code>Authorization: Bearer &lt;token&gt;</code> on any /panel/api/* request — the token is a full-admin credential."
+      "description": "Owner-only browser interface for API credentials. For delegated tokens, the owner selects an active non-owner administrator, explicit scopes, and an optional expiry. Every request is evaluated as that administrator using their current role, ownership, groups, limits, and feature flags, then intersected with the token scopes. Disabling the administrator, changing their role, expiring/disabling the token, or deleting it takes effect on the next request. Token values are stored only as SHA-256 hashes and plaintext is returned once at creation. Service tokens used by trusted remote panels retain their full integration contract and should be created only for machine-to-machine panel infrastructure."
     },
     {
       "name": "Xray Settings",
@@ -2456,7 +2769,7 @@
     },
     {
       "name": "WebSocket",
-      "description": "Real-time status updates via WebSocket. Connect once at <code>ws://<panel>/ws</code> to receive a stream of JSON messages without polling. Requires an authenticated session cookie (Bearer token auth is not supported). Each message has a <code>type</code> field that identifies the payload shape."
+      "description": "Real-time updates over a browser-session-authenticated WebSocket. Connect at <code>ws://&lt;panel&gt;/ws</code> or <code>wss://&lt;panel&gt;/ws</code>. Messages use the envelope <code>{ type, payload, time }</code>; documented events are also exposed through the <code>x-websocket-events</code> OpenAPI extension."
     }
   ],
   "paths": {
@@ -2651,6 +2964,97 @@
         }
       }
     },
+    "/api": {
+      "post": {
+        "tags": [
+          "Custom Panel Compatibility"
+        ],
+        "summary": "Execute one custom-panel action. Supported actions are create_user, get_user, remove_user, reset_user, extend_user, modify_user, change_status, count_users, revoke_sub, extra_volume, and extra_time. Business-level success and failure responses use HTTP 200; a missing or invalid API key returns HTTP 401.",
+        "operationId": "post_api",
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": true,
+            "description": "Delegated API token with the custom-panel:manage scope.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "action": "get_user",
+                "username": "alice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "status": "success",
+                  "username": "alice",
+                  "data_limit": 53687091200,
+                  "expire": 1767225600,
+                  "used_traffic": 1073741824,
+                  "subscription_url": "https://panel.example/sub/example-sub-id",
+                  "links": [
+                    "vless://..."
+                  ],
+                  "configs": [
+                    "vless://..."
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "status": "error",
+                  "message": "User not found"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/inbounds/list": {
       "get": {
         "tags": [
@@ -2721,7 +3125,8 @@
                       "tag": "in-443-tcp",
                       "total": 0,
                       "trafficReset": "never",
-                      "up": 0
+                      "up": 0,
+                      "usageMultiplier": 1
                     }
                   ]
                 }
@@ -2813,8 +3218,10 @@
                   "success": true,
                   "obj": [
                     {
+                      "enable": true,
                       "id": 1,
                       "listen": "",
+                      "mtprotoDomain": "",
                       "nodeAddress": "",
                       "nodeId": null,
                       "port": 443,
@@ -3593,45 +4000,6 @@
         }
       }
     },
-    "/panel/api/server/fail2banStatus": {
-      "get": {
-        "tags": [
-          "Server"
-        ],
-        "summary": "Reports whether per-client IP limits can be enforced on this host. The panel uses it to gate the \"IP Limit\" field, since enforcement depends on Fail2ban being installed.",
-        "operationId": "get_panel_api_server_fail2banStatus",
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "msg": {
-                      "type": "string"
-                    },
-                    "obj": {}
-                  }
-                },
-                "example": {
-                  "success": true,
-                  "obj": {
-                    "enabled": true,
-                    "installed": true,
-                    "usable": true,
-                    "windows": false
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/panel/api/server/cpuHistory/{bucket}": {
       "get": {
         "tags": [
@@ -3939,7 +4307,7 @@
         "tags": [
           "Server"
         ],
-        "summary": "Check whether a newer d-ui release is available on GitHub.",
+        "summary": "Check whether a newer HEIMDALL release is available on GitHub.",
         "operationId": "get_panel_api_server_getPanelUpdateInfo",
         "responses": {
           "200": {
@@ -4040,7 +4408,7 @@
         "tags": [
           "Server"
         ],
-        "summary": "Stream the SQLite database file as an attachment. Use as a manual backup.",
+        "summary": "Stream a full database backup as an attachment: the SQLite .db file on SQLite panels, or a pg_dump custom-format archive (.dump) on PostgreSQL panels. Use as a manual backup.",
         "operationId": "get_panel_api_server_getDb",
         "responses": {
           "200": {
@@ -4467,47 +4835,6 @@
         }
       }
     },
-    "/panel/api/server/installXray/{version}": {
-      "post": {
-        "tags": [
-          "Server"
-        ],
-        "summary": "Download and install the specified Xray version. Pass \"latest\" for the newest release.",
-        "operationId": "post_panel_api_server_installXray_version",
-        "parameters": [
-          {
-            "name": "version",
-            "in": "path",
-            "required": true,
-            "description": "Xray tag (e.g. v25.10.31) or \"latest\".",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "msg": {
-                      "type": "string"
-                    },
-                    "obj": {}
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/panel/api/server/updatePanel": {
       "post": {
         "tags": [
@@ -4784,7 +5111,7 @@
         "tags": [
           "Server"
         ],
-        "summary": "Restore the panel DB from an uploaded SQLite file (multipart form, field name \"db\"). The panel restarts after restore. Destructive.",
+        "summary": "Restore the panel DB from an uploaded backup (multipart form, field name \"db\"). SQLite panels accept a SQLite database (.db) or a SQLite migration dump (.dump); PostgreSQL panels accept a pg_dump archive (.dump), a SQLite database (.db), or a SQLite migration dump. The panel restarts after restore. Destructive.",
         "operationId": "post_panel_api_server_importDB",
         "responses": {
           "200": {
@@ -5145,6 +5472,446 @@
                       "type": "string"
                     },
                     "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/server/strictIPLimitParent": {
+      "post": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Internal node-provisioning endpoint used by a managing panel to configure this node's upstream Strict IP Limit authority. Requires the normal authenticated node API path; not intended for interactive clients.",
+        "operationId": "post_panel_api_server_strictIPLimitParent",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/ip-limit/v1/lease": {
+      "post": {
+        "tags": [
+          "Strict IP Limit Authority"
+        ],
+        "summary": "Resolve one authenticated Strict-B lease operation at the root authority, or relay it to the configured parent until the root is reached.",
+        "operationId": "post_panel_ip_limit_v1_lease",
+        "parameters": [
+          {
+            "name": "X-Heimdall-IPLimit-Auth",
+            "in": "header",
+            "required": true,
+            "description": "Dedicated per-child Strict-B authority credential.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/clients/{email}/activity": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Return the current Activity epoch as a paginated list ordered by most recently observed destination. Only observed destination, source IP, logical upload bytes, and logical download bytes are exposed.",
+        "operationId": "get_panel_api_clients_email_activity",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "description": "Client email.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number starting at 1.",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Rows per page. Maximum 200.",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "enabled": true,
+                    "generation": 3,
+                    "dataEpoch": 2,
+                    "items": [
+                      {
+                        "destination": "example.com",
+                        "sourceIp": "203.0.113.10",
+                        "uploadBytes": 1024,
+                        "downloadBytes": 4096
+                      }
+                    ],
+                    "total": 1,
+                    "page": 1,
+                    "pageSize": 100
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/clients/{email}/activity/status": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Return the opt-in Activity monitoring state for one client. A client that has never enabled monitoring is returned as disabled with generation 0 and dataEpoch 1.",
+        "operationId": "get_panel_api_clients_email_activity_status",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "description": "Client email.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "clientId": 12,
+                    "enabled": false,
+                    "generation": 0,
+                    "dataEpoch": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/clients/activity/node-sync": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Internal parent-to-child Activity synchronization endpoint. Applies authoritative monitoring states by canonical client email, then returns idempotent absolute Activity snapshots for this panel and any descendants already merged into it. Used by the node traffic-sync job.",
+        "operationId": "post_panel_api_clients_activity_node_sync",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "states": [
+                  {
+                    "email": "alice@example.com",
+                    "enabled": true,
+                    "generation": 3,
+                    "dataEpoch": 2
+                  }
+                ],
+                "cursors": {
+                  "local": {
+                    "updatedAt": 0,
+                    "id": 0
+                  },
+                  "remote": {
+                    "updatedAt": 0,
+                    "id": 0
+                  }
+                },
+                "limit": 500
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "items": [
+                      {
+                        "originGuid": "node-guid",
+                        "email": "alice@example.com",
+                        "dataEpoch": 2,
+                        "sourceIp": "203.0.113.10",
+                        "destination": "example.com",
+                        "uploadBytes": 1024,
+                        "downloadBytes": 4096,
+                        "lastSeen": 1700000000000
+                      }
+                    ],
+                    "cursors": {
+                      "local": {
+                        "updatedAt": 1700000000000,
+                        "id": 10
+                      },
+                      "remote": {
+                        "updatedAt": 1700000000000,
+                        "id": 20
+                      }
+                    },
+                    "hasMore": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/clients/{email}/activity/start": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Enable destination Activity monitoring for one client. The monitored-client allowlist is updated without restarting Xray. Repeated Start requests are idempotent.",
+        "operationId": "post_panel_api_clients_email_activity_start",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "description": "Client email.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "clientId": 12,
+                    "enabled": true,
+                    "generation": 1,
+                    "dataEpoch": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/clients/{email}/activity/stop": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Stop collecting new Activity events while preserving existing destination history. Repeated Stop requests are idempotent and do not restart Xray.",
+        "operationId": "post_panel_api_clients_email_activity_stop",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "description": "Client email.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "clientId": 12,
+                    "enabled": false,
+                    "generation": 2,
+                    "dataEpoch": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/clients/{email}/activity/reset": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Permanently delete the client Activity destination history. The current enabled or disabled monitoring state is preserved; generation and dataEpoch are advanced to reject delayed pre-reset events.",
+        "operationId": "post_panel_api_clients_email_activity_reset",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "description": "Client email.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "clientId": 12,
+                    "enabled": true,
+                    "generation": 3,
+                    "dataEpoch": 2
                   }
                 }
               }
@@ -7368,6 +8135,825 @@
         }
       }
     },
+    "/panel/api/admins/current": {
+      "get": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "Return the currently logged-in panel administrator with role metadata and effective role permissions for frontend RBAC.",
+        "operationId": "get_panel_api_admins_current",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "id": 2,
+                    "username": "operator-a",
+                    "status": "active",
+                    "roleId": 3,
+                    "role": {
+                      "id": 3,
+                      "name": "Operator",
+                      "slug": "operator",
+                      "is_owner": false,
+                      "permissions": "{...}"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admins/list": {
+      "get": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "List panel administrators with role metadata, status, data limit, used bytes, and owned-client count. Passwords are never returned.",
+        "operationId": "get_panel_api_admins_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "id": 2,
+                      "username": "operator-a",
+                      "roleId": 3,
+                      "roleName": "Operator",
+                      "roleSlug": "operator",
+                      "status": "active",
+                      "dataLimit": 0,
+                      "usedBytes": 0,
+                      "totalUsers": 12
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admins/stats": {
+      "get": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "Return administrator counters used by the Admins page summary cards.",
+        "operationId": "get_panel_api_admins_stats",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "totalAdmins": 3,
+                    "activeAdmins": 2,
+                    "disabledAdmins": 1,
+                    "limitedAdmins": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admins/get/{id}": {
+      "get": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "Fetch one administrator by numeric ID. Password hashes are never returned.",
+        "operationId": "get_panel_api_admins_get_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Admin ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admins/add": {
+      "post": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "Create a new administrator. The owner role cannot be assigned through this endpoint.",
+        "operationId": "post_panel_api_admins_add",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "username": "operator-a",
+                "password": "strong-password",
+                "roleId": 3,
+                "status": "active",
+                "dataLimit": 0,
+                "telegramId": "",
+                "discordWebhook": "",
+                "supportUrl": "",
+                "profileTitle": "",
+                "subscriptionDomain": "",
+                "subscriptionTemplatePath": "",
+                "note": "",
+                "notificationFilters": {},
+                "permissionOverrides": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admins/update/{id}": {
+      "post": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "Update a non-owner administrator. Leave password empty to keep the existing password. Owner admins cannot be modified here.",
+        "operationId": "post_panel_api_admins_update_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Admin ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admins/del/{id}": {
+      "post": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "Delete a non-owner administrator. Deletion is blocked when the admin owns clients.",
+        "operationId": "post_panel_api_admins_del_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Admin ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admins/enable/{id}": {
+      "post": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "Enable a non-owner administrator account.",
+        "operationId": "post_panel_api_admins_enable_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Admin ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admins/disable/{id}": {
+      "post": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "Disable a non-owner administrator account and bump its login epoch so existing sessions are invalidated.",
+        "operationId": "post_panel_api_admins_disable_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Admin ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admins/resetUsage/{id}": {
+      "post": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "Reset admin-level used bytes to zero.",
+        "operationId": "post_panel_api_admins_resetUsage_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Admin ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admins/users/disableActive/{id}": {
+      "post": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "Disable every currently-active client owned by the selected administrator. Updates runtime users, stored inbound settings, client records, traffic enable flags, and remote node state when applicable.",
+        "operationId": "post_panel_api_admins_users_disableActive_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Administrator ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "count": 12
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admins/users/activateDisabled/{id}": {
+      "post": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "Activate every currently-disabled client owned by the selected administrator. Returns the number of clients changed and requests an Xray restart when needed.",
+        "operationId": "post_panel_api_admins_users_activateDisabled_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Administrator ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "count": 12
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admins/users/removeAll/{id}": {
+      "post": {
+        "tags": [
+          "Admins"
+        ],
+        "summary": "Remove every client owned by the selected administrator using the optimized bulk-delete pipeline. This is destructive and removes runtime users, inbound links, client records, traffic rows, IP rows, and activity rows.",
+        "operationId": "post_panel_api_admins_users_removeAll_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Administrator ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "count": 12,
+                    "deleted": 12
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admin-roles/list": {
+      "get": {
+        "tags": [
+          "Admin Roles"
+        ],
+        "summary": "List admin roles with decoded permissions, limits, feature flags, access settings, and assigned-admin count.",
+        "operationId": "get_panel_api_admin_roles_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admin-roles/get/{id}": {
+      "get": {
+        "tags": [
+          "Admin Roles"
+        ],
+        "summary": "Fetch one admin role by numeric ID.",
+        "operationId": "get_panel_api_admin_roles_get_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Role ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admin-roles/add": {
+      "post": {
+        "tags": [
+          "Admin Roles"
+        ],
+        "summary": "Create a custom admin role. The role slug is derived from the role name.",
+        "operationId": "post_panel_api_admin_roles_add",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "name": "operator-custom",
+                "permissions": {},
+                "limits": {},
+                "features": {},
+                "access": {
+                  "allowAllInbounds": true,
+                  "allowed_inbound_ids": null
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admin-roles/update/{id}": {
+      "post": {
+        "tags": [
+          "Admin Roles"
+        ],
+        "summary": "Update a non-owner role. Built-in roles can keep their protected identity; owner role is read-only.",
+        "operationId": "post_panel_api_admin_roles_update_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Role ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admin-roles/duplicate/{id}": {
+      "post": {
+        "tags": [
+          "Admin Roles"
+        ],
+        "summary": "Duplicate an existing role into a new custom role copy.",
+        "operationId": "post_panel_api_admin_roles_duplicate_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Source role ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/admin-roles/del/{id}": {
+      "post": {
+        "tags": [
+          "Admin Roles"
+        ],
+        "summary": "Delete a custom role. Owner and built-in roles cannot be deleted, and assigned roles are protected.",
+        "operationId": "post_panel_api_admin_roles_del_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Role ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/nodes/list": {
       "get": {
         "tags": [
@@ -8190,7 +9776,7 @@
                     "obj": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Host"
+                        "$ref": "#/components/schemas/HostGroup"
                       }
                     }
                   }
@@ -8199,27 +9785,30 @@
                   "success": true,
                   "obj": [
                     {
-                      "address": "cdn.example.com",
                       "allowInsecure": false,
                       "alpn": [
                         ""
                       ],
-                      "createdAt": 0,
                       "echConfigList": "",
                       "excludeFromSubTypes": [
                         ""
                       ],
                       "finalMask": "",
                       "fingerprint": "",
+                      "groupId": "",
                       "hostHeader": "",
-                      "id": 1,
-                      "inboundId": 1,
+                      "hosts": [
+                        ""
+                      ],
+                      "inboundIds": [
+                        0
+                      ],
                       "isDisabled": false,
                       "isHidden": false,
                       "keepSniBlank": false,
                       "mihomoIpVersion": "dual",
                       "mihomoX25519": false,
-                      "muxParams": null,
+                      "muxParams": "",
                       "nodeGuids": [
                         ""
                       ],
@@ -8228,20 +9817,19 @@
                       "pinnedPeerCertSha256": [
                         ""
                       ],
-                      "port": 8443,
-                      "remark": "cdn-front",
+                      "port": 0,
+                      "remark": "",
                       "security": "same",
                       "serverDescription": "",
                       "shuffleHost": false,
                       "sni": "",
-                      "sockoptParams": null,
+                      "sockoptParams": "",
                       "sortOrder": 0,
                       "tags": [
                         ""
                       ],
-                      "updatedAt": 0,
                       "verifyPeerCertByName": "",
-                      "vlessRoute": "443"
+                      "vlessRoute": ""
                     }
                   ]
                 }
@@ -8251,21 +9839,21 @@
         }
       }
     },
-    "/panel/api/hosts/get/{id}": {
+    "/panel/api/hosts/get/{groupId}": {
       "get": {
         "tags": [
           "Hosts"
         ],
-        "summary": "Fetch a single host by ID.",
-        "operationId": "get_panel_api_hosts_get_id",
+        "summary": "Fetch a single host group by Group ID.",
+        "operationId": "get_panel_api_hosts_get_groupId",
         "parameters": [
           {
-            "name": "id",
+            "name": "groupId",
             "in": "path",
             "required": true,
-            "description": "Host ID.",
+            "description": "Host Group ID.",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -8284,34 +9872,37 @@
                       "type": "string"
                     },
                     "obj": {
-                      "$ref": "#/components/schemas/Host"
+                      "$ref": "#/components/schemas/HostGroup"
                     }
                   }
                 },
                 "example": {
                   "success": true,
                   "obj": {
-                    "address": "cdn.example.com",
                     "allowInsecure": false,
                     "alpn": [
                       ""
                     ],
-                    "createdAt": 0,
                     "echConfigList": "",
                     "excludeFromSubTypes": [
                       ""
                     ],
                     "finalMask": "",
                     "fingerprint": "",
+                    "groupId": "",
                     "hostHeader": "",
-                    "id": 1,
-                    "inboundId": 1,
+                    "hosts": [
+                      ""
+                    ],
+                    "inboundIds": [
+                      0
+                    ],
                     "isDisabled": false,
                     "isHidden": false,
                     "keepSniBlank": false,
                     "mihomoIpVersion": "dual",
                     "mihomoX25519": false,
-                    "muxParams": null,
+                    "muxParams": "",
                     "nodeGuids": [
                       ""
                     ],
@@ -8320,20 +9911,19 @@
                     "pinnedPeerCertSha256": [
                       ""
                     ],
-                    "port": 8443,
-                    "remark": "cdn-front",
+                    "port": 0,
+                    "remark": "",
                     "security": "same",
                     "serverDescription": "",
                     "shuffleHost": false,
                     "sni": "",
-                    "sockoptParams": null,
+                    "sockoptParams": "",
                     "sortOrder": 0,
                     "tags": [
                       ""
                     ],
-                    "updatedAt": 0,
                     "verifyPeerCertByName": "",
-                    "vlessRoute": "443"
+                    "vlessRoute": ""
                   }
                 }
               }
@@ -8347,7 +9937,7 @@
         "tags": [
           "Hosts"
         ],
-        "summary": "Fetch one inbound's hosts, ordered by sort order then id.",
+        "summary": "Fetch one inbound's hosts, grouped by host group.",
         "operationId": "get_panel_api_hosts_byInbound_inboundId",
         "parameters": [
           {
@@ -8377,7 +9967,7 @@
                     "obj": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Host"
+                        "$ref": "#/components/schemas/HostGroup"
                       }
                     }
                   }
@@ -8386,27 +9976,30 @@
                   "success": true,
                   "obj": [
                     {
-                      "address": "cdn.example.com",
                       "allowInsecure": false,
                       "alpn": [
                         ""
                       ],
-                      "createdAt": 0,
                       "echConfigList": "",
                       "excludeFromSubTypes": [
                         ""
                       ],
                       "finalMask": "",
                       "fingerprint": "",
+                      "groupId": "",
                       "hostHeader": "",
-                      "id": 1,
-                      "inboundId": 1,
+                      "hosts": [
+                        ""
+                      ],
+                      "inboundIds": [
+                        0
+                      ],
                       "isDisabled": false,
                       "isHidden": false,
                       "keepSniBlank": false,
                       "mihomoIpVersion": "dual",
                       "mihomoX25519": false,
-                      "muxParams": null,
+                      "muxParams": "",
                       "nodeGuids": [
                         ""
                       ],
@@ -8415,20 +10008,19 @@
                       "pinnedPeerCertSha256": [
                         ""
                       ],
-                      "port": 8443,
-                      "remark": "cdn-front",
+                      "port": 0,
+                      "remark": "",
                       "security": "same",
                       "serverDescription": "",
                       "shuffleHost": false,
                       "sni": "",
-                      "sockoptParams": null,
+                      "sockoptParams": "",
                       "sortOrder": 0,
                       "tags": [
                         ""
                       ],
-                      "updatedAt": 0,
                       "verifyPeerCertByName": "",
-                      "vlessRoute": "443"
+                      "vlessRoute": ""
                     }
                   ]
                 }
@@ -8481,7 +10073,7 @@
         "tags": [
           "Hosts"
         ],
-        "summary": "Create a host on an inbound. inboundId and remark are required; security defaults to \"same\" (inherit the inbound).",
+        "summary": "Create a host group on inbounds.",
         "operationId": "post_panel_api_hosts_add",
         "requestBody": {
           "required": true,
@@ -8491,12 +10083,15 @@
                 "type": "object"
               },
               "example": {
-                "inboundId": 1,
+                "inboundIds": [
+                  1
+                ],
                 "remark": "cdn-front",
-                "address": "cdn.example.com",
+                "hosts": [
+                  "cdn.example.com"
+                ],
                 "port": 8443,
                 "security": "same",
-                "sni": "",
                 "tags": [
                   "CDN"
                 ]
@@ -8519,57 +10114,63 @@
                       "type": "string"
                     },
                     "obj": {
-                      "$ref": "#/components/schemas/Host"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Host"
+                      }
                     }
                   }
                 },
                 "example": {
                   "success": true,
-                  "obj": {
-                    "address": "cdn.example.com",
-                    "allowInsecure": false,
-                    "alpn": [
-                      ""
-                    ],
-                    "createdAt": 0,
-                    "echConfigList": "",
-                    "excludeFromSubTypes": [
-                      ""
-                    ],
-                    "finalMask": "",
-                    "fingerprint": "",
-                    "hostHeader": "",
-                    "id": 1,
-                    "inboundId": 1,
-                    "isDisabled": false,
-                    "isHidden": false,
-                    "keepSniBlank": false,
-                    "mihomoIpVersion": "dual",
-                    "mihomoX25519": false,
-                    "muxParams": null,
-                    "nodeGuids": [
-                      ""
-                    ],
-                    "overrideSniFromAddress": false,
-                    "path": "",
-                    "pinnedPeerCertSha256": [
-                      ""
-                    ],
-                    "port": 8443,
-                    "remark": "cdn-front",
-                    "security": "same",
-                    "serverDescription": "",
-                    "shuffleHost": false,
-                    "sni": "",
-                    "sockoptParams": null,
-                    "sortOrder": 0,
-                    "tags": [
-                      ""
-                    ],
-                    "updatedAt": 0,
-                    "verifyPeerCertByName": "",
-                    "vlessRoute": "443"
-                  }
+                  "obj": [
+                    {
+                      "address": "cdn.example.com",
+                      "allowInsecure": false,
+                      "alpn": [
+                        ""
+                      ],
+                      "createdAt": 0,
+                      "echConfigList": "",
+                      "excludeFromSubTypes": [
+                        ""
+                      ],
+                      "finalMask": "",
+                      "fingerprint": "",
+                      "groupId": "",
+                      "hostHeader": "",
+                      "id": 1,
+                      "inboundId": 1,
+                      "isDisabled": false,
+                      "isHidden": false,
+                      "keepSniBlank": false,
+                      "mihomoIpVersion": "dual",
+                      "mihomoX25519": false,
+                      "muxParams": null,
+                      "nodeGuids": [
+                        ""
+                      ],
+                      "overrideSniFromAddress": false,
+                      "path": "",
+                      "pinnedPeerCertSha256": [
+                        ""
+                      ],
+                      "port": 8443,
+                      "remark": "cdn-front",
+                      "security": "same",
+                      "serverDescription": "",
+                      "shuffleHost": false,
+                      "sni": "",
+                      "sockoptParams": null,
+                      "sortOrder": 0,
+                      "tags": [
+                        ""
+                      ],
+                      "updatedAt": 0,
+                      "verifyPeerCertByName": "",
+                      "vlessRoute": "443"
+                    }
+                  ]
                 }
               }
             }
@@ -8577,21 +10178,21 @@
         }
       }
     },
-    "/panel/api/hosts/update/{id}": {
+    "/panel/api/hosts/update/{groupId}": {
       "post": {
         "tags": [
           "Hosts"
         ],
-        "summary": "Replace a host’s content. The inbound and sort order are immutable here (use /reorder for ordering).",
-        "operationId": "post_panel_api_hosts_update_id",
+        "summary": "Replace a host group’s content.",
+        "operationId": "post_panel_api_hosts_update_groupId",
         "parameters": [
           {
-            "name": "id",
+            "name": "groupId",
             "in": "path",
             "required": true,
-            "description": "Host ID.",
+            "description": "Host Group ID.",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -8603,12 +10204,15 @@
                 "type": "object"
               },
               "example": {
-                "inboundId": 1,
+                "inboundIds": [
+                  1
+                ],
                 "remark": "cdn-front",
-                "address": "cdn.example.com",
+                "hosts": [
+                  "cdn.example.com"
+                ],
                 "port": 8443,
                 "security": "same",
-                "sni": "",
                 "tags": [
                   "CDN"
                 ]
@@ -8631,57 +10235,63 @@
                       "type": "string"
                     },
                     "obj": {
-                      "$ref": "#/components/schemas/Host"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Host"
+                      }
                     }
                   }
                 },
                 "example": {
                   "success": true,
-                  "obj": {
-                    "address": "cdn.example.com",
-                    "allowInsecure": false,
-                    "alpn": [
-                      ""
-                    ],
-                    "createdAt": 0,
-                    "echConfigList": "",
-                    "excludeFromSubTypes": [
-                      ""
-                    ],
-                    "finalMask": "",
-                    "fingerprint": "",
-                    "hostHeader": "",
-                    "id": 1,
-                    "inboundId": 1,
-                    "isDisabled": false,
-                    "isHidden": false,
-                    "keepSniBlank": false,
-                    "mihomoIpVersion": "dual",
-                    "mihomoX25519": false,
-                    "muxParams": null,
-                    "nodeGuids": [
-                      ""
-                    ],
-                    "overrideSniFromAddress": false,
-                    "path": "",
-                    "pinnedPeerCertSha256": [
-                      ""
-                    ],
-                    "port": 8443,
-                    "remark": "cdn-front",
-                    "security": "same",
-                    "serverDescription": "",
-                    "shuffleHost": false,
-                    "sni": "",
-                    "sockoptParams": null,
-                    "sortOrder": 0,
-                    "tags": [
-                      ""
-                    ],
-                    "updatedAt": 0,
-                    "verifyPeerCertByName": "",
-                    "vlessRoute": "443"
-                  }
+                  "obj": [
+                    {
+                      "address": "cdn.example.com",
+                      "allowInsecure": false,
+                      "alpn": [
+                        ""
+                      ],
+                      "createdAt": 0,
+                      "echConfigList": "",
+                      "excludeFromSubTypes": [
+                        ""
+                      ],
+                      "finalMask": "",
+                      "fingerprint": "",
+                      "groupId": "",
+                      "hostHeader": "",
+                      "id": 1,
+                      "inboundId": 1,
+                      "isDisabled": false,
+                      "isHidden": false,
+                      "keepSniBlank": false,
+                      "mihomoIpVersion": "dual",
+                      "mihomoX25519": false,
+                      "muxParams": null,
+                      "nodeGuids": [
+                        ""
+                      ],
+                      "overrideSniFromAddress": false,
+                      "path": "",
+                      "pinnedPeerCertSha256": [
+                        ""
+                      ],
+                      "port": 8443,
+                      "remark": "cdn-front",
+                      "security": "same",
+                      "serverDescription": "",
+                      "shuffleHost": false,
+                      "sni": "",
+                      "sockoptParams": null,
+                      "sortOrder": 0,
+                      "tags": [
+                        ""
+                      ],
+                      "updatedAt": 0,
+                      "verifyPeerCertByName": "",
+                      "vlessRoute": "443"
+                    }
+                  ]
                 }
               }
             }
@@ -8689,21 +10299,21 @@
         }
       }
     },
-    "/panel/api/hosts/del/{id}": {
+    "/panel/api/hosts/del/{groupId}": {
       "post": {
         "tags": [
           "Hosts"
         ],
-        "summary": "Delete a host.",
-        "operationId": "post_panel_api_hosts_del_id",
+        "summary": "Delete a host group.",
+        "operationId": "post_panel_api_hosts_del_groupId",
         "parameters": [
           {
-            "name": "id",
+            "name": "groupId",
             "in": "path",
             "required": true,
-            "description": "Host ID.",
+            "description": "Host Group ID.",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -8730,21 +10340,21 @@
         }
       }
     },
-    "/panel/api/hosts/setEnable/{id}": {
+    "/panel/api/hosts/setEnable/{groupId}": {
       "post": {
         "tags": [
           "Hosts"
         ],
-        "summary": "Enable or disable a single host (disabled hosts are skipped in subscriptions).",
-        "operationId": "post_panel_api_hosts_setEnable_id",
+        "summary": "Enable or disable a host group.",
+        "operationId": "post_panel_api_hosts_setEnable_groupId",
         "parameters": [
           {
-            "name": "id",
+            "name": "groupId",
             "in": "path",
             "required": true,
-            "description": "Host ID.",
+            "description": "Host Group ID.",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -8789,7 +10399,7 @@
         "tags": [
           "Hosts"
         ],
-        "summary": "Set host sort order by the position of each id in the array.",
+        "summary": "Set host group sort order by the position of each groupId in the array.",
         "operationId": "post_panel_api_hosts_reorder",
         "requestBody": {
           "required": true,
@@ -8800,9 +10410,8 @@
               },
               "example": {
                 "ids": [
-                  3,
-                  1,
-                  2
+                  "abc-123",
+                  "def-456"
                 ]
               }
             }
@@ -8831,12 +10440,122 @@
         }
       }
     },
+    "/panel/api/hosts/bulk/add": {
+      "post": {
+        "tags": [
+          "Hosts"
+        ],
+        "summary": "Add a host group to inbounds (same as /add).",
+        "operationId": "post_panel_api_hosts_bulk_add",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "inboundIds": [
+                  1,
+                  2
+                ],
+                "hosts": [
+                  "cdn.example.com",
+                  "cdn2.example.com:443"
+                ],
+                "remark": "Cloudflare CDN",
+                "port": 0,
+                "security": "same",
+                "isDisabled": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Host"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "address": "cdn.example.com",
+                      "allowInsecure": false,
+                      "alpn": [
+                        ""
+                      ],
+                      "createdAt": 0,
+                      "echConfigList": "",
+                      "excludeFromSubTypes": [
+                        ""
+                      ],
+                      "finalMask": "",
+                      "fingerprint": "",
+                      "groupId": "",
+                      "hostHeader": "",
+                      "id": 1,
+                      "inboundId": 1,
+                      "isDisabled": false,
+                      "isHidden": false,
+                      "keepSniBlank": false,
+                      "mihomoIpVersion": "dual",
+                      "mihomoX25519": false,
+                      "muxParams": null,
+                      "nodeGuids": [
+                        ""
+                      ],
+                      "overrideSniFromAddress": false,
+                      "path": "",
+                      "pinnedPeerCertSha256": [
+                        ""
+                      ],
+                      "port": 8443,
+                      "remark": "cdn-front",
+                      "security": "same",
+                      "serverDescription": "",
+                      "shuffleHost": false,
+                      "sni": "",
+                      "sockoptParams": null,
+                      "sortOrder": 0,
+                      "tags": [
+                        ""
+                      ],
+                      "updatedAt": 0,
+                      "verifyPeerCertByName": "",
+                      "vlessRoute": "443"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/hosts/bulk/setEnable": {
       "post": {
         "tags": [
           "Hosts"
         ],
-        "summary": "Enable or disable many hosts in one call.",
+        "summary": "Enable or disable many host groups in one call.",
         "operationId": "post_panel_api_hosts_bulk_setEnable",
         "requestBody": {
           "required": true,
@@ -8847,9 +10566,8 @@
               },
               "example": {
                 "ids": [
-                  1,
-                  2,
-                  3
+                  "abc-123",
+                  "def-456"
                 ],
                 "enable": false
               }
@@ -8884,7 +10602,7 @@
         "tags": [
           "Hosts"
         ],
-        "summary": "Delete many hosts in one call.",
+        "summary": "Delete many host groups in one call.",
         "operationId": "post_panel_api_hosts_bulk_del",
         "requestBody": {
           "required": true,
@@ -8895,9 +10613,8 @@
               },
               "example": {
                 "ids": [
-                  1,
-                  2,
-                  3
+                  "abc-123",
+                  "def-456"
                 ]
               }
             }
@@ -9131,7 +10848,7 @@
         "tags": [
           "Settings"
         ],
-        "summary": "Restart the entire d-ui process after a 3-second grace period. The connection drops immediately; the panel comes back online ~5-10 seconds later.",
+        "summary": "Restart the entire HEIMDALL process after a 3-second grace period. The connection drops immediately; the panel comes back online ~5-10 seconds later.",
         "operationId": "post_panel_api_setting_restartPanel",
         "responses": {
           "200": {
@@ -9260,7 +10977,7 @@
         "tags": [
           "API Tokens"
         ],
-        "summary": "List every API token, enabled or not. The token value is never returned — only metadata.",
+        "summary": "Owner-only list of all delegated and legacy service tokens. Plaintext values and stored hashes are never returned.",
         "operationId": "get_panel_api_setting_apiTokens",
         "responses": {
           "200": {
@@ -9283,10 +11000,61 @@
                   "success": true,
                   "obj": [
                     {
-                      "id": 1,
-                      "name": "default",
+                      "id": 2,
+                      "name": "telegram-operator-a",
+                      "kind": "delegated",
+                      "subjectAdminId": 3,
+                      "subjectUsername": "operator-a",
+                      "subjectRoleName": "Operator",
+                      "scopes": [
+                        "clients:create",
+                        "clients:read"
+                      ],
+                      "expiresAt": 1767536000,
+                      "expired": false,
                       "enabled": true,
                       "createdAt": 1736000000
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/setting/apiTokens/subjects": {
+      "get": {
+        "tags": [
+          "API Tokens"
+        ],
+        "summary": "List active non-owner administrators eligible to receive a delegated token. Returns only ID, username, and role metadata.",
+        "operationId": "get_panel_api_setting_apiTokens_subjects",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "id": 3,
+                      "username": "operator-a",
+                      "roleId": 2,
+                      "roleName": "Operator"
                     }
                   ]
                 }
@@ -9301,7 +11069,7 @@
         "tags": [
           "API Tokens"
         ],
-        "summary": "Mint a new API token. Name must be unique and 1-64 characters; the token string is server-generated and returned only in this response — it is stored hashed and cannot be retrieved later.",
+        "summary": "Mint an owner-created delegated or service token and return plaintext exactly once. The backend always records the logged-in owner as creator. For backward compatibility, omitting kind creates a service token; new user automation should explicitly send kind=delegated.",
         "operationId": "post_panel_api_setting_apiTokens_create",
         "requestBody": {
           "required": true,
@@ -9312,7 +11080,23 @@
                 "properties": {
                   "name": {
                     "type": "string",
-                    "description": "Human-readable label, e.g. \"central-panel-a\"."
+                    "description": "Unique human-readable label (1-64 characters)."
+                  },
+                  "kind": {
+                    "type": "string",
+                    "description": "delegated for user automation or service for trusted panel infrastructure. Omitted means service for legacy callers."
+                  },
+                  "subjectAdminId": {
+                    "type": "integer",
+                    "description": "Required for delegated tokens: active non-owner panel administrator ID."
+                  },
+                  "scopes": {
+                    "type": "string",
+                    "description": "Required for delegated tokens: one or both of clients:read and clients:create."
+                  },
+                  "expiresAt": {
+                    "type": "integer",
+                    "description": "Optional Unix-seconds expiry. 0 means no expiry."
                   }
                 },
                 "required": [
@@ -9320,7 +11104,14 @@
                 ]
               },
               "example": {
-                "name": "central-panel-a"
+                "name": "telegram-operator-a",
+                "kind": "delegated",
+                "subjectAdminId": 3,
+                "scopes": [
+                  "clients:read",
+                  "clients:create"
+                ],
+                "expiresAt": 1767536000
               }
             }
           }
@@ -9348,10 +11139,21 @@
                   "success": true,
                   "obj": {
                     "createdAt": 1736000000,
+                    "createdByAdminId": 1,
                     "enabled": true,
+                    "expired": false,
+                    "expiresAt": 1767536000,
                     "id": 2,
-                    "name": "central-panel-a",
-                    "token": "new-token-string"
+                    "kind": "delegated",
+                    "name": "telegram-bot-a",
+                    "scopes": [
+                      "clients:read",
+                      "clients:create"
+                    ],
+                    "subjectAdminId": 3,
+                    "subjectRoleName": "Operator",
+                    "subjectUsername": "operator-a",
+                    "token": "hmd_d_new-token-string"
                   }
                 }
               }
@@ -9387,7 +11189,7 @@
         "tags": [
           "API Tokens"
         ],
-        "summary": "Permanently delete a token. Any caller using it stops authenticating immediately.",
+        "summary": "Owner-only permanent token revocation. Any caller using it stops authenticating immediately.",
         "operationId": "post_panel_api_setting_apiTokens_delete_id",
         "parameters": [
           {
@@ -9431,7 +11233,7 @@
         "tags": [
           "API Tokens"
         ],
-        "summary": "Toggle a token enabled/disabled without deleting it. Disabled tokens are rejected by checkAPIAuth on the next request.",
+        "summary": "Owner-only enable/disable toggle. Disabled tokens are rejected by checkAPIAuth on the next request.",
         "operationId": "post_panel_api_setting_apiTokens_setEnabled_id",
         "parameters": [
           {
@@ -10116,7 +11918,7 @@
         "tags": [
           "Xray Settings"
         ],
-        "summary": "Delete an outbound subscription by id (POST alias of DELETE for axios-friendly clients).",
+        "summary": "Delete an outbound subscription by id (POST alias of DELETE for clients that cannot send DELETE).",
         "operationId": "post_panel_api_xray_outbound_subs_id_del",
         "parameters": [
           {
@@ -10419,8 +12221,9 @@
         "tags": [
           "WebSocket"
         ],
-        "summary": "Upgrade an HTTP connection to a WebSocket. Requires an authenticated session cookie (Bearer token auth is not supported here). Returns 101 Switching Protocols on success. The server then pushes JSON messages described below.",
+        "summary": "Upgrade an authenticated browser-session HTTP connection to WebSocket.",
         "operationId": "get_ws",
+        "description": "Bearer API tokens are rejected. Successful connections receive JSON messages with type, payload, and Unix-millisecond time fields. Documented event examples are available in x-websocket-events.",
         "responses": {
           "200": {
             "description": "Successful response",
@@ -10444,13 +12247,13 @@
         }
       }
     },
-    "→ type: status": {
+    "status": {
       "ws": {
         "tags": [
           "WebSocket"
         ],
         "summary": "Server health snapshot pushed every 2 seconds. Contains CPU, memory, swap, disk, network IO, load, and Xray state — same shape as <code>GET /panel/api/server/status</code>.",
-        "operationId": "ws_type_status",
+        "operationId": "ws_status",
         "responses": {
           "200": {
             "description": "Successful response",
@@ -10470,7 +12273,7 @@
                 },
                 "example": {
                   "type": "status",
-                  "data": {
+                  "payload": {
                     "cpu": 12.5,
                     "mem": {
                       "current": 2147483648,
@@ -10479,7 +12282,8 @@
                     "xray": {
                       "state": "running"
                     }
-                  }
+                  },
+                  "time": 1710000000000
                 }
               }
             }
@@ -10487,13 +12291,13 @@
         }
       }
     },
-    "→ type: xrayState": {
+    "xray_state": {
       "ws": {
         "tags": [
           "WebSocket"
         ],
         "summary": "Xray process state change. Fired when Xray starts, stops, or encounters an error.",
-        "operationId": "ws_type_xrayState",
+        "operationId": "ws_xray_state",
         "responses": {
           "200": {
             "description": "Successful response",
@@ -10512,8 +12316,12 @@
                   }
                 },
                 "example": {
-                  "type": "xrayState",
-                  "data": "running"
+                  "type": "xray_state",
+                  "payload": {
+                    "state": "running",
+                    "errorMsg": ""
+                  },
+                  "time": 1710000000000
                 }
               }
             }
@@ -10521,13 +12329,13 @@
         }
       }
     },
-    "→ type: notification": {
+    "notification": {
       "ws": {
         "tags": [
           "WebSocket"
         ],
         "summary": "In-panel toast notification. Fired on Xray stop/restart, DB import, panel restart, etc.",
-        "operationId": "ws_type_notification",
+        "operationId": "ws_notification",
         "responses": {
           "200": {
             "description": "Successful response",
@@ -10547,9 +12355,12 @@
                 },
                 "example": {
                   "type": "notification",
-                  "title": "Xray service restarted",
-                  "body": "Xray has been restarted successfully",
-                  "severity": "success"
+                  "payload": {
+                    "title": "Xray service restarted",
+                    "message": "Xray has been restarted successfully",
+                    "level": "success"
+                  },
+                  "time": 1710000000000
                 }
               }
             }
@@ -10557,13 +12368,52 @@
         }
       }
     },
-    "→ type: invalidate": {
+    "presence": {
+      "ws": {
+        "tags": [
+          "WebSocket"
+        ],
+        "summary": "Authoritative local online-client snapshot pushed only when the set changes. An empty onlineClients array immediately clears stale online badges.",
+        "operationId": "ws_presence",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "type": "presence",
+                  "payload": {
+                    "onlineClients": [
+                      "alice@example.test"
+                    ]
+                  },
+                  "time": 1710000000000
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "invalidate": {
       "ws": {
         "tags": [
           "WebSocket"
         ],
         "summary": "Instructs the UI to re-fetch a resource. Fired when another admin session modifies data (e.g. toggling inbound enable).",
-        "operationId": "ws_type_invalidate",
+        "operationId": "ws_invalidate",
         "responses": {
           "200": {
             "description": "Successful response",
@@ -10583,7 +12433,10 @@
                 },
                 "example": {
                   "type": "invalidate",
-                  "resource": "inbounds"
+                  "payload": {
+                    "type": "inbounds"
+                  },
+                  "time": 1710000000000
                 }
               }
             }

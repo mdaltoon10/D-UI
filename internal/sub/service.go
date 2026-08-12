@@ -301,7 +301,12 @@ func (s *SubService) getSubs(subId string) ([]string, []string, int64, xray.Clie
 		s.projectThroughFallbackMaster(inbound)
 		// Host overrides apply AFTER fallback projection so a host's
 		// address/TLS wins over the projected master stream.
-		hostEps := s.hostEndpoints(inbound, "raw")
+		// Heimdall rule: Subscription Profiles / Multi-Profile Inbounds are the primary product feature.
+		// Managed Hosts are only a fallback for inbounds without explicit profiles.
+		var hostEps []map[string]any
+		if !inboundHasSubscriptionProfiles(inbound) {
+			hostEps = s.hostEndpoints(inbound, "raw")
+		}
 		for _, client := range clients {
 			if client.Enable {
 				hasEnabledClient = true
@@ -465,7 +470,7 @@ func (s *SubService) getInboundsBySubId(subId string) ([]*model.Inbound, error) 
 		JOIN client_inbounds ON client_inbounds.inbound_id = inbounds.id
 		JOIN clients ON clients.id = client_inbounds.client_id
 		WHERE
-			inbounds.protocol in ('vmess','vless','trojan','shadowsocks','hysteria','wireguard')
+			inbounds.protocol in ('vmess','vless','trojan','shadowsocks','hysteria','wireguard','mtproto')
 			AND clients.sub_id = ? AND inbounds.enable = ?
 	)`, subId, true).Order("sub_sort_index ASC").Order("id ASC").Find(&inbounds).Error
 	if err != nil {
@@ -601,6 +606,14 @@ func mergeStreamFromMaster(childStream, masterStream string) string {
 // (socks, http, mixed, wireguard, dokodemo, tunnel). The returned string may
 // contain multiple `\n`-separated URLs when the inbound has externalProxy set.
 func (s *SubService) GetLink(inbound *model.Inbound, email string) string {
+	if links, handled := s.modernSubscriptionProfileLinks(inbound, email); handled {
+		return links
+	}
+
+	return s.getLegacyLink(inbound, email)
+}
+
+func (s *SubService) getLegacyLink(inbound *model.Inbound, email string) string {
 	switch inbound.Protocol {
 	case "vmess":
 		return s.genVmessLink(inbound, email)
@@ -662,27 +675,24 @@ func (s *SubService) genWireguardLink(inbound *model.Inbound, email string) stri
 	return buildLinkWithParams(link, params, s.genRemark(inbound, email, "", ""))
 }
 
-// genMtprotoLink builds a Telegram proxy deep link for an mtproto inbound:
-func (s *SubService) genMtprotoLink(inbound *model.Inbound, _ string) string {
+// genMtprotoLink builds a per-client Telegram proxy deep link for an mtproto
+// inbound: the server/port pair plus the client's own FakeTLS secret. The link
+// carries no remark fragment — Telegram proxy deep links have no name field, and
+// a trailing "#remark" is appended to the last query value by lenient parsers,
+// corrupting the server address. The remark is shown separately in the panel UI.
+// Returns "" when the client has no secret.
+func (s *SubService) genMtprotoLink(inbound *model.Inbound, email string) string {
 	if inbound.Protocol != model.MTProto {
 		return ""
 	}
-	settings := map[string]any{}
-	_ = json.Unmarshal([]byte(inbound.Settings), &settings)
-	secret, _ := settings["secret"].(string)
-	if secret == "" {
-		if healed, ok := model.HealMtprotoSecret(inbound.Settings); ok {
-			_ = json.Unmarshal([]byte(healed), &settings)
-			secret, _ = settings["secret"].(string)
-		}
-	}
-	if secret == "" {
+	resolved, ok := s.clientForLink(inbound, email)
+	if !ok || resolved.Secret == "" {
 		return ""
 	}
 	params := map[string]string{
 		"server": s.resolveInboundAddress(inbound),
 		"port":   fmt.Sprintf("%d", inbound.Port),
-		"secret": secret,
+		"secret": resolved.Secret,
 	}
 	return buildLinkWithParams("tg://proxy", params, "")
 }
@@ -717,9 +727,10 @@ func (s *SubService) genVmessLink(inbound *model.Inbound, email string) string {
 		return ""
 	}
 	obj["id"] = client.ID
-	obj["scy"] = client.Security
+	obj["scy"] = normalizeVmessSecurity(client.Security)
 
 	externalProxies, _ := stream["externalProxy"].([]any)
+	externalProxies = resolveExternalProxyDefaults(externalProxies, address, inbound.Port)
 
 	if len(externalProxies) > 0 {
 		return s.buildVmessExternalProxyLinks(externalProxies, obj, inbound, email, network)
@@ -729,11 +740,24 @@ func (s *SubService) genVmessLink(inbound *model.Inbound, email string) string {
 	return buildVmessLink(obj)
 }
 
+// normalizeVmessSecurity maps the vmess security values xray-core v26.7.11
+// removed ("none"/"zero"), plus the legacy empty string, to "auto" so links
+// and subscriptions stop advertising values the upgraded server rejects on
+// the wire.
+func normalizeVmessSecurity(security string) string {
+	switch security {
+	case "", "none", "zero":
+		return "auto"
+	}
+	return security
+}
+
 // vlessEncryptionEnabled reports whether the VLESS inbound settings enable
 // VLESS-level encryption (vlessenc / ML-KEM). When on, the encryption/decryption
 // fields hold a generated dotted string (e.g. "mlkem768x25519plus.native.0rtt.<key>");
 // "none" or empty means off. The value is never the literal "vlessenc" — that is
 // the `xray vlessenc` CLI subcommand name, not a stored value.
+
 func vlessEncryptionEnabled(settings map[string]any) bool {
 	for _, key := range []string{"encryption", "decryption"} {
 		if v, ok := settings[key].(string); ok && v != "" && v != "none" {
@@ -800,6 +824,7 @@ func (s *SubService) genVlessLink(inbound *model.Inbound, email string) string {
 	}
 
 	externalProxies, _ := stream["externalProxy"].([]any)
+	externalProxies = resolveExternalProxyDefaults(externalProxies, address, inbound.Port)
 
 	if len(externalProxies) > 0 {
 		return s.buildExternalProxyURLLinks(
@@ -853,6 +878,7 @@ func (s *SubService) genTrojanLink(inbound *model.Inbound, email string) string 
 	}
 
 	externalProxies, _ := stream["externalProxy"].([]any)
+	externalProxies = resolveExternalProxyDefaults(externalProxies, address, inbound.Port)
 
 	if len(externalProxies) > 0 {
 		return s.buildExternalProxyURLLinks(
@@ -879,6 +905,7 @@ func (s *SubService) genTrojanLink(inbound *model.Inbound, email string) string 
 // or `=` (notably the common base64-with-padding shape produced by the
 // panel). Encode them too — this matches encodeURIComponent() on the
 // frontend and round-trips cleanly through net/url's parser.
+
 func encodeUserinfo(s string) string {
 	return strings.ReplaceAll(url.QueryEscape(s), "+", "%20")
 }
@@ -945,6 +972,7 @@ func (s *SubService) genShadowsocksLink(inbound *model.Inbound, email string) st
 	}
 
 	externalProxies, _ := stream["externalProxy"].([]any)
+	externalProxies = resolveExternalProxyDefaults(externalProxies, address, inbound.Port)
 
 	if len(externalProxies) > 0 {
 		proxyParams := cloneStringMap(params)
@@ -1048,11 +1076,19 @@ func (s *SubService) genHysteriaLink(inbound *model.Inbound, email string) strin
 	// endpoint (e.g. a CDN hostname + port that forwards to the node).
 	// Matches the behaviour of genVlessLink / genTrojanLink / ….
 	externalProxies, _ := stream["externalProxy"].([]any)
+	externalProxies = resolveExternalProxyDefaults(
+		externalProxies,
+		s.resolveInboundAddress(inbound),
+		inbound.Port,
+	)
 	if len(externalProxies) > 0 {
 		links := make([]string, 0, len(externalProxies))
 		for _, externalProxy := range externalProxies {
 			ep, ok := externalProxy.(map[string]any)
 			if !ok {
+				continue
+			}
+			if endpointExcludedFromSubType(ep, "raw") {
 				continue
 			}
 			dest, _ := ep["dest"].(string)
@@ -1082,6 +1118,7 @@ func (s *SubService) genHysteriaLink(inbound *model.Inbound, email string) strin
 // (finalmask.quicParams.udpHop.ports), or "" when port hopping is off. The
 // range is emitted as the v2rayN-compatible `mport` query param; the URL port
 // field stays numeric so .NET-Uri-based importers (v2rayN) can parse the link.
+
 func hysteriaHopPorts(stream map[string]any) string {
 	finalmask, _ := stream["finalmask"].(map[string]any)
 	quicParams, _ := finalmask["quicParams"].(map[string]any)
@@ -1324,6 +1361,11 @@ func applyShareTLSParams(stream map[string]any, params map[string]string) {
 		if pins, ok := pinnedSha256List(tlsSettings); ok {
 			params["pcs"] = strings.Join(pins, ",")
 		}
+		if allowInsecure, ok := searchKey(tlsSettings, "allowInsecure"); ok {
+			if insecure, _ := allowInsecure.(bool); insecure {
+				params["allowInsecure"] = "1"
+			}
+		}
 	}
 }
 
@@ -1356,6 +1398,11 @@ func applyVmessTLSParams(stream map[string]any, obj map[string]any) {
 		}
 		if pins, ok := pinnedSha256List(tlsSettings); ok {
 			obj["pcs"] = strings.Join(pins, ",")
+		}
+		if allowInsecure, ok := searchKey(tlsSettings, "allowInsecure"); ok {
+			if insecure, _ := allowInsecure.(bool); insecure {
+				obj["allowInsecure"] = true
+			}
 		}
 	}
 }
@@ -1441,16 +1488,15 @@ func applyShareRealityParams(stream map[string]any, params map[string]string, cl
 	realitySetting, _ := stream["realitySettings"].(map[string]any)
 	realitySettings, _ := searchKey(realitySetting, "settings")
 	if realitySetting != nil {
-		if sniValue, ok := searchKey(realitySetting, "serverNames"); ok {
-			sNames, _ := sniValue.([]any)
-			params["sni"] = sNames[random.Num(len(sNames))].(string)
+		serverName, shortID := realityClientSelection(realitySetting)
+		if serverName != "" {
+			params["sni"] = serverName
 		}
 		if pbkValue, ok := searchKey(realitySettings, "publicKey"); ok {
 			params["pbk"], _ = pbkValue.(string)
 		}
-		if sidValue, ok := searchKey(realitySetting, "shortIds"); ok {
-			shortIds, _ := sidValue.([]any)
-			params["sid"] = shortIds[random.Num(len(shortIds))].(string)
+		if shortID != "" {
+			params["sid"] = shortID
 		}
 		if fpValue, ok := searchKey(realitySettings, "fingerprint"); ok {
 			if fp, ok := fpValue.(string); ok && len(fp) > 0 {
@@ -1508,7 +1554,9 @@ func applyExternalProxyTLSObj(ep map[string]any, obj map[string]any, security st
 	if security != "tls" {
 		return
 	}
-	if sni, ok := externalProxySNI(ep); ok {
+	if externalProxyKeepsSNIBlank(ep) {
+		delete(obj, "sni")
+	} else if sni, ok := externalProxySNI(ep); ok {
 		obj["sni"] = sni
 	}
 	if fp, ok := ep["fingerprint"].(string); ok && fp != "" {
@@ -1532,7 +1580,9 @@ func applyExternalProxyTLSParams(ep map[string]any, params map[string]string, se
 	if security != "tls" {
 		return
 	}
-	if sni, ok := externalProxySNI(ep); ok {
+	if externalProxyKeepsSNIBlank(ep) {
+		delete(params, "sni")
+	} else if sni, ok := externalProxySNI(ep); ok {
 		params["sni"] = sni
 	}
 	if fp, ok := ep["fingerprint"].(string); ok && fp != "" {
@@ -1559,17 +1609,18 @@ func applyExternalProxyTLSParams(ep map[string]any, params map[string]string, se
 // the inbound's own — Hysteria external proxies are typically alternate
 // endpoints (port-hop / CDN) fronting the same certificate.
 func applyExternalProxyHysteriaParams(ep map[string]any, params map[string]string) {
-	pins, ok := externalProxyPins(ep["pinnedPeerCertSha256"])
-	if !ok {
-		return
-	}
-	hexPins := make([]string, 0, len(pins))
-	for _, p := range pins {
-		if s, ok := p.(string); ok {
-			hexPins = append(hexPins, hysteriaPinHex(s))
+	if pins, ok := externalProxyPins(ep["pinnedPeerCertSha256"]); ok {
+		hexPins := make([]string, 0, len(pins))
+		for _, p := range pins {
+			if s, ok := p.(string); ok {
+				hexPins = append(hexPins, hysteriaPinHex(s))
+			}
 		}
+		params["pinSHA256"] = strings.Join(hexPins, ",")
 	}
-	params["pinSHA256"] = strings.Join(hexPins, ",")
+	if ai, ok := ep["allowInsecure"].(bool); ok && ai {
+		params["insecure"] = "1"
+	}
 }
 
 // cloneStreamForExternalProxy returns a shallow clone of stream with
@@ -1599,7 +1650,9 @@ func applyExternalProxyTLSToStream(ep map[string]any, stream map[string]any, sec
 		tlsSettings = map[string]any{}
 		stream["tlsSettings"] = tlsSettings
 	}
-	if sni, ok := externalProxySNI(ep); ok {
+	if externalProxyKeepsSNIBlank(ep) {
+		tlsSettings["serverName"] = ""
+	} else if sni, ok := externalProxySNI(ep); ok {
 		tlsSettings["serverName"] = sni
 	}
 	if fp, ok := ep["fingerprint"].(string); ok && fp != "" {
@@ -1648,10 +1701,23 @@ func applyExternalProxyTLSToStream(ep map[string]any, stream map[string]any, sec
 	}
 }
 
+func externalProxyKeepsSNIBlank(ep map[string]any) bool {
+	keepBlank, _ := ep["keepSniBlank"].(bool)
+	return keepBlank
+}
+
 func externalProxySNI(ep map[string]any) (string, bool) {
-	if sni, ok := ep["sni"].(string); ok && sni != "" {
-		return sni, true
+	if override, _ := ep["overrideSniFromAddress"].(bool); override {
+		address, _ := ep["dest"].(string)
+		address = strings.TrimSpace(address)
+		return address, address != ""
 	}
+
+	if sni, ok := ep["sni"].(string); ok {
+		sni = strings.TrimSpace(sni)
+		return sni, sni != ""
+	}
+
 	return "", false
 }
 
@@ -1760,6 +1826,9 @@ func (s *SubService) buildVmessExternalProxyLinks(externalProxies []any, baseObj
 	eps := make([]ShareEndpoint, 0, len(externalProxies))
 	for _, externalProxy := range externalProxies {
 		ep, _ := externalProxy.(map[string]any)
+		if ep == nil || endpointExcludedFromSubType(ep, "raw") {
+			continue
+		}
 		eps = append(eps, externalProxyToEndpoint(ep))
 	}
 	return s.buildEndpointVmessLinks(eps, baseObj, inbound, email, transport)
@@ -1832,6 +1901,9 @@ func (s *SubService) buildExternalProxyURLLinks(
 	eps := make([]ShareEndpoint, 0, len(externalProxies))
 	for _, externalProxy := range externalProxies {
 		ep, _ := externalProxy.(map[string]any)
+		if ep == nil || endpointExcludedFromSubType(ep, "raw") {
+			continue
+		}
 		eps = append(eps, externalProxyToEndpoint(ep))
 	}
 	return s.buildEndpointLinks(eps, params, baseSecurity, func(e ShareEndpoint) string {
@@ -2133,6 +2205,7 @@ var validFinalMaskTCPTypes = map[string]struct{}{
 	"header-custom": {},
 	"fragment":      {},
 	"sudoku":        {},
+	"xmc":           {},
 }
 
 // applyKcpShareParams reconstructs legacy KCP share-link fields from either

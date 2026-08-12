@@ -13,8 +13,8 @@ import (
 // with no non-empty flow anywhere.
 func TestEffectiveFlowsByEmails(t *testing.T) {
 	dbDir := t.TempDir()
-	t.Setenv("DUI_DB_FOLDER", dbDir)
-	if err := database.InitDB(filepath.Join(dbDir, "d-ui.db")); err != nil {
+	t.Setenv("XUI_DB_FOLDER", dbDir)
+	if err := database.InitDB(filepath.Join(dbDir, "x-ui.db")); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	t.Cleanup(func() { _ = database.CloseDB() })

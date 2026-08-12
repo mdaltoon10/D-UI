@@ -21,14 +21,14 @@ func NewGroupController(g *gin.RouterGroup) *GroupController {
 }
 
 func (a *GroupController) initRouter(g *gin.RouterGroup) {
-	g.GET("/groups", a.list)
-	g.GET("/groups/:name/emails", a.emails)
-	g.POST("/groups/create", a.create)
-	g.POST("/groups/rename", a.rename)
-	g.POST("/groups/delete", a.delete)
-	g.POST("/groups/resetTraffic", a.resetTraffic)
-	g.POST("/groups/bulkAdd", a.bulkAdd)
-	g.POST("/groups/bulkRemove", a.bulkRemove)
+	g.GET("/groups", requirePanelPermission("groups", "view"), a.list)
+	g.GET("/groups/:name/emails", requirePanelPermission("groups", "view"), a.emails)
+	g.POST("/groups/create", requirePanelPermission("groups", "create"), a.create)
+	g.POST("/groups/rename", requirePanelPermission("groups", "update"), a.rename)
+	g.POST("/groups/delete", requirePanelPermission("groups", "delete"), a.delete)
+	g.POST("/groups/resetTraffic", requirePanelPermission("clients", "resetUsage"), a.resetTraffic)
+	g.POST("/groups/bulkAdd", requirePanelPermission("groups", "update"), a.bulkAdd)
+	g.POST("/groups/bulkRemove", requirePanelPermission("groups", "update"), a.bulkRemove)
 }
 
 func (a *GroupController) list(c *gin.Context) {

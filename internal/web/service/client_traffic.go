@@ -17,7 +17,7 @@ func (s *ClientService) ResetTrafficByEmail(inboundSvc *InboundService, email st
 	if email == "" {
 		return false, common.NewError("client email is required")
 	}
-	rec, err := s.GetRecordByEmail(nil, email)
+	rec, err := s.RequireVisibleClientByEmail(email)
 	if err != nil {
 		return false, err
 	}
@@ -59,6 +59,7 @@ func (s *ClientService) ResetTrafficByEmail(inboundSvc *InboundService, email st
 }
 
 func (s *ClientService) BulkResetTraffic(inboundSvc *InboundService, emails []string) (int, error) {
+	emails = FilterVisibleClientEmails(emails)
 	if len(emails) == 0 {
 		return 0, nil
 	}
@@ -84,7 +85,9 @@ func (s *ClientService) BulkResetTraffic(inboundSvc *InboundService, emails []st
 		if err == nil && !rec.Enable {
 			updated := rec.ToClient()
 			updated.Enable = true
-			_, _ = s.Update(inboundSvc, rec.Id, *updated)
+			if _, uErr := s.Update(inboundSvc, rec.Id, *updated); uErr != nil {
+				logger.Warning("Failed to auto-enable client during bulk traffic reset:", uErr)
+			}
 		}
 	}
 
@@ -122,9 +125,13 @@ func (s *ClientService) BulkResetTraffic(inboundSvc *InboundService, emails []st
 }
 
 func (s *ClientService) ResetAllClientTraffics(inboundSvc *InboundService, id int) error {
-	return submitTrafficWrite(func() error {
+	err := submitTrafficWrite(func() error {
 		return s.resetAllClientTrafficsLocked(id)
 	})
+	if err == nil {
+		inboundSvc.resetAllMtprotoQuotas()
+	}
+	return err
 }
 
 func (s *ClientService) resetAllClientTrafficsLocked(id int) error {
@@ -137,15 +144,20 @@ func (s *ClientService) resetAllClientTrafficsLocked(id int) error {
 		// as the authoritative source for which emails belong to a given inbound.
 		var resetEmails []string
 		if id == -1 {
-			if err := tx.Model(xray.ClientTraffic{}).Pluck("email", &resetEmails).Error; err != nil {
+			emailQuery := applyVisibleClientEmailScope(
+				tx.Model(xray.ClientTraffic{}),
+				"email",
+			)
+			if err := emailQuery.Pluck("email", &resetEmails).Error; err != nil {
 				return err
 			}
 		} else {
-			if err := tx.Table("client_inbounds ci").
+			emailQuery := tx.Table("client_inbounds ci").
 				Select("c.email").
 				Joins("JOIN clients c ON c.id = ci.client_id").
-				Where("ci.inbound_id = ?", id).
-				Pluck("c.email", &resetEmails).Error; err != nil {
+				Where("ci.inbound_id = ?", id)
+			emailQuery = applyVisibleClientEmailScope(emailQuery, "c.email")
+			if err := emailQuery.Pluck("c.email", &resetEmails).Error; err != nil {
 				return err
 			}
 		}
@@ -195,13 +207,19 @@ func (s *ClientService) resetAllClientTrafficsLocked(id int) error {
 
 func (s *ClientService) ResetAllTraffics() (bool, error) {
 	db := database.GetDB()
-	res := db.Model(&xray.ClientTraffic{}).
-		Where("1 = 1").
-		Updates(map[string]any{"up": 0, "down": 0})
+	trafficQuery := applyVisibleClientEmailScope(
+		db.Model(&xray.ClientTraffic{}).Where("1 = 1"),
+		"email",
+	)
+	res := trafficQuery.Updates(map[string]any{"up": 0, "down": 0})
 	if res.Error != nil {
 		return false, res.Error
 	}
-	if err := db.Where("1 = 1").Delete(&model.ClientGlobalTraffic{}).Error; err != nil {
+	globalQuery := applyVisibleClientEmailScope(
+		db.Model(&model.ClientGlobalTraffic{}).Where("1 = 1"),
+		"email",
+	)
+	if err := globalQuery.Delete(&model.ClientGlobalTraffic{}).Error; err != nil {
 		return false, err
 	}
 	return res.RowsAffected > 0, nil

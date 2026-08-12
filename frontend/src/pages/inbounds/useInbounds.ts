@@ -13,6 +13,7 @@ import { OnlinesSchema, OnlineByNodeSchema, ActiveInboundsByNodeSchema } from '@
 import { DefaultsPayloadSchema, type DefaultsPayload } from '@/schemas/defaults';
 
 import type { InboundSpeedEntry } from './list/types';
+import { TRAFFIC_POLL_INTERVAL_S } from '@/lib/traffic/poll-interval';
 
 export interface SubSettings {
   enable: boolean;
@@ -27,10 +28,6 @@ export interface SubSettings {
 }
 
 type DBInboundInstance = InstanceType<typeof DBInbound>;
-
-// Server-side traffic polling interval in seconds. XrayTrafficJob broadcasts
-// deltas accumulated over this window, so dividing by it yields bytes/sec.
-const TRAFFIC_POLL_INTERVAL_S = 5;
 
 // Speed is delta-derived, so it can't be recomputed until the first poll after
 // mount; navigating away and back would otherwise blank the column for up to one
@@ -63,6 +60,8 @@ const TRACKED_PROTOCOLS: readonly string[] = [
   Protocols.TROJAN,
   Protocols.SHADOWSOCKS,
   Protocols.HYSTERIA,
+  Protocols.WIREGUARD,
+  Protocols.MTPROTO,
 ];
 
 async function fetchSlimInbounds(): Promise<unknown[]> {
@@ -136,25 +135,33 @@ export function useInbounds() {
   const onlinesQuery = useQuery({
     queryKey: keys.clients.onlines(),
     queryFn: fetchOnlineClients,
-    staleTime: Infinity,
+    staleTime: 5000,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   const onlinesByGuidQuery = useQuery({
     queryKey: keys.clients.onlinesByGuid(),
     queryFn: fetchOnlineClientsByGuid,
-    staleTime: Infinity,
+    staleTime: 5000,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   const activeInboundsQuery = useQuery({
     queryKey: keys.clients.activeInbounds(),
     queryFn: fetchActiveInboundsByNode,
-    staleTime: Infinity,
+    staleTime: 5000,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   const lastOnlineQuery = useQuery({
     queryKey: keys.clients.lastOnline(),
     queryFn: fetchLastOnlineMap,
-    staleTime: Infinity,
+    staleTime: 5000,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   const defaultsQuery = useQuery({
@@ -499,15 +506,14 @@ export function useInbounds() {
       if (Array.isArray(p.clients) && p.clients.length > 0) {
         const byEmail = new Map<string, { email: string; up?: number; down?: number; total?: number; expiryTime?: number; enable?: boolean }>();
         for (const row of p.clients) {
-          if (row && row.email) byEmail.set(row.email.trim().toLowerCase(), row);
+          if (row && row.email) byEmail.set(row.email, row);
         }
         for (const ib of dbInboundsRef.current) {
           const stats = (ib as unknown as { clientStats: { email: string; up: number; down: number; total: number; expiryTime: number; enable: boolean }[] }).clientStats;
           if (!Array.isArray(stats)) continue;
           for (let i = 0; i < stats.length; i++) {
             const stat = stats[i];
-            const emailKey = stat.email ? stat.email.trim().toLowerCase() : '';
-            const upd = emailKey ? byEmail.get(emailKey) : undefined;
+            const upd = byEmail.get(stat.email);
             if (!upd) continue;
             if (typeof upd.up === 'number') stat.up = upd.up;
             if (typeof upd.down === 'number') stat.down = upd.down;

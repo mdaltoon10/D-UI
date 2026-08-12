@@ -1016,6 +1016,21 @@ func TestMarshalFinalMask_UnknownTypeIsDropped(t *testing.T) {
 	}
 }
 
+func TestMarshalFinalMask_KeepsXmcTcpMask(t *testing.T) {
+	fm := map[string]any{
+		"tcp": []any{
+			map[string]any{"type": "xmc", "settings": map[string]any{"password": "p"}},
+		},
+	}
+	out, ok := marshalFinalMask(fm)
+	if !ok {
+		t.Fatal("expected ok=true for an xmc tcp mask")
+	}
+	if !strings.Contains(out, "xmc") {
+		t.Fatalf("marshaled finalmask dropped the xmc mask: %s", out)
+	}
+}
+
 func TestHasFinalMaskContent(t *testing.T) {
 	if hasFinalMaskContent(nil) {
 		t.Fatal("nil should not count as content")
@@ -1093,5 +1108,36 @@ func TestHysteriaHopPorts(t *testing.T) {
 				t.Fatalf("hysteriaHopPorts() = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestExternalProxySNIControls(t *testing.T) {
+	params := map[string]string{"sni": "base.example.com"}
+
+	applyExternalProxyTLSParams(
+		map[string]any{
+			"keepSniBlank": true,
+		},
+		params,
+		"tls",
+	)
+
+	if _, exists := params["sni"]; exists {
+		t.Fatalf("keepSniBlank left sni=%q", params["sni"])
+	}
+
+	params = map[string]string{"sni": "base.example.com"}
+
+	applyExternalProxyTLSParams(
+		map[string]any{
+			"overrideSniFromAddress": true,
+			"dest":                   "edge.example.com",
+		},
+		params,
+		"tls",
+	)
+
+	if params["sni"] != "edge.example.com" {
+		t.Fatalf("override sni=%q", params["sni"])
 	}
 }

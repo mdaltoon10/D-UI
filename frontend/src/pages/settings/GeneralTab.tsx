@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Button,
   Input,
   InputNumber,
   Select,
@@ -12,12 +11,10 @@ import {
   ApartmentOutlined,
   BellOutlined,
   ClockCircleOutlined,
-  EyeInvisibleOutlined,
   GlobalOutlined,
   SafetyCertificateOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
-import HiddenInfrastructureModal from './HiddenInfrastructureModal';
 import type { AllSetting } from '@/models/setting';
 import { HttpUtil, LanguageManager } from '@/utils';
 import { SettingListItem } from '@/components/ui';
@@ -46,7 +43,6 @@ export default function GeneralTab({ allSetting, updateSetting }: GeneralTabProp
   const { isMobile } = useMediaQuery();
 
   const [lang, setLang] = useState<string>(() => LanguageManager.getLanguage());
-  const [hiddenModalOpen, setHiddenModalOpen] = useState(false);
   const [inboundOptions, setInboundOptions] = useState<{ label: string; value: string }[]>([]);
   const [outboundTagList, setOutboundTagList] = useState<string[]>([]);
   const [balancerTagList, setBalancerTagList] = useState<string[]>([]);
@@ -218,18 +214,6 @@ export default function GeneralTab({ allSetting, updateSetting }: GeneralTabProp
             <SettingListItem paddings="small" title={t('pages.settings.restartXrayOnClientDisable')} description={t('pages.settings.restartXrayOnClientDisableDesc')}>
               <Switch checked={allSetting.restartXrayOnClientDisable}
                 onChange={(v) => updateSetting({ restartXrayOnClientDisable: v })} />
-            </SettingListItem>
-
-            <SettingListItem paddings="small" title={t('pages.settings.ipLimitPolicy')} description={t('pages.settings.ipLimitPolicyDesc')}>
-              <Select
-                value={allSetting.ipLimitPolicy || 'block_newest'}
-                onChange={(v) => updateSetting({ ipLimitPolicy: v })}
-                style={{ width: '100%' }}
-                                                                options={[
-                  { label: 'Block Newest (Ban IP)', value: 'block_newest' },
-                  { label: 'Kick Oldest', value: 'kick_oldest' },
-                ]}
-              />
             </SettingListItem>
 
             <SettingListItem paddings="small" title={t('pages.settings.language')}>
@@ -413,27 +397,6 @@ export default function GeneralTab({ allSetting, updateSetting }: GeneralTabProp
               <InputNumber value={allSetting.ldapDefaultLimitIP} min={0} style={{ width: '100%' }}
                 onChange={(v) => updateSetting({ ldapDefaultLimitIP: Number(v) || 0 })} />
             </SettingListItem>
-          </>
-        ),
-      },
-      {
-        key: '7',
-        label: catTabLabel(<EyeInvisibleOutlined />, 'Hidden Infrastructure', isMobile),
-        children: (
-          <>
-            <SettingListItem
-              paddings="small"
-              title="Hidden Infrastructure Management ($ daltoon-ui)"
-              description="Manage hidden inbounds, outbounds, balancers, and client identifiers via terminal script ($ daltoon-ui) or GUI configuration."
-            >
-              <Button type="primary" icon={<EyeInvisibleOutlined />} onClick={() => setHiddenModalOpen(true)}>
-                Manage Hidden Infrastructure ($ daltoon-ui)
-              </Button>
-            </SettingListItem>
-            <HiddenInfrastructureModal
-              open={hiddenModalOpen}
-              onClose={() => setHiddenModalOpen(false)}
-            />
           </>
         ),
       },

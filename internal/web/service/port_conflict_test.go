@@ -10,7 +10,7 @@ import (
 
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
-	duilogger "github.com/mdaltoon10/D-UI/v3/internal/logger"
+	xuilogger "github.com/mdaltoon10/D-UI/v3/internal/logger"
 )
 
 // the panel logger is a process-wide singleton. init it once per test
@@ -22,11 +22,11 @@ var portConflictLoggerOnce sync.Once
 // doesn't refuse to remove the file.
 func setupConflictDB(t *testing.T) {
 	t.Helper()
-	portConflictLoggerOnce.Do(func() { duilogger.InitLogger(logging.ERROR) })
+	portConflictLoggerOnce.Do(func() { xuilogger.InitLogger(logging.ERROR) })
 
 	dbDir := t.TempDir()
-	t.Setenv("DUI_DB_FOLDER", dbDir)
-	if err := database.InitDB(filepath.Join(dbDir, "d-ui.db")); err != nil {
+	t.Setenv("XUI_DB_FOLDER", dbDir)
+	if err := database.InitDB(filepath.Join(dbDir, "x-ui.db")); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	t.Cleanup(func() {

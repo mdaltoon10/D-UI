@@ -1,8 +1,7 @@
-import axios from 'axios';
-import type { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import i18next from 'i18next';
+import { httpRequest } from '@/api/http-init';
+import type { HttpResponse } from '@/api/http-init';
 import { getMessage } from './messageBus';
-import { handleMockRequest } from '../api/mock-db';
 
 type RespEnvelope = { success?: unknown; msg?: unknown; obj?: unknown };
 
@@ -18,7 +17,11 @@ export class Msg<T = unknown> {
   }
 }
 
-export interface HttpOptions extends AxiosRequestConfig {
+export interface HttpOptions {
+  headers?: Record<string, string> | Headers;
+  params?: unknown;
+  timeout?: number;
+  signal?: AbortSignal;
   silent?: boolean;
   silentSuccess?: boolean;
 }
@@ -49,7 +52,7 @@ export class HttpUtil {
     getMessage().error(msg.msg);
   }
 
-  static _respToMsg(resp: AxiosResponse | undefined): Msg {
+  static _respToMsg(resp: HttpResponse | undefined): Msg {
     if (!resp || !resp.data) {
       return new Msg(false, 'No response data');
     }
@@ -65,21 +68,15 @@ export class HttpUtil {
   }
 
   static async get<T = unknown>(url: string, params?: unknown, options: HttpOptions = {}): Promise<Msg<T>> {
-    const { silent, silentSuccess, ...axiosOpts } = options;
-    const mock = handleMockRequest(url, 'GET', params);
-    if (mock !== null) {
-      const msg = new Msg(mock.success, mock.msg || '', mock.obj ?? null) as Msg<T>;
-      if (!silent) this._handleMsg(msg, silentSuccess);
-      return msg;
-    }
+    const { silent, silentSuccess, ...rest } = options;
     try {
-      const resp = await axios.get(url, { params, ...axiosOpts });
+      const resp = await httpRequest('GET', url, undefined, { ...rest, params });
       const msg = this._respToMsg(resp) as Msg<T>;
       if (!silent) this._handleMsg(msg, silentSuccess);
       return msg;
     } catch (error) {
       console.error('GET request failed:', error);
-      const err = error as AxiosError<{ message?: string }>;
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       const errorMsg = new Msg<T>(false, err.response?.data?.message || err.message || 'Request failed');
       if (!silent) this._handleMsg(errorMsg);
       return errorMsg;
@@ -87,21 +84,15 @@ export class HttpUtil {
   }
 
   static async post<T = unknown>(url: string, data?: unknown, options: HttpOptions = {}): Promise<Msg<T>> {
-    const { silent, silentSuccess, ...axiosOpts } = options;
-    const mock = handleMockRequest(url, 'POST', data);
-    if (mock !== null) {
-      const msg = new Msg(mock.success, mock.msg || '', mock.obj ?? null) as Msg<T>;
-      if (!silent) this._handleMsg(msg, silentSuccess);
-      return msg;
-    }
+    const { silent, silentSuccess, ...rest } = options;
     try {
-      const resp = await axios.post(url, data, axiosOpts);
+      const resp = await httpRequest('POST', url, data, rest);
       const msg = this._respToMsg(resp) as Msg<T>;
       if (!silent) this._handleMsg(msg, silentSuccess);
       return msg;
     } catch (error) {
       console.error('POST request failed:', error);
-      const err = error as AxiosError<{ message?: string }>;
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
       const errorMsg = new Msg<T>(false, err.response?.data?.message || err.message || 'Request failed');
       if (!silent) this._handleMsg(errorMsg);
       return errorMsg;
@@ -698,15 +689,6 @@ export class TimeFormatter {
     const remain = Number(((second / 3600) - (day * 24)).toFixed(0));
     return day + 'd' + (remain > 0 ? ' ' + remain + 'h' : '');
   }
-
-  static formatClock(second: number): string {
-    if (!second) return '';
-    const date = new Date(second * 1000);
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    return `${hours}:${minutes}:${seconds}`;
-  }
 }
 
 export class NumberFormatter {
@@ -732,11 +714,6 @@ export class Utils {
 
 export class CookieManager {
   static getCookie(cname: string): string {
-    try {
-      const val = localStorage.getItem('cookie_' + cname);
-      if (val) return val;
-    } catch {}
-
     const name = cname + '=';
     const ca = document.cookie.split(';');
     for (let c of ca) {
@@ -749,19 +726,13 @@ export class CookieManager {
   }
 
   static setCookie(cname: string, cvalue: string, exdays?: number): void {
-    try {
-      localStorage.setItem('cookie_' + cname, cvalue);
-    } catch {}
-
     let expires = '';
     if (exdays) {
       const d = new Date();
       d.setTime(d.getTime() + exdays * 24 * 60 * 60 * 1000);
       expires = 'expires=' + d.toUTCString() + ';';
     }
-    try {
-      document.cookie = cname + '=' + encodeURIComponent(cvalue) + ';' + expires + 'path=/';
-    } catch {}
+    document.cookie = cname + '=' + encodeURIComponent(cvalue) + ';' + expires + 'path=/';
   }
 }
 
@@ -884,7 +855,7 @@ export class LanguageManager {
 
   static getLanguage(): string {
     let lang = CookieManager.getCookie('lang');
-    if (lang && LanguageManager.isSupportLanguage(lang)) return lang;
+    if (lang) return lang;
 
     if (window.navigator) {
       const nav = window.navigator as Navigator & { userLanguage?: string };
@@ -904,19 +875,23 @@ export class LanguageManager {
       ];
 
       simularLangs.forEach((pair) => {
-        if (lang === pair[0] || lang.startsWith(pair[0] + '-')) {
+        if (lang === pair[0]) {
           lang = pair[1];
         }
       });
 
       if (LanguageManager.isSupportLanguage(lang)) {
         CookieManager.setCookie('lang', lang, 365);
-        return lang;
+      } else {
+        CookieManager.setCookie('lang', 'en-US', 365);
+        window.location.reload();
       }
+    } else {
+      CookieManager.setCookie('lang', 'en-US', 365);
+      window.location.reload();
     }
 
-    CookieManager.setCookie('lang', 'en-US', 365);
-    return 'en-US';
+    return lang;
   }
 
   static setLanguage(language: string): void {

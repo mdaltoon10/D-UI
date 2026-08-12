@@ -30,6 +30,7 @@ import {
   SwapOutlined,
   TagsOutlined,
   TeamOutlined,
+  UserSwitchOutlined,
   ToolOutlined,
 } from '@ant-design/icons';
 
@@ -37,30 +38,36 @@ import { HttpUtil } from '@/utils';
 import { formatPanelVersion } from '@/lib/panel-version';
 import { pauseAnimationsUntilLeave, useTheme } from '@/hooks/useTheme';
 import { useAllSettings } from '@/api/queries/useAllSettings';
+import { useAdmin } from '@/pg-ui/hooks/use-admin';
+import { ensurePgAdminI18n } from '@/pg-ui/i18n/admin-pages-bridge';
+import { canAccessRoute, hasPermission } from '@/pg-ui/utils/rbac';
 import './AppSidebar.css';
 
 const SIDEBAR_COLLAPSED_KEY = 'isSidebarCollapsed';
-const DONATE_URL = 'https://donate.mDaltoon.dev/';
-const DOCS_URL = 'https://docs.mDaltoon.dev/';
-const REPO_URL = 'https://github.com/mdaltoon10/D-UI';
+const DONATE_URL = 'https://reymit.ir/heimdall';
+const DOCS_URL = 'https://github.com/sh7CBAC/Heimdall#readme';
+const REPO_URL = 'https://github.com/sh7CBAC/Heimdall';
 const LOGOUT_KEY = '__logout__';
 
-type IconName = 'dashboard' | 'inbound' | 'team' | 'groups' | 'setting' | 'tool' | 'cluster' | 'hosts' | 'logout' | 'apidocs' | 'outbound' | 'routing' | 'security';
+ensurePgAdminI18n();
+
+type IconName = 'apidocs' | 'dashboard' | 'inbound' | 'team' | 'groups' | 'admins' | 'roles' | 'setting' | 'tool' | 'cluster' | 'hosts' | 'logout' | 'outbound' | 'routing';
 
 const iconByName: Record<IconName, ComponentType> = {
+  apidocs: ApiOutlined,
   dashboard: DashboardOutlined,
   inbound: ImportOutlined,
   team: TeamOutlined,
   groups: TagsOutlined,
+  admins: UserSwitchOutlined,
+  roles: SafetyOutlined,
   setting: SettingOutlined,
   tool: ToolOutlined,
   cluster: ClusterOutlined,
   hosts: GlobalOutlined,
   logout: LogoutOutlined,
-  apidocs: ApiOutlined,
   outbound: ExportOutlined,
   routing: SwapOutlined,
-  security: SafetyOutlined,
 };
 
 function readCollapsed(): boolean {
@@ -141,173 +148,73 @@ function ThemeCycleButton({ id, isDark, isUltra, onCycle, ariaLabel }: {
   );
 }
 
-function getDeveloperByText(lng: string): string {
-  const code = lng.toLowerCase();
-  if (code.startsWith('fa')) {
-    return 'توسعه دهنده';
-  }
-  if (code.startsWith('ar')) {
-    return 'تطوير بواسطة';
-  }
-  if (code.startsWith('ru')) {
-    return 'Разработчик';
-  }
-  if (code.startsWith('zh')) {
-    return '开发者';
-  }
-  if (code.startsWith('tr')) {
-    return 'Geliştirici';
-  }
-  if (code.startsWith('es')) {
-    return 'Desarrollador';
-  }
-  if (code.startsWith('pt')) {
-    return 'Desenvolvedor';
-  }
-  if (code.startsWith('vi')) {
-    return 'Nhà phát triển';
-  }
-  if (code.startsWith('ja')) {
-    return '開発者';
-  }
-  if (code.startsWith('uk')) {
-    return 'Розробник';
-  }
-  if (code.startsWith('id')) {
-    return 'Pengembang';
-  }
-  return 'Developer By';
-}
-
-function getAdminAccessText(lng: string): string {
-  const code = lng.toLowerCase();
-  if (code.startsWith('fa')) {
-    return 'دسترسی ادمین';
-  }
-  if (code.startsWith('ar')) {
-    return 'صلاحية الأدمن';
-  }
-  if (code.startsWith('ru')) {
-    return 'Доступ администратора';
-  }
-  if (code.startsWith('zh-tw') || code.startsWith('zh-hk')) {
-    return '管理員權限';
-  }
-  if (code.startsWith('zh')) {
-    return '管理员权限';
-  }
-  if (code.startsWith('tr')) {
-    return 'Admin Erişimi';
-  }
-  if (code.startsWith('es')) {
-    return 'Acceso de administrador';
-  }
-  if (code.startsWith('pt')) {
-    return 'Acesso do Administrador';
-  }
-  if (code.startsWith('vi')) {
-    return 'Quyền truy cập Admin';
-  }
-  if (code.startsWith('ja')) {
-    return '管理者権限';
-  }
-  if (code.startsWith('uk')) {
-    return 'Доступ адміністратора';
-  }
-  if (code.startsWith('id')) {
-    return 'Akses Admin';
-  }
-  return 'Admin Access';
-}
-
-function getAuthenticationText(lng: string): string {
-  const code = lng.toLowerCase();
-  if (code.startsWith('fa')) {
-    return 'احراز هویت';
-  }
-  if (code.startsWith('ar')) {
-    return 'المصادقة';
-  }
-  return 'Authentication';
-}
-
 export default function AppSidebar() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { isDark, isUltra, toggleTheme, toggleUltra } = useTheme();
   const navigate = useNavigate();
   const { pathname, hash } = useLocation();
   const { allSetting } = useAllSettings();
+  const { admin } = useAdmin();
   const showSubFormats = !!(allSetting.subJsonEnable || allSetting.subClashEnable);
 
   const [collapsed, setCollapsed] = useState<boolean>(() => readCollapsed());
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const currentAdmin = useMemo(() => {
-    const raw = localStorage.getItem('daltoon_current_admin');
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
-  }, []);
-
-  const brandName = useMemo(() => {
-    if (currentAdmin?.remark) return currentAdmin.remark;
-    if (currentAdmin?.username) return currentAdmin.username;
-    return 'Daltoon-UI';
-  }, [currentAdmin]);
-
   const currentTheme: 'light' | 'dark' = isDark ? 'dark' : 'light';
-  const panelVersion = window.X_UI_CUR_VER || 'v1.0.3';
+  const panelVersion = window.X_UI_CUR_VER || '';
 
-  const tabs = useMemo<{ key: string; icon: IconName; title: string }[]>(() => {
-    const allTabs = [
-      { key: '/', icon: 'dashboard' as IconName, title: t('menu.dashboard') },
-      { key: '/inbounds', icon: 'inbound' as IconName, title: t('menu.inbounds') },
-      { key: '/clients', icon: 'team' as IconName, title: t('menu.clients') },
-      { key: '/groups', icon: 'groups' as IconName, title: t('menu.groups') },
-      { key: '/nodes', icon: 'cluster' as IconName, title: t('menu.nodes') },
-      { key: '/hosts', icon: 'hosts' as IconName, title: t('menu.hosts') },
-      { key: 'admin-access-parent', icon: 'security' as IconName, title: getAdminAccessText(i18n.language || 'en-US') },
-      { key: '/outbound', icon: 'outbound' as IconName, title: t('menu.outbounds') },
-      { key: '/routing', icon: 'routing' as IconName, title: t('menu.routing') },
-      { key: '/settings', icon: 'setting' as IconName, title: t('menu.settings') },
-      { key: '/xray', icon: 'tool' as IconName, title: t('menu.xray') },
-      { key: '/api-docs', icon: 'apidocs' as IconName, title: t('menu.apiDocs') },
-      { key: LOGOUT_KEY, icon: 'logout' as IconName, title: t('logout') },
-    ];
-    const isReseller = (typeof window !== 'undefined' && typeof window.X_UI_BASE_PATH !== 'undefined')
-      ? !!window.X_UI_IS_RESELLER
-      : !!localStorage.getItem('daltoon_current_admin');
-    if (isReseller) {
-      // Reseller has ONLY access to Dashboard, Clients, Authentication, and Logout
-      return [
-        { key: '/', icon: 'dashboard' as IconName, title: t('menu.dashboard') },
-        { key: '/clients', icon: 'team' as IconName, title: t('menu.clients') },
-        { key: '/authentication', icon: 'security' as IconName, title: getAuthenticationText(i18n.language || 'en-US') },
-        { key: LOGOUT_KEY, icon: 'logout' as IconName, title: t('logout') },
-      ];
-    }
-    return allTabs;
-  }, [t, i18n.language]);
+  const canShowMenuKey = useCallback((key: string) => {
+    if (key === LOGOUT_KEY) return true;
+    if (!admin) return false;
+    return canAccessRoute(admin, key);
+  }, [admin]);
 
-  const navItems = useMemo(() => tabs.filter((tab) => tab.icon !== 'logout'), [tabs]);
-  const utilItems = useMemo(() => tabs.filter((tab) => tab.icon === 'logout'), [tabs]);
+  const canReadSettings = !!admin && hasPermission(admin, 'settings', 'read');
+  const canReadGeneralSettings = !!admin && hasPermission(admin, 'settings', 'read_general');
+
+  const tabs = useMemo<{ key: string; icon: IconName; title: string }[]>(() => [
+    { key: '/', icon: 'dashboard', title: t('menu.dashboard') },
+    { key: '/inbounds', icon: 'inbound', title: t('menu.inbounds') },
+    { key: '/clients', icon: 'team', title: t('menu.clients') },
+    { key: '/groups', icon: 'groups', title: t('menu.groups') },
+    { key: '/nodes', icon: 'cluster', title: t('menu.nodes') },
+    { key: '/admins', icon: 'admins', title: t('admins.title', { defaultValue: 'Admins' }) },
+    { key: '/admin-roles', icon: 'roles', title: t('adminRoles.title', { defaultValue: 'Admin Roles' }) },
+    { key: '/outbound', icon: 'outbound', title: t('menu.outbounds') },
+    { key: '/routing', icon: 'routing', title: t('menu.routing') },
+    { key: '/settings', icon: 'setting', title: t('menu.settings') },
+    { key: '/xray', icon: 'tool', title: t('menu.xray') },
+    { key: '/api-docs', icon: 'apidocs', title: t('menu.apiDocs') },
+    { key: LOGOUT_KEY, icon: 'logout', title: t('logout') },
+  ], [t]);
+
+  const visibleTabs = useMemo(() => tabs.filter((tab) => canShowMenuKey(tab.key)), [tabs, canShowMenuKey]);
+
+  const navItems = useMemo(() => visibleTabs.filter((tab) => tab.icon !== 'logout'), [visibleTabs]);
+  const utilItems = useMemo(() => visibleTabs.filter((tab) => tab.icon === 'logout'), [visibleTabs]);
 
   const settingsChildren = useMemo<NonNullable<MenuProps['items']>>(() => {
-    const children: NonNullable<MenuProps['items']> = [
-      { key: '/settings#general', icon: <SettingOutlined />, label: t('pages.settings.panelSettings') },
-      { key: '/settings#security', icon: <SafetyOutlined />, label: t('pages.settings.securitySettings') },
-      { key: '/settings#telegram', icon: <MessageOutlined />, label: t('pages.settings.TGBotSettings') },
-      { key: '/settings#email', icon: <MailOutlined />, label: t('pages.settings.emailSettings') },
-      { key: '/settings#subscription', icon: <CloudServerOutlined />, label: t('pages.settings.subSettings') },
-    ];
-    if (showSubFormats) {
-      children.push({ key: '/settings#subscription-formats', icon: <CodeOutlined />, label: 'Sub Formats' });
+    const children: NonNullable<MenuProps['items']> = [];
+
+    if (canReadGeneralSettings) {
+      children.push({ key: '/settings#general', icon: <SettingOutlined />, label: t('pages.settings.panelSettings') });
     }
+
+    if (canReadSettings) {
+      children.push(
+        { key: '/settings#security', icon: <SafetyOutlined />, label: t('pages.settings.securitySettings') },
+        { key: '/settings#telegram', icon: <MessageOutlined />, label: t('pages.settings.TGBotSettings') },
+        { key: '/settings#email', icon: <MailOutlined />, label: t('pages.settings.emailSettings') },
+        { key: '/settings#subscription', icon: <CloudServerOutlined />, label: t('pages.settings.subSettings') },
+      );
+
+      if (showSubFormats) {
+        children.push({ key: '/settings#subscription-formats', icon: <CodeOutlined />, label: 'Sub Formats' });
+      }
+    }
+
     return children;
-  }, [t, showSubFormats]);
+  }, [t, showSubFormats, canReadSettings, canReadGeneralSettings]);
 
   const xrayChildren = useMemo<NonNullable<MenuProps['items']>>(() => [
     { key: '/xray#basic', icon: <SettingOutlined />, label: t('pages.xray.basicTemplate') },
@@ -316,29 +223,15 @@ export default function AppSidebar() {
     { key: '/xray#advanced', icon: <CodeOutlined />, label: t('pages.xray.advancedTemplate') },
   ], [t]);
 
-  const adminChildren = useMemo<NonNullable<MenuProps['items']>>(() => {
-    const isFa = i18n.language?.startsWith('fa');
-    return [
-      { key: '/admin-access', icon: <TeamOutlined />, label: isFa ? 'لیست ادمین‌ها' : 'Admins List' },
-      { key: '/clients-admin', icon: <SafetyOutlined />, label: isFa ? 'کلاینت‌های ادمین' : 'Clients Admin' },
-    ];
-  }, [i18n.language]);
-
   const settingsActive = pathname === '/settings';
   const xrayActive = pathname === '/xray';
-  const adminActive = pathname === '/admin-access' || pathname === '/clients-admin';
-  const selectedKey = useMemo(() => {
-    if (settingsActive) return `/settings${hash || '#general'}`;
-    if (xrayActive) return `/xray${hash || '#basic'}`;
-    if (adminActive) {
-      if (pathname.includes('/clients-admin')) return '/clients-admin';
-      if (pathname.includes('/admin-access')) return '/admin-access';
-      return 'admin-access-parent';
-    }
-    return pathname === '' ? '/' : pathname;
-  }, [settingsActive, xrayActive, adminActive, pathname, hash]);
+  const selectedKey = settingsActive
+    ? `/settings${hash || '#general'}`
+    : xrayActive
+      ? `/xray${hash || '#basic'}`
+      : (pathname === '' ? '/' : pathname);
 
-  const openSubmenu = settingsActive ? '/settings' : xrayActive ? '/xray' : adminActive ? 'admin-access-parent' : null;
+  const openSubmenu = settingsActive ? '/settings' : xrayActive ? '/xray' : null;
   const [openKeys, setOpenKeys] = useState<string[]>(() => (openSubmenu ? [openSubmenu] : []));
   useEffect(() => {
     if (openSubmenu) {
@@ -355,24 +248,12 @@ export default function AppSidebar() {
       if (tab.key === '/xray') {
         return { key: tab.key, icon: <Icon />, label: tab.title, children: xrayChildren };
       }
-      if (tab.key === 'admin-access-parent') {
-        return { key: tab.key, icon: <Icon />, label: tab.title, children: adminChildren };
-      }
-      if (tab.key === LOGOUT_KEY) {
-        return { key: tab.key, icon: <Icon />, label: tab.title };
-      }
       return { key: tab.key, icon: <Icon />, label: tab.title };
     }),
-  [settingsChildren, xrayChildren, adminChildren]);
+  [settingsChildren, xrayChildren]);
 
   const openLink = useCallback(async (key: string) => {
     if (key === LOGOUT_KEY) {
-      const currentAdminRaw = localStorage.getItem('daltoon_current_admin');
-      if (currentAdminRaw) {
-        localStorage.removeItem('daltoon_current_admin');
-        window.location.href = window.X_UI_BASE_PATH || '/';
-        return;
-      }
       await HttpUtil.post('/logout');
       window.location.href = window.X_UI_BASE_PATH || '/';
       return;
@@ -416,7 +297,7 @@ export default function AppSidebar() {
       >
         <div className={`sider-brand${collapsed ? ' sider-brand-collapsed' : ''}`}>
           <div className="brand-block">
-            <span className="brand-text">{collapsed ? (brandName.length > 2 ? brandName.substring(0, 2).toUpperCase() : brandName) : brandName}</span>
+            <span className="brand-text">{collapsed ? 'HDL' : 'HEIMDALL'}</span>
           </div>
           {!collapsed && (
             <div className="brand-actions">
@@ -450,20 +331,7 @@ export default function AppSidebar() {
           items={toMenuItems(utilItems)}
           onClick={onMenuClick}
         />
-        <div className="sider-footer" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '4px' }}>
-          {!collapsed && (
-            <div className="developer-footer" style={{ padding: '8px 16px 4px', fontSize: '11px', opacity: 0.7 }}>
-              <span>{getDeveloperByText(i18n.language || 'en-US')} </span>
-              <a
-                href="https://t.me/mDaltoon"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#1677ff', fontWeight: 'bold' }}
-              >
-                mDaltoon
-              </a>
-            </div>
-          )}
+        <div className="sider-footer">
           <VersionBadge version={panelVersion} collapsed={collapsed} />
         </div>
       </Layout.Sider>
@@ -483,7 +351,7 @@ export default function AppSidebar() {
       >
         <div className="drawer-header">
           <div className="brand-block">
-            <span className="drawer-brand">{brandName}</span>
+            <span className="drawer-brand">HEIMDALL</span>
           </div>
           <div className="drawer-header-actions">
             <DocsButton ariaLabel={t('menu.docs') || 'Documentation'} />
@@ -524,17 +392,6 @@ export default function AppSidebar() {
           onClick={(info) => { onMenuClick(info); setDrawerOpen(false); }}
         />
         <div className="drawer-footer">
-          <div className="developer-footer" style={{ padding: '0 8px 8px', fontSize: '12px', opacity: 0.8 }}>
-            <span>{getDeveloperByText(i18n.language || 'en-US')} </span>
-            <a
-              href="https://t.me/mDaltoon"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: '#1677ff', fontWeight: 'bold' }}
-            >
-              mDaltoon
-            </a>
-          </div>
           <VersionBadge version={panelVersion} />
         </div>
       </Drawer>

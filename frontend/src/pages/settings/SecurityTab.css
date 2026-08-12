@@ -13,12 +13,25 @@
   flex-wrap: wrap;
 }
 
+.api-token-header-copy {
+  display: flex;
+  flex: 1;
+  min-width: 220px;
+  flex-direction: column;
+  gap: 3px;
+}
+
 .api-token-hint {
   margin: 0;
   font-size: 12.5px;
   opacity: 0.7;
   flex: 1;
   min-width: 200px;
+}
+
+.api-token-list {
+  display: grid;
+  gap: 10px;
 }
 
 .api-token-row {
@@ -32,7 +45,7 @@
 }
 
 .api-token-row.disabled {
-  opacity: 0.55;
+  opacity: 0.68;
 }
 
 .api-token-row-head {
@@ -59,6 +72,33 @@
   opacity: 0.55;
 }
 
+.api-token-details {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.api-token-subject,
+.api-token-expiry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.api-token-expiry {
+  opacity: 0.72;
+}
+
+.api-token-scopes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
 .api-token-actions {
   display: flex;
   align-items: center;
@@ -70,6 +110,7 @@
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  margin: 12px 0;
 }
 
 .api-token-value {
@@ -83,13 +124,80 @@
   word-break: break-all;
 }
 
-.api-token-created-notice {
-  margin: 0 0 12px;
-  font-size: 13px;
+.api-token-save-acknowledgement {
+  margin-top: 4px;
+}
+
+.api-token-kind-options {
+  display: flex;
+  width: 100%;
+}
+
+.api-token-kind-options .ant-radio-button-wrapper {
+  flex: 1;
+  text-align: center;
+}
+
+.api-token-form-alert {
+  margin-bottom: 16px;
+}
+
+.api-token-scope-options {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+}
+
+.api-token-scope-option {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  background: var(--ant-color-fill-quaternary);
+}
+
+.api-token-scope-option > span {
+  padding-inline-start: 24px;
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
 }
 
 .security-actions {
   padding: 12px 0;
   display: flex;
   align-items: center;
+}
+
+@media (max-width: 575px) {
+  .api-token-section {
+    padding-inline: 4px;
+  }
+
+  .api-token-header > .ant-space {
+    width: 100%;
+  }
+
+  .api-token-header > .ant-space .ant-space-item:last-child,
+  .api-token-header > .ant-space .ant-space-item:last-child .ant-btn {
+    flex: 1;
+  }
+
+  .api-token-row-head,
+  .api-token-details {
+    align-items: flex-start;
+  }
+
+  .api-token-actions {
+    margin-inline-start: auto;
+  }
+
+  .api-token-kind-options {
+    flex-direction: column;
+  }
+
+  .api-token-kind-options .ant-radio-button-wrapper {
+    border-inline-start-width: 1px;
+  }
 }

@@ -374,7 +374,11 @@ func (t *Tgbot) onlineClients(chatId int64, messageID ...int) {
 	if onlinesCount > 0 {
 		var buttons []telego.InlineKeyboardButton
 		for _, online := range onlines {
-			buttons = append(buttons, tu.InlineKeyboardButton(online).WithCallbackData(t.encodeQuery("client_get_usage "+online)))
+			label := online
+			if _, inbound, err := t.inboundService.GetClientInboundByEmail(online); err == nil && inbound != nil && inbound.Remark != "" {
+				label = online + " - " + inbound.Remark
+			}
+			buttons = append(buttons, tu.InlineKeyboardButton(label).WithCallbackData(t.encodeQuery("client_get_usage "+online)))
 		}
 		cols := 0
 		if onlinesCount < 21 {
@@ -396,7 +400,8 @@ func (t *Tgbot) onlineClients(chatId int64, messageID ...int) {
 
 // sendBackup sends a backup of the database and configuration files.
 func (t *Tgbot) sendBackup(chatId int64) {
-	output := t.I18nBot("tgbot.messages.backupTime", "Time=="+time.Now().Format("2006-01-02 15:04:05"))
+	output := t.I18nBot("tgbot.messages.hostname", "Hostname=="+hostname)
+	output += t.I18nBot("tgbot.messages.backupTime", "Time=="+time.Now().Format("2006-01-02 15:04:05"))
 	t.SendMsgToTgbot(chatId, output)
 
 	// Send database backup (SQLite file, or a pg_dump archive on PostgreSQL)
@@ -436,55 +441,5 @@ func (t *Tgbot) sendBackup(chatId int64) {
 		}
 	} else {
 		logger.Error("Error in opening config.json file for backup: ", err)
-	}
-}
-
-// sendBanLogs sends the ban logs to the specified chat.
-func (t *Tgbot) sendBanLogs(chatId int64, dt bool) {
-	if dt {
-		output := t.I18nBot("tgbot.messages.datetime", "DateTime=="+time.Now().Format("2006-01-02 15:04:05"))
-		t.SendMsgToTgbot(chatId, output)
-	}
-
-	file, err := os.Open(xray.GetIPLimitBannedPrevLogPath())
-	if err == nil {
-		// Check if the file is non-empty before attempting to upload
-		fileInfo, _ := file.Stat()
-		if fileInfo.Size() > 0 {
-			document := tu.Document(
-				tu.ID(chatId),
-				tu.File(file),
-			)
-			_, err = bot.SendDocument(context.Background(), document)
-			if err != nil {
-				logger.Error("Error in uploading IPLimitBannedPrevLog: ", err)
-			}
-		} else {
-			logger.Warning("IPLimitBannedPrevLog file is empty, not uploading.")
-		}
-		file.Close()
-	} else {
-		logger.Error("Error in opening IPLimitBannedPrevLog file for backup: ", err)
-	}
-
-	file, err = os.Open(xray.GetIPLimitBannedLogPath())
-	if err == nil {
-		// Check if the file is non-empty before attempting to upload
-		fileInfo, _ := file.Stat()
-		if fileInfo.Size() > 0 {
-			document := tu.Document(
-				tu.ID(chatId),
-				tu.File(file),
-			)
-			_, err = bot.SendDocument(context.Background(), document)
-			if err != nil {
-				logger.Error("Error in uploading IPLimitBannedLog: ", err)
-			}
-		} else {
-			logger.Warning("IPLimitBannedLog file is empty, not uploading.")
-		}
-		file.Close()
-	} else {
-		logger.Error("Error in opening IPLimitBannedLog file for backup: ", err)
 	}
 }

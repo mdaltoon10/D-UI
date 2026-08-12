@@ -26,6 +26,76 @@ func (s *InboundService) MigrationRemoveOrphanedTraffics() {
 	db.Exec(query)
 }
 
+// MigrationRepairClientInboundTrafficMappings repairs detailed-accounting rows
+// created by older builds before Xray configuration is generated.
+//
+// The migration is idempotent:
+//   - healthy mappings are refreshed without resetting counters;
+//   - a stale row carrying the correct stat_email is rebound to the current
+//     clients.id;
+//   - duplicate pair/stat rows are merged by the shared upsert helper;
+//   - rows whose inbound no longer exists are removed.
+//
+// Each inbound is repaired in its own transaction so one malformed inbound does
+// not prevent the remaining inbounds from being healed during startup.
+func (s *InboundService) MigrationRepairClientInboundTrafficMappings() {
+	db := database.GetDB()
+
+	var inboundIDs []int
+	if err := db.
+		Model(&model.Inbound{}).
+		Order("id ASC").
+		Pluck("id", &inboundIDs).
+		Error; err != nil {
+		logger.Warning(
+			"MigrationRepairClientInboundTrafficMappings: load inbounds failed:",
+			err,
+		)
+		return
+	}
+
+	for _, inboundID := range inboundIDs {
+		err := db.Transaction(func(tx *gorm.DB) error {
+			return s.syncClientInboundTrafficMappingsForInbound(
+				tx,
+				inboundID,
+			)
+		})
+
+		if err != nil {
+			logger.Warningf(
+				"MigrationRepairClientInboundTrafficMappings: inbound %d failed: %v",
+				inboundID,
+				err,
+			)
+		}
+	}
+
+	result := db.Exec(`
+		DELETE FROM client_inbound_traffics
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM inbounds
+			WHERE inbounds.id = client_inbound_traffics.inbound_id
+		)
+	`)
+
+	if result.Error != nil {
+		logger.Warning(
+			"MigrationRepairClientInboundTrafficMappings: remove missing-inbound rows failed:",
+			result.Error,
+		)
+		return
+	}
+
+	if result.RowsAffected > 0 {
+		logger.Infof(
+			"MigrationRepairClientInboundTrafficMappings: removed %d missing-inbound row(s)",
+			result.RowsAffected,
+		)
+	}
+}
+
 func (s *InboundService) MigrationRequirements() {
 	db := database.GetDB()
 	tx := db.Begin()
@@ -253,6 +323,7 @@ func (s *InboundService) MigrationRequirements() {
 
 func (s *InboundService) MigrateDB() {
 	s.MigrationRequirements()
+	s.MigrationRepairClientInboundTrafficMappings()
 	s.MigrationRemoveOrphanedTraffics()
 	s.MigrationRestoreVisionFlow()
 }

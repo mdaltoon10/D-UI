@@ -171,6 +171,55 @@ func (x *XrayAPI) DelInbound(tag string) error {
 	return err
 }
 
+const legacyPublicPlaintextVLESSGuard = "vless without TLS or other encryption is prohibited unless the server address is a private IP or domain"
+
+// embeddedOutboundBuildError validates an outbound through the xray-core
+// library linked into the panel. The deployed Heimdall core can intentionally
+// differ from that library, so compatibility exceptions must be handled by the
+// callers below rather than by weakening unrelated validation errors.
+func embeddedOutboundBuildError(outbound []byte) error {
+	detour := new(conf.OutboundDetourConfig)
+	if err := json.Unmarshal(outbound, detour); err != nil {
+		return err
+	}
+	_, err := detour.Build()
+	return err
+}
+
+// isLegacyPublicPlaintextVLESSGuard reports the one embedded-core rejection
+// that is incompatible with Heimdall's deployed custom core. The protocol
+// check prevents the exception from swallowing an unrelated error that merely
+// happens to contain the same text.
+func isLegacyPublicPlaintextVLESSGuard(outbound []byte, err error) bool {
+	if err == nil || !strings.Contains(err.Error(), legacyPublicPlaintextVLESSGuard) {
+		return false
+	}
+	var meta struct {
+		Protocol string `json:"protocol"`
+	}
+	return json.Unmarshal(outbound, &meta) == nil && strings.EqualFold(strings.TrimSpace(meta.Protocol), "vless")
+}
+
+// OutboundRequiresExternalCoreRestart reports whether an outbound can only be
+// built by Heimdall's deployed custom core. Such an outbound must bypass the
+// panel's embedded builder during hot apply and reach the external core through
+// a full process restart.
+func OutboundRequiresExternalCoreRestart(outbound []byte) bool {
+	err := embeddedOutboundBuildError(outbound)
+	return isLegacyPublicPlaintextVLESSGuard(outbound, err)
+}
+
+// ValidateOutboundConfig validates an outbound through the xray-core library
+// linked into the panel while preserving the deployed custom core's support for
+// public plaintext VLESS outbounds. Every other parse/build error remains fatal.
+func ValidateOutboundConfig(outbound []byte) error {
+	err := embeddedOutboundBuildError(outbound)
+	if isLegacyPublicPlaintextVLESSGuard(outbound, err) {
+		return nil
+	}
+	return err
+}
+
 // AddOutbound adds a new outbound configuration to the Xray core via gRPC.
 func (x *XrayAPI) AddOutbound(outbound []byte) error {
 	if x.HandlerServiceClient == nil {
@@ -518,6 +567,8 @@ func buildUserAccount(protocolName string, user map[string]any) (*serial.TypedMe
 
 		var ssCipherType shadowsocks.CipherType
 		switch cipher {
+		case "aes-128-gcm":
+			ssCipherType = shadowsocks.CipherType_AES_128_GCM
 		case "aes-256-gcm":
 			ssCipherType = shadowsocks.CipherType_AES_256_GCM
 		case "chacha20-poly1305", "chacha20-ietf-poly1305":
@@ -525,10 +576,10 @@ func buildUserAccount(protocolName string, user map[string]any) (*serial.TypedMe
 		case "xchacha20-poly1305", "xchacha20-ietf-poly1305":
 			ssCipherType = shadowsocks.CipherType_XCHACHA20_POLY1305
 		default:
-			ssCipherType = shadowsocks.CipherType_NONE
+			ssCipherType = shadowsocks.CipherType_UNKNOWN
 		}
 
-		if ssCipherType != shadowsocks.CipherType_NONE {
+		if ssCipherType != shadowsocks.CipherType_UNKNOWN {
 			return serial.ToTypedMessage(&shadowsocks.Account{
 				Password:   password,
 				CipherType: ssCipherType,
@@ -736,9 +787,7 @@ func (x *XrayAPI) GetOnlineUsers() ([]OnlineUser, error) {
 			}
 			ips = append(ips, OnlineIP{IP: entry.GetIp(), LastSeen: entry.GetLastSeen()})
 		}
-		if len(ips) > 0 {
-			users = append(users, OnlineUser{Email: u.GetEmail(), IPs: ips})
-		}
+		users = append(users, OnlineUser{Email: u.GetEmail(), IPs: ips})
 	}
 	return users, nil
 }

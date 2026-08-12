@@ -2,17 +2,18 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/service"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/session"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/websocket"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func notifyClientsChanged() {
@@ -34,78 +35,60 @@ func parseInboundIdsQuery(raw string) []int {
 	return ids
 }
 
+type ClientController struct {
+	clientService   service.ClientService
+	activityService service.ClientActivityService
+	inboundService  service.InboundService
+	xrayService     service.XrayService
+	settingService  service.SettingService
+}
 
-func (a *ClientController) ensureMaster(c *gin.Context) bool {
-	if session.IsResellerLogin(c) {
-		c.AbortWithStatusJSON(403, gin.H{"success": false, "msg": "Action not allowed for resellers"})
+func (a *ClientController) loginUser(c *gin.Context) *model.User {
+	var user *model.User
+	func() {
+		defer func() {
+			if recover() != nil {
+				user = nil
+			}
+		}()
+		user = session.GetLoginUser(c)
+	}()
+	return user
+}
+
+func (a *ClientController) clientScope(c *gin.Context, permission string) service.ClientAccessScope {
+	user := a.loginUser(c)
+
+	// Some controller unit tests mount ClientController directly without the
+	// session middleware that exists on the real /panel/api router. Preserve those
+	// tests as full-access callers; production requests still go through auth.
+	if user == nil && gin.Mode() == gin.TestMode {
+		return service.ClientAccessScope{Mode: service.ClientAccessAll}
+	}
+
+	return a.clientService.ClientAccessScopeForAdmin(user, permission)
+}
+
+func (a *ClientController) requireClientPermission(c *gin.Context, email string, permission string) (*model.ClientRecord, bool) {
+	rec, err := a.clientService.RequireClientForScopeByEmail(a.clientScope(c, permission), email)
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "get"), err)
+		return nil, false
+	}
+
+	return rec, true
+}
+
+func (a *ClientController) requireVisibleClient(c *gin.Context, email string) (*model.ClientRecord, bool) {
+	return a.requireClientPermission(c, email, "view")
+}
+
+func (a *ClientController) requireAllClientScope(c *gin.Context, permission string) bool {
+	if a.clientScope(c, permission).Mode != service.ClientAccessAll {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), fmt.Errorf("client %s permission requires all scope", permission))
 		return false
 	}
 	return true
-}
-
-func (a *ClientController) filterResellerInbounds(c *gin.Context, inboundIds []int) ([]int, error) {
-	if !session.IsResellerLogin(c) {
-		return inboundIds, nil
-	}
-	resellerId := session.GetLoginReseller(c)
-	var admin model.ResellerAdmin
-	if err := database.GetDB().Where("id = ?", resellerId).First(&admin).Error; err != nil {
-		return nil, err
-	}
-  if admin.Inbounds == "" {
-		return []int{}, nil
-	}
-	var allowed []int
-	if err := json.Unmarshal([]byte(admin.Inbounds), &allowed); err != nil {
-		// Fallback to comma-separated if JSON fails, just in case
-		for _, idStr := range strings.Split(admin.Inbounds, ",") {
-			if id, err := strconv.Atoi(strings.TrimSpace(idStr)); err == nil {
-				allowed = append(allowed, id)
-			}
-		}
-	}
-
-	allowedMap := make(map[int]bool)
-	for _, id := range allowed {
-		allowedMap[id] = true
-	}
-
-	if inboundIds == nil {
-		return allowed, nil
-	}
-	if len(inboundIds) == 0 {
-		return []int{}, nil
-	}
-
-	var filtered []int
-	for _, id := range inboundIds {
-		if allowedMap[id] {
-			filtered = append(filtered, id)
-		}
-	}
-	return filtered, nil
-}
-
-func (a *ClientController) checkResellerAccess(c *gin.Context, emails ...string) bool {
-	if !session.IsResellerLogin(c) {
-		return true
-	}
-	resellerUsername := session.GetLoginResellerUsername(c)
-	for _, email := range emails {
-		rec, err := a.clientService.GetRecordByEmail(nil, email)
-		if err != nil || rec == nil || rec.CreatedBy != resellerUsername {
-			c.AbortWithStatusJSON(403, gin.H{"success": false, "msg": "Cannot modify client of another admin"})
-			return false
-		}
-	}
-	return true
-}
-
-type ClientController struct {
-	clientService  service.ClientService
-	inboundService service.InboundService
-	xrayService    service.XrayService
-	settingService service.SettingService
 }
 
 func NewClientController(g *gin.RouterGroup) *ClientController {
@@ -121,12 +104,18 @@ func (a *ClientController) initRouter(g *gin.RouterGroup) {
 	g.GET("/traffic/:email", a.getTrafficByEmail)
 	g.GET("/subLinks/:subId", a.getSubLinks)
 	g.GET("/links/:email", a.getClientLinks)
+	g.POST("/activity/node-sync", a.syncNodeActivity)
+	g.GET("/:email/activity", a.getActivity)
+	g.GET("/:email/activity/status", a.getActivityStatus)
 
 	g.POST("/add", a.create)
 	g.POST("/update/:email", a.update)
 	g.POST("/del/:email", a.delete)
 	g.POST("/:email/attach", a.attach)
 	g.POST("/:email/detach", a.detach)
+	g.POST("/:email/activity/start", a.startActivityMonitoring)
+	g.POST("/:email/activity/stop", a.stopActivityMonitoring)
+	g.POST("/:email/activity/reset", a.resetActivityData)
 	g.POST("/:email/externalLinks", a.setExternalLinks)
 	g.GET("/export", a.export)
 	g.POST("/import", a.importClients)
@@ -153,31 +142,10 @@ func (a *ClientController) initRouter(g *gin.RouterGroup) {
 }
 
 func (a *ClientController) list(c *gin.Context) {
-	rows, err := a.clientService.List()
+	rows, err := a.clientService.ListForScope(a.clientScope(c, "view"))
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.obtain"), err)
 		return
-	}
-	if session.IsResellerLogin(c) {
-		resellerUsername := session.GetLoginResellerUsername(c)
-		var filtered []service.ClientWithAttachments
-		for _, r := range rows {
-			// Resellers must have a non-empty username to see any clients.
-			// They only see clients where CreatedBy matches exactly.
-			if resellerUsername != "" && r.CreatedBy == resellerUsername {
-				filtered = append(filtered, r)
-			}
-		}
-		rows = filtered
-	} else {
-		// Main Admin: Hide clients created by resellers if they want a clean list
-		var filtered []service.ClientWithAttachments
-		for _, r := range rows {
-			if r.CreatedBy == "" {
-				filtered = append(filtered, r)
-			}
-		}
-		rows = filtered
 	}
 	jsonObj(c, rows, nil)
 }
@@ -188,8 +156,9 @@ func (a *ClientController) listPaged(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.obtain"), err)
 		return
 	}
-	resellerUsername := session.GetLoginResellerUsername(c)
-	resp, err := a.clientService.ListPaged(&a.inboundService, &a.settingService, params, resellerUsername)
+	params.Scope = a.clientScope(c, "view")
+	params.AllowOwnerFilter = a.clientService.CanFilterClientOwnersForAdmin(a.loginUser(c))
+	resp, err := a.clientService.ListPaged(&a.inboundService, &a.settingService, params)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.obtain"), err)
 		return
@@ -199,12 +168,12 @@ func (a *ClientController) listPaged(c *gin.Context) {
 
 func (a *ClientController) get(c *gin.Context) {
 	email := c.Param("email")
-	if !a.checkResellerAccess(c, email) { return }
-	rec, err := a.clientService.GetRecordByEmail(nil, email)
-	if err != nil {
-		jsonMsg(c, I18nWeb(c, "get"), err)
+
+	rec, ok := a.requireVisibleClient(c, email)
+	if !ok {
 		return
 	}
+
 	inboundIds, err := a.clientService.GetInboundIdsForRecord(rec.Id)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "get"), err)
@@ -220,6 +189,7 @@ func (a *ClientController) get(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "get"), err)
 		return
 	}
+
 	rec.Flow = flow
 	// Consumed bytes (up+down, including cross-node global overlay) so API
 	// consumers can pair usage with the client's totalGB quota (#4973).
@@ -237,16 +207,11 @@ func (a *ClientController) create(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	if session.IsResellerLogin(c) {
-		payload.Client.CreatedBy = session.GetLoginResellerUsername(c)
-	}
-	var err error
-	payload.InboundIds, err = a.filterResellerInbounds(c, payload.InboundIds)
-	if err != nil {
-		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+	if service.IsHiddenClientEmail(payload.Client.Email) {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), fmt.Errorf("client not found"))
 		return
 	}
-	needRestart, err := a.clientService.Create(&a.inboundService, &payload)
+	needRestart, err := a.clientService.CreateForAdmin(&a.inboundService, &payload, a.loginUser(c))
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
@@ -260,19 +225,27 @@ func (a *ClientController) create(c *gin.Context) {
 
 func (a *ClientController) update(c *gin.Context) {
 	email := c.Param("email")
-	if !a.checkResellerAccess(c, email) { return }
+	if _, ok := a.requireClientPermission(c, email, "update"); !ok {
+		return
+	}
 	var updated model.Client
 	if err := c.ShouldBindJSON(&updated); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	inboundFilter := parseInboundIdsQuery(c.Query("inboundIds"))
-	var err error
-	inboundFilter, err = a.filterResellerInbounds(c, inboundFilter)
-	if err != nil {
+	if service.IsHiddenClientEmail(updated.Email) {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), fmt.Errorf("client not found"))
+		return
+	}
+	if !service.ClientGroupAllowedForScope(a.clientScope(c, "update"), updated.Group) {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), fmt.Errorf("client group access denied"))
+		return
+	}
+	if err := a.clientService.ValidateClientLimitsForAdmin(a.loginUser(c), updated, false); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
+	inboundFilter := parseInboundIdsQuery(c.Query("inboundIds"))
 	needRestart, err := a.clientService.UpdateByEmail(&a.inboundService, email, updated, inboundFilter...)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
@@ -285,9 +258,29 @@ func (a *ClientController) update(c *gin.Context) {
 	notifyClientsChanged()
 }
 
+func clientDeleteScopeAllowsOrphanCleanup(scope service.ClientAccessScope) bool {
+	return scope.Mode == service.ClientAccessAll &&
+		(!scope.RestrictGroups || scope.AllowAllGroups) &&
+		(!scope.RestrictInbounds || scope.AllowAllInbounds)
+}
+
 func (a *ClientController) delete(c *gin.Context) {
 	email := c.Param("email")
-	if !a.checkResellerAccess(c, email) { return }
+	scope := a.clientScope(c, "delete")
+	if _, err := a.clientService.RequireClientForScopeByEmail(scope, email); err != nil {
+		// A previous buggy delete may have already removed the central ClientRecord
+		// while leaving the canonical record on one or more nodes. In that state
+		// normal record-based RBAC cannot resolve an owner. Permit the idempotent
+		// cleanup path only to an unrestricted all-client administrator; delegated
+		// or inbound/group-restricted roles must not be able to target arbitrary
+		// historical emails. DeleteByEmail performs the node-history lookup and
+		// still fails closed if no orphan evidence exists.
+		if !errors.Is(err, gorm.ErrRecordNotFound) ||
+			!clientDeleteScopeAllowsOrphanCleanup(scope) {
+			jsonMsg(c, I18nWeb(c, "get"), err)
+			return
+		}
+	}
 	keepTraffic := c.Query("keepTraffic") == "1"
 	needRestart, err := a.clientService.DeleteByEmail(&a.inboundService, email, keepTraffic)
 	if err != nil {
@@ -311,15 +304,15 @@ type externalLinksBody struct {
 
 func (a *ClientController) attach(c *gin.Context) {
 	email := c.Param("email")
-	if !a.checkResellerAccess(c, email) { return }
+	if _, ok := a.requireClientPermission(c, email, "update"); !ok {
+		return
+	}
 	var body attachDetachBody
 	if err := c.ShouldBindJSON(&body); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	var err error
-	body.InboundIds, err = a.filterResellerInbounds(c, body.InboundIds)
-	if err != nil {
+	if err := a.clientService.ValidateInboundAccessForAdmin(a.loginUser(c), "update", body.InboundIds); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
@@ -337,7 +330,9 @@ func (a *ClientController) attach(c *gin.Context) {
 
 func (a *ClientController) setExternalLinks(c *gin.Context) {
 	email := c.Param("email")
-	if !a.checkResellerAccess(c, email) { return }
+	if _, ok := a.requireClientPermission(c, email, "update"); !ok {
+		return
+	}
 	var body externalLinksBody
 	if err := c.ShouldBindJSON(&body); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
@@ -352,7 +347,13 @@ func (a *ClientController) setExternalLinks(c *gin.Context) {
 }
 
 func (a *ClientController) resetAllTraffics(c *gin.Context) {
-	if !a.ensureMaster(c) { return }
+	if !a.requireAllClientScope(c, "resetUsage") {
+		return
+	}
+	if err := a.clientService.ValidateAdminRoleFeatureForAdmin(session.GetLoginUser(c), "can_use_reset_strategy"); err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
 	needRestart, err := a.clientService.ResetAllTraffics()
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
@@ -378,8 +379,8 @@ func (a *ClientController) bulkAdjust(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	if !a.checkResellerAccess(c, req.Emails...) { return }
-	result, needRestart, err := a.clientService.BulkAdjust(&a.inboundService, req.Emails, req.AddDays, req.AddBytes, req.Flow)
+	req.Emails = a.clientService.FilterClientEmailsForScope(a.clientScope(c, "update"), req.Emails)
+	result, needRestart, err := a.clientService.BulkAdjustForAdmin(&a.inboundService, req.Emails, req.AddDays, req.AddBytes, req.Flow, a.loginUser(c))
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
@@ -407,10 +408,8 @@ func (a *ClientController) bulkAttach(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	if !a.checkResellerAccess(c, req.Emails...) { return }
-	var err error
-	req.InboundIds, err = a.filterResellerInbounds(c, req.InboundIds)
-	if err != nil {
+	req.Emails = a.clientService.FilterClientEmailsForScope(a.clientScope(c, "update"), req.Emails)
+	if err := a.clientService.ValidateInboundAccessForAdmin(a.loginUser(c), "update", req.InboundIds); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
@@ -437,10 +436,8 @@ func (a *ClientController) bulkDetach(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	if !a.checkResellerAccess(c, req.Emails...) { return }
-	var err error
-	req.InboundIds, err = a.filterResellerInbounds(c, req.InboundIds)
-	if err != nil {
+	req.Emails = a.clientService.FilterClientEmailsForScope(a.clientScope(c, "update"), req.Emails)
+	if err := a.clientService.ValidateInboundAccessForAdmin(a.loginUser(c), "update", req.InboundIds); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
@@ -462,7 +459,7 @@ func (a *ClientController) bulkDelete(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	if !a.checkResellerAccess(c, req.Emails...) { return }
+	req.Emails = a.clientService.FilterClientEmailsForScope(a.clientScope(c, "delete"), req.Emails)
 	result, needRestart, err := a.clientService.BulkDelete(&a.inboundService, req.Emails, req.KeepTraffic)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
@@ -511,32 +508,26 @@ func (a *ClientController) bulkCreate(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	if session.IsResellerLogin(c) {
-		resellerUsername := session.GetLoginResellerUsername(c)
-		for i := range payloads {
-			payloads[i].Client.CreatedBy = resellerUsername
-			var err error
-			payloads[i].InboundIds, err = a.filterResellerInbounds(c, payloads[i].InboundIds)
-			if err != nil {
-				jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
-				return
-			}
-		}
-	}
-	result, needRestart, err := a.clientService.BulkCreate(&a.inboundService, payloads)
+
+	result, needRestart, err := a.clientService.BulkCreateForAdmin(&a.inboundService, payloads, a.loginUser(c))
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
+
 	jsonObj(c, result, nil)
+
 	if needRestart {
 		a.xrayService.SetToNeedRestart()
 	}
+
 	notifyClientsChanged()
 }
 
 func (a *ClientController) delDepleted(c *gin.Context) {
-	if !a.ensureMaster(c) { return }
+	if !a.requireAllClientScope(c, "delete") {
+		return
+	}
 	deleted, needRestart, err := a.clientService.DelDepleted(&a.inboundService)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
@@ -553,20 +544,13 @@ func (a *ClientController) delDepleted(c *gin.Context) {
 // envelope. The frontend renders it in a read-only CodeMirror viewer (Copy /
 // Download), so this hands back data rather than streaming a file attachment.
 func (a *ClientController) export(c *gin.Context) {
+	if !a.requireAllClientScope(c, "view") {
+		return
+	}
 	items, err := a.clientService.ExportAll()
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
-	}
-	if session.IsResellerLogin(c) {
-		resellerUsername := session.GetLoginResellerUsername(c)
-		var filtered []service.ClientCreatePayload
-		for _, item := range items {
-			if item.Client.CreatedBy == resellerUsername {
-				filtered = append(filtered, item)
-			}
-		}
-		items = filtered
 	}
 	jsonObj(c, items, nil)
 }
@@ -579,6 +563,9 @@ type importClientsRequest struct {
 // mirroring the inbound import flow. The data string is itself a JSON-encoded
 // []ClientCreatePayload, so it is unmarshalled in a second step.
 func (a *ClientController) importClients(c *gin.Context) {
+	if !a.requireAllClientScope(c, "create") {
+		return
+	}
 	var req importClientsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
@@ -588,12 +575,6 @@ func (a *ClientController) importClients(c *gin.Context) {
 	if err := json.Unmarshal([]byte(req.Data), &items); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
-	}
-	if session.IsResellerLogin(c) {
-		resellerUsername := session.GetLoginResellerUsername(c)
-		for i := range items {
-			items[i].Client.CreatedBy = resellerUsername
-		}
 	}
 	result, needRestart, err := a.clientService.ImportClients(&a.inboundService, items)
 	if err != nil {
@@ -608,7 +589,9 @@ func (a *ClientController) importClients(c *gin.Context) {
 }
 
 func (a *ClientController) delOrphans(c *gin.Context) {
-	if !a.ensureMaster(c) { return }
+	if !a.requireAllClientScope(c, "delete") {
+		return
+	}
 	deleted, err := a.clientService.DeleteOrphans()
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
@@ -620,7 +603,13 @@ func (a *ClientController) delOrphans(c *gin.Context) {
 
 func (a *ClientController) resetTrafficByEmail(c *gin.Context) {
 	email := c.Param("email")
-	if !a.checkResellerAccess(c, email) { return }
+	if _, ok := a.requireClientPermission(c, email, "resetUsage"); !ok {
+		return
+	}
+	if err := a.clientService.ValidateAdminRoleFeatureForAdmin(session.GetLoginUser(c), "can_use_reset_strategy"); err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
 	needRestart, err := a.clientService.ResetTrafficByEmail(&a.inboundService, email)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
@@ -640,35 +629,78 @@ type trafficUpdateRequest struct {
 
 func (a *ClientController) updateTrafficByEmail(c *gin.Context) {
 	email := c.Param("email")
-	if !a.checkResellerAccess(c, email) { return }
+
+	if _, ok := a.requireClientPermission(c, email, "resetUsage"); !ok {
+		return
+	}
+	if err := a.clientService.ValidateAdminRoleFeatureForAdmin(session.GetLoginUser(c), "can_use_reset_strategy"); err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
+
 	var req trafficUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
+
 	if err := a.inboundService.UpdateClientTrafficByEmail(email, req.Upload, req.Download); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
+
 	jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.inboundClientUpdateSuccess"), nil)
 	notifyClientsChanged()
 }
 
 func (a *ClientController) getIps(c *gin.Context) {
 	email := c.Param("email")
-	if !a.checkResellerAccess(c, email) { return }
+	if _, ok := a.requireVisibleClient(c, email); !ok {
+		return
+	}
 	infos, err := a.inboundService.GetClientIpsWithNodes(email)
 	jsonObj(c, infos, err)
 }
 
 func (a *ClientController) clientIpsByGuid(c *gin.Context) {
 	data, err := a.inboundService.GetClientIpsByGuid()
-	jsonObj(c, data, err)
+	if err != nil {
+		jsonObj(c, data, err)
+		return
+	}
+
+	emails := make([]string, 0)
+	for _, byEmail := range data {
+		for email := range byEmail {
+			emails = append(emails, email)
+		}
+	}
+
+	visible := a.clientService.FilterClientEmailsForScope(a.clientScope(c, "view"), emails)
+	allowed := make(map[string]struct{}, len(visible))
+	for _, email := range visible {
+		allowed[email] = struct{}{}
+	}
+
+	for guid, byEmail := range data {
+		for email := range byEmail {
+			if _, ok := allowed[email]; !ok {
+				delete(byEmail, email)
+			}
+		}
+		if len(byEmail) == 0 {
+			delete(data, guid)
+		}
+	}
+
+	jsonObj(c, data, nil)
 }
 
 func (a *ClientController) clearIps(c *gin.Context) {
 	email := c.Param("email")
-	if !a.checkResellerAccess(c, email) { return }
+	if _, ok := a.requireClientPermission(c, email, "update"); !ok {
+		return
+	}
 	if err := a.inboundService.ClearClientIps(email); err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.updateSuccess"), err)
 		return
@@ -677,76 +709,24 @@ func (a *ClientController) clearIps(c *gin.Context) {
 }
 
 func (a *ClientController) onlines(c *gin.Context) {
-	onlines := a.inboundService.GetOnlineClients()
-	now := time.Now().UnixMilli()
-	var filtered []string
-	db := database.GetDB()
-	for _, email := range onlines {
-		if rec, err := a.clientService.GetRecordByEmail(nil, email); err == nil && rec != nil {
-			if !rec.Enable {
-				continue
-			}
-			if rec.ExpiryTime > 0 && now > rec.ExpiryTime {
-				continue
-			}
-			var count int64
-			if err := db.Table("inbounds").
-				Joins("JOIN client_inbounds ON client_inbounds.inbound_id = inbounds.id").
-				Joins("JOIN clients ON clients.id = client_inbounds.client_id").
-				Where("clients.email = ? AND inbounds.enable = ?", email, true).
-				Count(&count).Error; err == nil && count == 0 {
-				continue
-			}
-			if session.IsResellerLogin(c) {
-				resellerUsername := session.GetLoginResellerUsername(c)
-				if rec.CreatedBy != resellerUsername {
-					continue
-				}
-			}
-			filtered = append(filtered, email)
-		}
-	}
-	onlines = filtered
-	jsonObj(c, onlines, nil)
+	emails := a.inboundService.GetOnlineClients()
+	jsonObj(c, a.clientService.FilterClientEmailsForScope(a.clientScope(c, "view"), emails), nil)
 }
 
 func (a *ClientController) onlinesByGuid(c *gin.Context) {
 	data := a.inboundService.GetOnlineClientsByGuid()
-	now := time.Now().UnixMilli()
-	filtered := make(map[string][]string)
-	db := database.GetDB()
+
 	for guid, emails := range data {
-		var filteredEmails []string
-		for _, email := range emails {
-			if rec, err := a.clientService.GetRecordByEmail(nil, email); err == nil && rec != nil {
-				if !rec.Enable {
-					continue
-				}
-				if rec.ExpiryTime > 0 && now > rec.ExpiryTime {
-					continue
-				}
-				var count int64
-				if err := db.Table("inbounds").
-					Joins("JOIN client_inbounds ON client_inbounds.inbound_id = inbounds.id").
-					Joins("JOIN clients ON clients.id = client_inbounds.client_id").
-					Where("clients.email = ? AND inbounds.enable = ?", email, true).
-					Count(&count).Error; err == nil && count == 0 {
-					continue
-				}
-				if session.IsResellerLogin(c) {
-					resellerUsername := session.GetLoginResellerUsername(c)
-					if rec.CreatedBy != resellerUsername {
-						continue
-					}
-				}
-				filteredEmails = append(filteredEmails, email)
-			}
+		visible := a.clientService.FilterClientEmailsForScope(a.clientScope(c, "view"), emails)
+
+		if len(visible) == 0 {
+			delete(data, guid)
+			continue
 		}
-		if len(filteredEmails) > 0 {
-			filtered[guid] = filteredEmails
-		}
+
+		data[guid] = visible
 	}
-	data = filtered
+
 	jsonObj(c, data, nil)
 }
 
@@ -756,12 +736,34 @@ func (a *ClientController) activeInbounds(c *gin.Context) {
 
 func (a *ClientController) lastOnline(c *gin.Context) {
 	data, err := a.inboundService.GetClientsLastOnline()
-	jsonObj(c, data, err)
+	if err != nil {
+		jsonObj(c, nil, err)
+		return
+	}
+
+	emails := make([]string, 0, len(data))
+	for email := range data {
+		emails = append(emails, email)
+	}
+	visible := a.clientService.FilterClientEmailsForScope(a.clientScope(c, "view"), emails)
+	allowed := make(map[string]struct{}, len(visible))
+	for _, email := range visible {
+		allowed[email] = struct{}{}
+	}
+	for email := range data {
+		if _, ok := allowed[email]; !ok {
+			delete(data, email)
+		}
+	}
+
+	jsonObj(c, data, nil)
 }
 
 func (a *ClientController) getTrafficByEmail(c *gin.Context) {
 	email := c.Param("email")
-	if !a.checkResellerAccess(c, email) { return }
+	if _, ok := a.requireVisibleClient(c, email); !ok {
+		return
+	}
 	traffic, err := a.inboundService.GetClientTrafficByEmail(email)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.trafficGetError"), err)
@@ -771,35 +773,49 @@ func (a *ClientController) getTrafficByEmail(c *gin.Context) {
 }
 
 func (a *ClientController) getSubLinks(c *gin.Context) {
-	links, err := a.inboundService.GetSubLinks(resolveHost(c), c.Param("subId"))
+	subID := c.Param("subId")
+
+	if _, err := a.clientService.RequireClientForScopeBySubID(a.clientScope(c, "view"), subID); err != nil {
+		jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.obtain"), err)
+		return
+	}
+
+	links, err := a.inboundService.GetSubLinks(resolveHost(c), subID)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.obtain"), err)
 		return
 	}
+
 	jsonObj(c, links, nil)
 }
 
 func (a *ClientController) getClientLinks(c *gin.Context) {
-	if !a.checkResellerAccess(c, c.Param("email")) { return }
-	links, err := a.inboundService.GetAllClientLinks(resolveHost(c), c.Param("email"))
+	email := c.Param("email")
+
+	if _, ok := a.requireVisibleClient(c, email); !ok {
+		return
+	}
+
+	links, err := a.inboundService.GetAllClientLinks(resolveHost(c), email)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.obtain"), err)
 		return
 	}
+
 	jsonObj(c, links, nil)
 }
 
 func (a *ClientController) detach(c *gin.Context) {
 	email := c.Param("email")
-	if !a.checkResellerAccess(c, email) { return }
+	if _, ok := a.requireClientPermission(c, email, "update"); !ok {
+		return
+	}
 	var body attachDetachBody
 	if err := c.ShouldBindJSON(&body); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	var err error
-	body.InboundIds, err = a.filterResellerInbounds(c, body.InboundIds)
-	if err != nil {
+	if err := a.clientService.ValidateInboundAccessForAdmin(a.loginUser(c), "update", body.InboundIds); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
@@ -825,7 +841,11 @@ func (a *ClientController) bulkResetTraffic(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	if !a.checkResellerAccess(c, req.Emails...) { return }
+	if err := a.clientService.ValidateAdminRoleFeatureForAdmin(session.GetLoginUser(c), "can_use_reset_strategy"); err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
+	req.Emails = a.clientService.FilterClientEmailsForScope(a.clientScope(c, "resetUsage"), req.Emails)
 	affected, err := a.clientService.BulkResetTraffic(&a.inboundService, req.Emails)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
@@ -834,4 +854,145 @@ func (a *ClientController) bulkResetTraffic(c *gin.Context) {
 	jsonObj(c, gin.H{"affected": affected}, nil)
 	a.xrayService.SetToNeedRestart()
 	notifyClientsChanged()
+}
+
+// syncNodeActivity is the parent-to-child Activity replication endpoint. It
+// applies canonical monitoring state locally and returns an incremental,
+// absolute snapshot containing this panel and any descendants already merged
+// into it. Repeated requests are idempotent.
+func (a *ClientController) syncNodeActivity(c *gin.Context) {
+	var req model.ClientActivitySyncRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonObj(c, nil, err)
+		return
+	}
+
+	panelGUID, err := a.settingService.GetPanelGuid()
+	if err != nil {
+		jsonObj(c, nil, err)
+		return
+	}
+
+	response, err := a.activityService.ApplyNodeSyncAndExport(
+		panelGUID,
+		&req,
+	)
+	jsonObj(c, response, err)
+}
+
+// getActivityStatus returns the current opt-in monitoring state for one visible
+// client. It does not create a settings row when monitoring has never been
+// enabled; the service returns the canonical disabled default instead.
+func (a *ClientController) getActivityStatus(c *gin.Context) {
+	email := c.Param("email")
+
+	client, ok := a.requireVisibleClient(c, email)
+	if !ok {
+		return
+	}
+
+	status, err := a.activityService.StatusByClientID(client.Id)
+	if err != nil {
+		jsonObj(c, nil, err)
+		return
+	}
+
+	jsonObj(c, status, nil)
+}
+
+// startActivityMonitoring enables destination Activity collection without
+// restarting Xray. The Core allowlist synchronization job publishes the new
+// generation during its next synchronization cycle.
+func (a *ClientController) startActivityMonitoring(c *gin.Context) {
+	email := c.Param("email")
+
+	client, ok := a.requireClientPermission(c, email, "update")
+	if !ok {
+		return
+	}
+
+	status, err := a.activityService.SetMonitoringByClientID(
+		client.Id,
+		true,
+	)
+	if err != nil {
+		jsonObj(c, nil, err)
+		return
+	}
+
+	jsonObj(c, status, nil)
+	notifyClientsChanged()
+}
+
+// stopActivityMonitoring stops accepting new Activity events while preserving
+// all existing destination history.
+func (a *ClientController) stopActivityMonitoring(c *gin.Context) {
+	email := c.Param("email")
+
+	client, ok := a.requireClientPermission(c, email, "update")
+	if !ok {
+		return
+	}
+
+	status, err := a.activityService.SetMonitoringByClientID(
+		client.Id,
+		false,
+	)
+	if err != nil {
+		jsonObj(c, nil, err)
+		return
+	}
+
+	jsonObj(c, status, nil)
+	notifyClientsChanged()
+}
+
+// resetActivityData clears destination history atomically while leaving the
+// current enabled or disabled monitoring state unchanged.
+func (a *ClientController) resetActivityData(c *gin.Context) {
+	email := c.Param("email")
+
+	client, ok := a.requireClientPermission(c, email, "update")
+	if !ok {
+		return
+	}
+
+	status, err := a.activityService.ResetByClientID(client.Id)
+	if err != nil {
+		jsonObj(c, nil, err)
+		return
+	}
+
+	jsonObj(c, status, nil)
+	notifyClientsChanged()
+}
+
+// getActivity returns the current Activity epoch as a bounded paginated list.
+// The UI deliberately renders only destination, source IP, upload, and download.
+func (a *ClientController) getActivity(c *gin.Context) {
+	email := c.Param("email")
+
+	client, ok := a.requireVisibleClient(c, email)
+	if !ok {
+		return
+	}
+
+	page, _ := strconv.Atoi(
+		c.DefaultQuery("page", "1"),
+	)
+	pageSize, _ := strconv.Atoi(
+		c.DefaultQuery("pageSize", "100"),
+	)
+
+	result, err := a.activityService.ListByClientID(
+		client.Id,
+		page,
+		pageSize,
+	)
+	if err != nil {
+		jsonObj(c, nil, err)
+		return
+	}
+
+	jsonObj(c, result, nil)
 }

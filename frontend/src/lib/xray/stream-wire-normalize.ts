@@ -1,4 +1,4 @@
-// Shapes the streamSettings subtree that d-ui persists to match what
+// Shapes the streamSettings subtree that 3x-ui persists to match what
 // xray-core actually consumes. The panel's Zod defaults mirror the full
 // SplitHTTPConfig / SockoptObject schema, but many fields are mode-specific
 // (packet-up vs stream-one) or side-specific (inbound vs outbound). Emitting
@@ -46,7 +46,7 @@ function hasMeaningfulHeaders(headers: unknown): boolean {
 // Upper bound of an xray-core Int32Range value: "16-32" -> 32, "4" -> 4,
 // 4 -> 4, "" / null -> 0. xmux fields are ranges, and xray-core keys its
 // mutual-exclusivity check on the `.To` (upper) side.
-function int32RangeUpper(v: unknown): number {
+export function int32RangeUpper(v: unknown): number {
   if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
   if (typeof v !== 'string') return 0;
   const trimmed = v.trim();
@@ -57,13 +57,9 @@ function int32RangeUpper(v: unknown): number {
 }
 
 // xray-core's XmuxConfig rejects a config that sets BOTH maxConnections
-// and maxConcurrency ("maxConnections cannot be specified together with
-// maxConcurrency"). The panel pre-fills maxConcurrency ("16-32") whenever
-// XMUX is enabled, so any explicit maxConnections would otherwise always
-// collide and make xray refuse the config. maxConnections defaults to 0
-// (off), so a positive value is an explicit opt-in to connection-pool
-// mode — honor it and drop the leftover default maxConcurrency, matching
-// core's "one strategy at a time" semantics.
+// and maxConcurrency. A positive maxConnections is an explicit opt-in to
+// connection-pool mode — honor it and drop the leftover maxConcurrency
+// default that load-time hydration backfills onto older saved configs.
 function resolveXmuxExclusivity(xmux: Record<string, unknown>): Record<string, unknown> {
   if (int32RangeUpper(xmux.maxConnections) > 0 && int32RangeUpper(xmux.maxConcurrency) > 0) {
     const out = { ...xmux };
@@ -267,7 +263,6 @@ export function normalizeSockoptForWire(
   const he = out.happyEyeballs;
   if (isRecord(he)) {
     const heOut: Record<string, unknown> = { ...he };
-    if (heOut.tryDelayMs === 0) delete heOut.tryDelayMs;
     if (heOut.prioritizeIPv6 === false) delete heOut.prioritizeIPv6;
     if (heOut.interleave === 1) delete heOut.interleave;
     if (heOut.maxConcurrentTry === 4) delete heOut.maxConcurrentTry;

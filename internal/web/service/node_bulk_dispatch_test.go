@@ -16,20 +16,41 @@ import (
 // fakeNodeRuntime is a runtime.Runtime stub that counts the per-client dispatch
 // calls so a test can assert a bulk op does NOT stream one RPC per client.
 type fakeNodeRuntime struct {
-	addClient  atomic.Int32
-	deleteUser atomic.Int32
-	updateUser atomic.Int32
+	addInbound        atomic.Int32
+	delInbound        atomic.Int32
+	addClient         atomic.Int32
+	deleteClient      atomic.Int32
+	deleteClientBatch atomic.Int32
+	deleteUser        atomic.Int32
+	updateInbound     atomic.Int32
+	updateUser        atomic.Int32
+	deleteClientErr   error
 }
+
+var _ runtime.Runtime = (*fakeNodeRuntime)(nil)
+var _ remoteClientDeleter = (*fakeNodeRuntime)(nil)
 
 func (f *fakeNodeRuntime) Name() string { return "fake-node" }
 
-func (f *fakeNodeRuntime) AddInbound(context.Context, *model.Inbound) error { return nil }
-func (f *fakeNodeRuntime) DelInbound(context.Context, *model.Inbound) error { return nil }
-func (f *fakeNodeRuntime) UpdateInbound(context.Context, *model.Inbound, *model.Inbound) error {
+func (f *fakeNodeRuntime) AddInbound(context.Context, *model.Inbound) error {
+	f.addInbound.Add(1)
 	return nil
 }
+
+func (f *fakeNodeRuntime) DelInbound(context.Context, *model.Inbound) error {
+	f.delInbound.Add(1)
+	return nil
+}
+
+func (f *fakeNodeRuntime) UpdateInbound(context.Context, *model.Inbound, *model.Inbound) error {
+	f.updateInbound.Add(1)
+	return nil
+}
+
 func (f *fakeNodeRuntime) AddUser(context.Context, *model.Inbound, map[string]any) error { return nil }
-func (f *fakeNodeRuntime) RemoveUser(context.Context, *model.Inbound, string) error      { return nil }
+
+func (f *fakeNodeRuntime) RemoveUser(context.Context, *model.Inbound, string) error { return nil }
+
 func (f *fakeNodeRuntime) UpdateUser(context.Context, *model.Inbound, string, model.Client) error {
 	f.updateUser.Add(1)
 	return nil
@@ -40,6 +61,21 @@ func (f *fakeNodeRuntime) DeleteUser(context.Context, *model.Inbound, string) er
 	return nil
 }
 
+func (f *fakeNodeRuntime) DeleteClient(context.Context, string) error {
+	f.deleteClient.Add(1)
+	return f.deleteClientErr
+}
+
+func (f *fakeNodeRuntime) DeleteClientRecord(context.Context, string, bool) error {
+	f.deleteClient.Add(1)
+	return f.deleteClientErr
+}
+
+func (f *fakeNodeRuntime) DeleteClientRecords(_ context.Context, emails []string, _ bool) error {
+	f.deleteClientBatch.Add(1)
+	f.deleteClient.Add(int32(len(emails)))
+	return f.deleteClientErr
+}
 func (f *fakeNodeRuntime) AddClient(context.Context, *model.Inbound, model.Client) error {
 	f.addClient.Add(1)
 	return nil
@@ -61,10 +97,13 @@ func setupNodeRuntime(t *testing.T) (int, *fakeNodeRuntime) {
 	runtime.SetManager(mgr)
 	t.Cleanup(func() { runtime.SetManager(prev) })
 
-	node := &model.Node{Name: "n1", Address: "127.0.0.1", Port: 2096, ApiToken: "tok", Enable: true, Status: "online"}
+	node := &model.Node{Name: "n1-" + t.Name(), Address: "127.0.0.1", Port: 2096, ApiToken: "tok", Enable: true, Status: "online"}
 	if err := database.GetDB().Create(node).Error; err != nil {
 		t.Fatalf("create node: %v", err)
 	}
+	t.Cleanup(func() {
+		_ = database.GetDB().Where("id = ?", node.Id).Delete(&model.Node{}).Error
+	})
 	fake := &fakeNodeRuntime{}
 	mgr.SetRuntimeOverride(node.Id, fake)
 	return node.Id, fake
@@ -141,6 +180,81 @@ func TestNodeBulk_SmallAddPushesLive(t *testing.T) {
 	}
 }
 
+func TestNodeUpdateInboundClientNoopSkipsRuntimeAndDirty(t *testing.T) {
+	setupBulkDB(t)
+	nodeID, fake := setupNodeRuntime(t)
+	client := model.Client{
+		ID:        uuid.NewString(),
+		Email:     "noop@x",
+		SubID:     "sub-noop",
+		Enable:    true,
+		CreatedAt: 111,
+		UpdatedAt: 222,
+	}
+	ib := nodeInbound(t, nodeID, 30020, []model.Client{client})
+
+	svc := &ClientService{}
+	inboundSvc := &InboundService{}
+	if _, err := svc.UpdateInboundClient(inboundSvc, &model.Inbound{
+		Id:       ib.Id,
+		Protocol: model.VLESS,
+		Settings: clientsSettings(t, []model.Client{client}),
+	}, client.Email); err != nil {
+		t.Fatalf("UpdateInboundClient: %v", err)
+	}
+
+	if got := fake.updateUser.Load(); got != 0 {
+		t.Fatalf("no-op update streamed %d UpdateUser RPCs, want 0", got)
+	}
+	if _, _, dirty, _, err := (&NodeService{}).NodeSyncState(nodeID); err != nil {
+		t.Fatalf("NodeSyncState: %v", err)
+	} else if dirty {
+		t.Fatal("no-op update must not mark the node dirty")
+	}
+	reloaded, err := inboundSvc.GetInbound(ib.Id)
+	if err != nil {
+		t.Fatalf("GetInbound: %v", err)
+	}
+	if reloaded.Settings != ib.Settings {
+		t.Fatal("no-op update rewrote inbound settings")
+	}
+}
+
+func TestNodeUpdateInboundClientLivePushKeepsDirtyBackup(t *testing.T) {
+	setupBulkDB(t)
+	nodeID, fake := setupNodeRuntime(t)
+	client := model.Client{
+		ID:        uuid.NewString(),
+		Email:     "edit@x",
+		SubID:     "sub-edit",
+		Enable:    true,
+		CreatedAt: 111,
+		UpdatedAt: 222,
+	}
+	ib := nodeInbound(t, nodeID, 30021, []model.Client{client})
+
+	edited := client
+	edited.Comment = "changed"
+	svc := &ClientService{}
+	inboundSvc := &InboundService{}
+	if _, err := svc.UpdateInboundClient(inboundSvc, &model.Inbound{
+		Id:       ib.Id,
+		Protocol: model.VLESS,
+		Settings: clientsSettings(t, []model.Client{edited}),
+	}, client.Email); err != nil {
+		t.Fatalf("UpdateInboundClient: %v", err)
+	}
+
+	if got := fake.updateUser.Load(); got != 1 {
+		t.Fatalf("edit streamed %d UpdateUser RPCs, want 1", got)
+	}
+	if _, _, dirty, _, err := (&NodeService{}).NodeSyncState(nodeID); err != nil {
+		t.Fatalf("NodeSyncState: %v", err)
+	} else if !dirty {
+		t.Fatal("successful live update should keep node dirty as reconcile backup")
+	}
+}
+
 // TestNodeBulk_LargeDeleteFoldsToDirty: deleting more than the threshold from an
 // online node inbound must fold into a reconcile rather than per-client deletes.
 func TestNodeBulk_LargeDeleteFoldsToDirty(t *testing.T) {
@@ -167,5 +281,124 @@ func TestNodeBulk_LargeDeleteFoldsToDirty(t *testing.T) {
 		t.Fatalf("NodeSyncState: %v", err)
 	} else if !dirty {
 		t.Fatal("large delete must mark the node dirty")
+	}
+}
+
+func TestAttachDisabledClientPreservesStateAndSkipsIncrementalNodePush(t *testing.T) {
+	setupBulkDB(t)
+	nodeID, fake := setupNodeRuntime(t)
+	target := nodeInbound(t, nodeID, 30004, nil)
+
+	clientSvc := &ClientService{}
+	inboundSvc := &InboundService{}
+	email := "disabled-attach@x"
+	client := model.Client{
+		ID:     uuid.NewString(),
+		Email:  email,
+		SubID:  "disabled-attach",
+		Enable: false,
+	}
+	source := mkInbound(t, 30005, model.VLESS, clientsSettings(t, []model.Client{client}))
+	if err := clientSvc.SyncInbound(nil, source.Id, []model.Client{client}); err != nil {
+		t.Fatalf("seed source SyncInbound: %v", err)
+	}
+	forceRecordDisabled(t, clientSvc, email)
+	mkTraffic(t, source.Id, email, 0, 0, 0, 0, false)
+
+	record, err := clientSvc.GetRecordByEmail(nil, email)
+	if err != nil {
+		t.Fatalf("GetRecordByEmail: %v", err)
+	}
+	if _, err := clientSvc.Attach(inboundSvc, record.Id, []int{target.Id}); err != nil {
+		t.Fatalf("Attach: %v", err)
+	}
+
+	if got := fake.addClient.Load(); got != 0 {
+		t.Fatalf("disabled attach sent %d incremental AddClient RPCs, want 0", got)
+	}
+	if got := jsonClientEnable(t, inboundSvc, target.Id, email); got {
+		t.Fatal("disabled canonical state was resurrected in target inbound JSON")
+	}
+	if _, _, dirty, _, err := (&NodeService{}).NodeSyncState(nodeID); err != nil {
+		t.Fatalf("NodeSyncState: %v", err)
+	} else if !dirty {
+		t.Fatal("disabled attach must leave a durable full-reconcile request")
+	}
+}
+
+func TestBulkAttachDisabledClientPreservesStateAndSkipsIncrementalNodePush(t *testing.T) {
+	setupBulkDB(t)
+	nodeID, fake := setupNodeRuntime(t)
+	target := nodeInbound(t, nodeID, 30006, nil)
+
+	clientSvc := &ClientService{}
+	inboundSvc := &InboundService{}
+	email := "disabled-bulk-attach@x"
+	client := model.Client{
+		ID:     uuid.NewString(),
+		Email:  email,
+		SubID:  "disabled-bulk-attach",
+		Enable: false,
+	}
+	source := mkInbound(t, 30007, model.VLESS, clientsSettings(t, []model.Client{client}))
+	if err := clientSvc.SyncInbound(nil, source.Id, []model.Client{client}); err != nil {
+		t.Fatalf("seed source SyncInbound: %v", err)
+	}
+	forceRecordDisabled(t, clientSvc, email)
+	mkTraffic(t, source.Id, email, 0, 0, 0, 0, false)
+
+	result, _, err := clientSvc.BulkAttach(inboundSvc, []string{email}, []int{target.Id})
+	if err != nil {
+		t.Fatalf("BulkAttach: %v", err)
+	}
+	if len(result.Errors) != 0 {
+		t.Fatalf("BulkAttach errors: %v", result.Errors)
+	}
+	if got := fake.addClient.Load(); got != 0 {
+		t.Fatalf("disabled bulk attach sent %d incremental AddClient RPCs, want 0", got)
+	}
+	if got := jsonClientEnable(t, inboundSvc, target.Id, email); got {
+		t.Fatal("disabled canonical state was resurrected by BulkAttach")
+	}
+	if _, _, dirty, _, err := (&NodeService{}).NodeSyncState(nodeID); err != nil {
+		t.Fatalf("NodeSyncState: %v", err)
+	} else if !dirty {
+		t.Fatal("disabled BulkAttach must leave a durable full-reconcile request")
+	}
+}
+
+func TestDelInbound_NodeSelectedModeDeletesRemoteImmediately(t *testing.T) {
+	setupBulkDB(t)
+	nodeID, fake := setupNodeRuntime(t)
+	if err := database.GetDB().Model(&model.Node{}).Where("id = ?", nodeID).
+		Updates(map[string]any{
+			"inbound_sync_mode": "selected",
+			"inbound_tags":      []string{"other-tag"},
+		}).Error; err != nil {
+		t.Fatalf("set selected mode: %v", err)
+	}
+	ib := nodeInbound(t, nodeID, 30004, makeNodeClients(1))
+
+	needRestart, err := (&InboundService{}).DelInbound(ib.Id)
+	if err != nil {
+		t.Fatalf("DelInbound: %v", err)
+	}
+	if needRestart {
+		t.Fatal("node-owned delete should not request local restart")
+	}
+	if got := fake.delInbound.Load(); got != 1 {
+		t.Fatalf("node-owned delete streamed %d DelInbound RPCs, want 1", got)
+	}
+	var count int64
+	if err := database.GetDB().Model(&model.Inbound{}).Where("id = ?", ib.Id).Count(&count).Error; err != nil {
+		t.Fatalf("count inbound: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("deleted inbound row count = %d, want 0", count)
+	}
+	if _, _, dirty, _, err := (&NodeService{}).NodeSyncState(nodeID); err != nil {
+		t.Fatalf("NodeSyncState: %v", err)
+	} else if !dirty {
+		t.Fatal("node-owned delete should still mark the node dirty as reconcile backup")
 	}
 }

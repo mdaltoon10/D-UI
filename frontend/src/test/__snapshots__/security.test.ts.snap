@@ -23,6 +23,7 @@ exports[`SecuritySettingsSchema fixtures > parses reality-basic byte-stably 1`] 
       "mldsa65Verify": "",
       "publicKey": "Tx5yj1bRcOPHkdvT2pIAQ2zh0gQ8m4OPdnzqXJxxV3o",
       "serverName": "",
+      "shortId": "",
       "spiderX": "/",
     },
     "shortIds": [

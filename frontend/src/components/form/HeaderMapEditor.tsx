@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Input, Space } from 'antd';
 import { MinusOutlined, PlusOutlined } from '@ant-design/icons';
@@ -38,6 +38,8 @@ interface HeaderMapEditorProps {
   mode: HeaderMapMode;
   value?: HeaderMapValue;
   onChange?: (next: Record<string, string> | Record<string, string[]>) => void;
+  variant?: 'default' | 'profile';
+  label?: ReactNode;
 }
 
 function mapToRows(value: HeaderMapValue): HeaderRow[] {
@@ -74,7 +76,13 @@ function rowsToMap(rows: HeaderRow[], mode: HeaderMapMode): Record<string, strin
   return map;
 }
 
-export default function HeaderMapEditor({ mode, value, onChange }: HeaderMapEditorProps) {
+export default function HeaderMapEditor({
+  mode,
+  value,
+  onChange,
+  variant = 'default',
+  label,
+}: HeaderMapEditorProps) {
   const { t } = useTranslation();
   // Local state holds rows including blanks. Without it, addRow() would
   // append a {name:'', value:''} that rowsToMap immediately filters out
@@ -115,6 +123,55 @@ export default function HeaderMapEditor({ mode, value, onChange }: HeaderMapEdit
     const next = rows.slice();
     next.splice(index, 1);
     commit(next);
+  }
+
+  if (variant === 'profile') {
+    return (
+      <div className="ext-proxy-header-editor">
+        <div className="ext-proxy-header-editor__toolbar">
+          {label != null && (
+            <span className="ext-proxy-header-editor__title">{label}</span>
+          )}
+          <Button
+            className="ext-proxy-header-editor__add"
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={addRow}
+          >
+            {t('add')}
+          </Button>
+        </div>
+
+        {rows.length > 0 && (
+          <div className="ext-proxy-header-editor__rows">
+            {rows.map((row, idx) => (
+              <div className="ext-proxy-header-editor__row" key={idx}>
+                <Input
+                  className="ext-proxy-header-editor__name"
+                  value={row.name}
+                  placeholder="Name"
+                  aria-label={`Header name ${idx + 1}`}
+                  onChange={(e) => setRow(idx, { name: e.target.value })}
+                />
+                <Input
+                  className="ext-proxy-header-editor__value"
+                  value={row.value}
+                  placeholder="Value"
+                  aria-label={`Header value ${idx + 1}`}
+                  onChange={(e) => setRow(idx, { value: e.target.value })}
+                />
+                <Button
+                  className="ext-proxy-header-editor__remove"
+                  aria-label={t('remove')}
+                  icon={<MinusOutlined />}
+                  onClick={() => removeRow(idx)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (

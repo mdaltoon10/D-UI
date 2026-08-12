@@ -83,24 +83,9 @@ func serveDistPage(c *gin.Context, name string) {
 		basePath = "/"
 	}
 
-	// Normalize basePath for injection: should start with / and end with /
-	if !strings.HasPrefix(basePath, "/") {
-		basePath = "/" + basePath
-	}
-	if !strings.HasSuffix(basePath, "/") {
-		basePath += "/"
-	}
-
-	cleanBasePath := basePath
-
-	// Rewrite static asset paths to include the base path
-	if cleanBasePath != "/" {
-		body = bytes.ReplaceAll(body, []byte(`src="/assets/`), []byte(`src="`+cleanBasePath+`assets/`))
-		body = bytes.ReplaceAll(body, []byte(`href="/assets/`), []byte(`href="`+cleanBasePath+`assets/`))
-		body = bytes.ReplaceAll(body, []byte(`src="./assets/`), []byte(`src="`+cleanBasePath+`assets/`))
-		body = bytes.ReplaceAll(body, []byte(`href="./assets/`), []byte(`href="`+cleanBasePath+`assets/`))
-		// Handle link modulepreload and dynamic imports
-		body = bytes.ReplaceAll(body, []byte(`"/assets/`), []byte(`"`+cleanBasePath+`assets/`))
+	if basePath != "/" {
+		body = bytes.ReplaceAll(body, []byte(`src="/assets/`), []byte(`src="`+basePath+`assets/`))
+		body = bytes.ReplaceAll(body, []byte(`href="/assets/`), []byte(`href="`+basePath+`assets/`))
 	}
 
 	jsEscape := strings.NewReplacer(
@@ -125,15 +110,7 @@ func serveDistPage(c *gin.Context, name string) {
 	if nonce := c.GetString("csp_nonce"); nonce != "" {
 		nonceAttr = ` nonce="` + htmlpkg.EscapeString(nonce) + `"`
 	}
-	script := `<script` + nonceAttr + `>window.X_UI_BASE_PATH="` + escapedBase + `"`
-	isReseller := session.IsResellerLogin(c) || c.GetBool("is_reseller")
-	if isReseller {
-		script += `;window.X_UI_IS_RESELLER=true`
-		if username := session.GetLoginResellerUsername(c); username != "" {
-			escapedResellerUser := jsEscape.Replace(username)
-			script += `;window.X_UI_RESELLER_USER="` + escapedResellerUser + `"`
-		}
-	}
+	script := `<script data-cfasync="false"` + nonceAttr + `>window.X_UI_BASE_PATH="` + escapedBase + `"`
 	if name != "login.html" {
 		escapedVer := jsEscape.Replace(config.GetPanelVersion())
 		script += `;window.X_UI_CUR_VER="` + escapedVer + `"`
@@ -151,8 +128,4 @@ func serveDistPage(c *gin.Context, name string) {
 	c.Header("Expires", "0")
 	c.Header("Last-Modified", distPageBuildTime.UTC().Format(http.TimeFormat))
 	c.Data(http.StatusOK, "text/html; charset=utf-8", out)
-}
-
-func serveDistAsset(c *gin.Context, name string) {
-	c.FileFromFS("dist/"+strings.TrimPrefix(name, "/"), http.FS(distFS))
 }

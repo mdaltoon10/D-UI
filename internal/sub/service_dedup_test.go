@@ -17,8 +17,8 @@ import (
 // (inbound, client).
 func TestGetSubs_DuplicateSettingsClients_Deduped(t *testing.T) {
 	dbDir := t.TempDir()
-	t.Setenv("DUI_DB_FOLDER", dbDir)
-	if err := database.InitDB(filepath.Join(dbDir, "d-ui.db")); err != nil {
+	t.Setenv("XUI_DB_FOLDER", dbDir)
+	if err := database.InitDB(filepath.Join(dbDir, "x-ui.db")); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	t.Cleanup(func() { _ = database.CloseDB() })
@@ -75,8 +75,8 @@ func TestGetSubs_DuplicateSettingsClients_Deduped(t *testing.T) {
 // would emit both. The first row by id must win, matching the old settings-JSON order.
 func TestMatchingClients_DedupsCaseInsensitiveEmail(t *testing.T) {
 	dbDir := t.TempDir()
-	t.Setenv("DUI_DB_FOLDER", dbDir)
-	if err := database.InitDB(filepath.Join(dbDir, "d-ui.db")); err != nil {
+	t.Setenv("XUI_DB_FOLDER", dbDir)
+	if err := database.InitDB(filepath.Join(dbDir, "x-ui.db")); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	t.Cleanup(func() { _ = database.CloseDB() })

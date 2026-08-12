@@ -70,6 +70,7 @@ func ComputeHotDiff(oldCfg, newCfg *Config) (*HotDiff, bool) {
 		{"burstObservatory", oldCfg.BurstObservatory, newCfg.BurstObservatory},
 		{"metrics", oldCfg.Metrics, newCfg.Metrics},
 		{"geodata", oldCfg.Geodata, newCfg.Geodata},
+		{"env", oldCfg.Env, newCfg.Env},
 	}
 	for _, section := range static {
 		if !rawEqualNormalized(section.old, section.new) {
@@ -301,6 +302,21 @@ func diffOutbounds(oldCfg, newCfg *Config, diff *HotDiff) bool {
 	newByTag := make(map[string]outboundEntry, len(newOut))
 	for _, e := range newOut {
 		newByTag[e.tag] = e
+	}
+
+	// The panel's embedded xray-core cannot build a public plaintext VLESS
+	// outbound, while Heimdall's deployed custom core intentionally can. Any
+	// added or changed outbound in that compatibility class must therefore be
+	// applied by a full process restart instead of HandlerService.AddOutbound.
+	for _, newE := range newOut {
+		oldE, exists := oldByTag[newE.tag]
+		if exists && bytes.Equal(oldE.norm, newE.norm) {
+			continue
+		}
+		if OutboundRequiresExternalCoreRestart(newE.raw) {
+			logger.Debug("hot diff: outbound [", newE.tag, "] requires the external custom core, falling back to restart")
+			return false
+		}
 	}
 
 	for _, oldE := range oldOut {

@@ -52,6 +52,34 @@ func TestChar_C1_VlessExternalProxy(t *testing.T) {
 	}
 }
 
+func TestChar_VlessBlankProfileInheritsNodeAddress(t *testing.T) {
+	stream := `{
+		"network":"tcp",
+		"security":"none",
+		"tcpSettings":{"header":{"type":"none"}},
+		"externalProxy":[
+			{"enabled":true,"forceTls":"same","dest":"   ","port":0,"remark":"inherit"}
+		]
+	}`
+
+	nodeID := 7
+	inbound := charVlessInbound(stream)
+	inbound.NodeID = &nodeID
+	inbound.ShareAddrStrategy = "node"
+
+	s := &SubService{
+		address: "panel.example.com",
+		nodesByID: map[int]*model.Node{
+			7: {Id: 7, Address: "node7.example.com"},
+		},
+	}
+
+	link := s.genVlessLink(inbound, "user")
+	if !strings.Contains(link, "@node7.example.com:443?") {
+		t.Fatalf("blank profile did not inherit node address/port: %s", link)
+	}
+}
+
 // C4 — VLESS reality base + 1 externalProxy with forceTls "same". Locks the
 // "same keeps the base security (reality)" passthrough. spx is randomized so the
 // fixed fields are asserted by Contains.

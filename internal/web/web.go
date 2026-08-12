@@ -1,4 +1,4 @@
-// Package web provides the main web server implementation for the d-ui panel,
+// Package web provides the main web server implementation for the 3x-ui panel,
 // including HTTP/HTTPS serving, routing, templates, and background job scheduling.
 package web
 
@@ -29,7 +29,6 @@ import (
 	"github.com/mdaltoon10/D-UI/v3/internal/web/network"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/runtime"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/service"
-	"github.com/mdaltoon10/D-UI/v3/internal/web/session"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/service/email"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/service/panel"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/service/tgbot"
@@ -108,13 +107,13 @@ func EmbeddedDist() embed.FS {
 	return distFS
 }
 
-// Server represents the main web server for the d-ui panel with controllers, services, and scheduled jobs.
+// Server represents the main web server for the 3x-ui panel with controllers, services, and scheduled jobs.
 type Server struct {
 	httpServer *http.Server
 	listener   net.Listener
 
 	index *controller.IndexController
-	panel *controller.DUIController
+	panel *controller.XUIController
 	api   *controller.APIController
 	ws    *controller.WebSocketController
 
@@ -193,21 +192,13 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	session.SetMasterBasePath(basePath)
-	gzipHandler := gzip.Gzip(gzip.DefaultCompression)
-	engine.Use(func(c *gin.Context) {
-		if c.GetHeader("X-Reseller-Redirected") == "true" {
-			c.Next()
-			return
-		}
-		gzipHandler(c)
-	})
+	engine.Use(gzip.Gzip(gzip.DefaultCompression))
 	assetsBasePath := basePath + "assets/"
 
 	store := cookie.NewStore(secret)
 	// Configure default session cookie options, including expiration (MaxAge)
 	sessionOptions := sessions.Options{
-		Path:     "/",
+		Path:     basePath,
 		HttpOnly: true,
 		Secure:   directHTTPS,
 		SameSite: http.SameSiteLaxMode,
@@ -216,54 +207,9 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 		sessionOptions.MaxAge = sessionMaxAge * 60 // minutes -> seconds
 	}
 	store.Options(sessionOptions)
-	httpMiddleware := sessions.Sessions("d-ui-session", store)
-	httpsMiddleware := sessions.Sessions("d-ui-sec", store)
+	engine.Use(sessions.Sessions("3x-ui", store))
 	engine.Use(func(c *gin.Context) {
-		isHTTPS := c.Request.TLS != nil || strings.ToLower(c.Request.Header.Get("X-Forwarded-Proto")) == "https"
-		if isHTTPS {
-			httpsMiddleware(c)
-		} else {
-			httpMiddleware(c)
-		}
-	})
-	engine.Use(func(c *gin.Context) {
-		s := sessions.Default(c)
-		opts := sessionOptions
-
-		isHTTPS := c.Request.TLS != nil || strings.ToLower(c.Request.Header.Get("X-Forwarded-Proto")) == "https"
-
-		if isHTTPS {
-			opts.Secure = true
-		} else {
-			opts.Secure = false
-		}
-		s.Options(opts)
-		c.Next()
-	})
-	engine.Use(middleware.ResellerPathMiddleware(basePath))
-	engine.Use(func(c *gin.Context) {
-		if res := c.GetHeader("X-Reseller-Base-Path"); res != "" {
-			c.Set("base_path", res)
-		} else if _, exists := c.Get("base_path"); !exists {
-			c.Set("base_path", basePath)
-		}
-	})
-	engine.Use(func(c *gin.Context) {
-		if isReseller, exists := c.Get("is_reseller"); exists {
-			if isRes, ok := isReseller.(bool); ok && isRes {
-				if basePathVal, exists2 := c.Get("base_path"); exists2 {
-					if bp, ok2 := basePathVal.(string); ok2 && bp != "" {
-						s := sessions.Default(c)
-						opts := sessionOptions
-						isHTTPS := c.Request.TLS != nil || strings.ToLower(c.Request.Header.Get("X-Forwarded-Proto")) == "https"
-						opts.Secure = isHTTPS
-						opts.Path = bp
-						s.Options(opts)
-					}
-				}
-			}
-		}
-		c.Next()
+		c.Set("base_path", basePath)
 	})
 	engine.Use(func(c *gin.Context) {
 		uri := c.Request.RequestURI
@@ -287,10 +233,8 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	// rooted at `dist/assets/`.
 	if config.IsDebug() {
 		engine.StaticFS(basePath+"assets", http.FS(os.DirFS("internal/web/dist/assets")))
-		engine.StaticFS(basePath+"panel/assets", http.FS(os.DirFS("internal/web/dist/assets")))
 	} else {
 		engine.StaticFS(basePath+"assets", http.FS(&wrapDistFS{FS: distFS}))
-		engine.StaticFS(basePath+"panel/assets", http.FS(&wrapDistFS{FS: distFS}))
 	}
 
 	// Hand the embedded `dist/` filesystem to the controller package
@@ -324,37 +268,10 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	// Let unknown panel document routes fall back to the SPA shell, while every
 	// non-SPA miss still returns a hard 404.
 	engine.NoRoute(func(c *gin.Context) {
-		basePathAttr := c.GetString("base_path")
-		if basePathAttr != "" && basePathAttr != "/" && c.GetHeader("X-Reseller-Redirected") != "true" {
-			prefix := strings.Trim(basePathAttr, "/")
-			reqPath := c.Request.URL.Path
-			// If the path was not already rewritten by the middleware and starts with /<prefix>
-			if strings.HasPrefix(reqPath, "/"+prefix+"/") || reqPath == "/"+prefix {
-				newPath := strings.TrimPrefix(reqPath, "/"+prefix)
-				if newPath == "" || newPath == "/" {
-					newPath = basePath
-				} else {
-					newPath = strings.TrimRight(basePath, "/") + "/" + strings.TrimLeft(newPath, "/")
-				}
-				c.Request.URL.Path = newPath
-			}
-
-			// Re-route the request inside the engine
-			c.Request.Header.Set("X-Reseller-Redirected", "true")
-			c.Request.Header.Set("X-Reseller-Base-Path", basePathAttr)
-			engine.ServeHTTP(c.Writer, c.Request)
-			c.Abort()
-			return
-		}
-
-		if c.GetString("base_path") == "" && c.GetHeader("X-Reseller-Base-Path") != "" {
-			c.Set("base_path", c.GetHeader("X-Reseller-Base-Path"))
-		}
-
 		if s.panel.HandleNoRoutePanelSPA(c) {
 			return
 		}
-		c.String(http.StatusNotFound, "404 Not Found")
+		c.AbortWithStatus(http.StatusNotFound)
 	})
 
 	return engine, nil
@@ -367,15 +284,17 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 // node/xray state is unchanged, and export per-job duration/skipped/error
 // counters.
 const (
-	cadenceXrayRunning   = "@every 1s"
-	cadenceXrayRestart   = "@every 30s"
-	cadenceXrayTraffic   = "@every 5s"
-	cadenceMtproto       = "@every 10s"
-	cadenceClientIPScan  = "@every 2s"
-	cadenceNodeHeartbeat = "@every 5s"
-	cadenceNodeTraffic   = "@every 5s"
-	cadenceOutboundSub   = "@every 5m"
-	cadenceCheckHash     = "@every 2m"
+	cadenceXrayRunning    = "@every 1s"
+	cadenceXrayRestart    = "@every 30s"
+	cadenceXrayTraffic    = "@every 5s"
+	cadenceClientPresence = "@every 1s"
+	cadenceMtproto        = "@every 10s"
+	cadenceClientIPScan   = "@every 10s"
+	cadenceNodeHeartbeat  = "@every 5s"
+	cadenceNodeTraffic    = "@every 5s"
+	cadenceOutboundSub    = "@every 5m"
+	cadenceXrayLogPrune   = "@every 10m"
+	cadenceCheckHash      = "@every 2m"
 	// cpu.Percent samples over a full minute (blocking), so a finer cadence just
 	// stacks overlapping samplers; subscribers rate-limit alerts to 1/min anyway.
 	cadenceCPUAlarm    = "@every 1m"
@@ -385,12 +304,43 @@ const (
 // startTask schedules background jobs (Xray checks, traffic jobs, cron
 // jobs) which the panel relies on for periodic maintenance and monitoring.
 func (s *Server) startTask(restartXray bool) {
+	// Receive Core Activity datagrams through a local Unix socket. Run once
+	// immediately and retry periodically if socket setup initially fails.
+	clientActivityCollectorJob := job.NewClientActivityCollectorJob()
+	clientActivityCollectorJob.Run()
+	s.cron.AddJob("@every 10s", clientActivityCollectorJob)
+
+	// Start the synchronous Strict-B lease agent before Xray. Core talks only
+	// to this local Unix socket; the agent resolves locally on the root or relays
+	// synchronously through the parent chain. Retry socket setup periodically.
+	strictIPLimitAgentJob := job.NewStrictIPLimitAgentJob()
+	strictIPLimitAgentJob.Run()
+	s.cron.AddJob("@every 10s", strictIPLimitAgentJob)
+
+	// Generate Core-level client limits before Xray starts, then keep the
+	// files synchronized while the panel is running.
+	clientIPLimitsJob := job.NewSyncClientIPLimitsJob()
+	clientSpeedLimitsJob := job.NewSyncClientSpeedLimitsJob()
+	clientActivityMonitoringJob := job.NewSyncClientActivityMonitoringJob()
+
+	clientIPLimitsJob.Run()
+	clientSpeedLimitsJob.Run()
+	clientActivityMonitoringJob.Run()
+
 	if restartXray {
 		err := s.xrayService.RestartXray(true)
 		if err != nil {
 			logger.Warning("start xray failed:", err)
 		}
 	}
+
+	// Keep browser-visible local presence aligned with the core's exact
+	// connection snapshot. The job preserves legacy grace mode when the running
+	// core does not implement the online-stats RPC.
+	clientPresenceJob := job.NewClientPresenceJob()
+	clientPresenceJob.Run()
+	_, _ = s.cron.AddJob(cadenceClientPresence, clientPresenceJob)
+
 	// Check whether xray is running every second
 	_, _ = s.cron.AddJob(cadenceXrayRunning, job.NewCheckXrayRunningJob())
 
@@ -414,7 +364,12 @@ func (s *Server) startTask(restartXray bool) {
 	_, _ = s.cron.AddJob(cadenceMtproto, mtJob)
 	go mtJob.Run()
 
-	// check client ips from log file every 10 sec
+	// Xray watches these files and applies limit changes without a restart.
+	_, _ = s.cron.AddJob("@every 2s", clientIPLimitsJob)
+	_, _ = s.cron.AddJob("@every 2s", clientSpeedLimitsJob)
+	_, _ = s.cron.AddJob("@every 2s", clientActivityMonitoringJob)
+
+	// Upstream client IP scan job kept for compatibility.
 	_, _ = s.cron.AddJob(cadenceClientIPScan, job.NewCheckClientIpJob())
 
 	_, _ = s.cron.AddJob(cadenceNodeHeartbeat, job.NewNodeHeartbeatJob())
@@ -424,8 +379,9 @@ func (s *Server) startTask(restartXray bool) {
 	// Outbound subscription auto-refresh (respects per-sub updateInterval)
 	_, _ = s.cron.AddJob(cadenceOutboundSub, job.NewOutboundSubscriptionJob())
 
-	// check client ips from log file every day
+	// Daily log cleanup is safe; the legacy access-log/legacy firewall limit path stays disabled.
 	_, _ = s.cron.AddJob("@daily", job.NewClearLogsJob())
+	_, _ = s.cron.AddJob(cadenceXrayLogPrune, job.NewPruneXrayLogsJob())
 	_, _ = s.cron.AddJob("@hourly", job.NewWarpIpJob())
 
 	// Inbound traffic reset jobs
@@ -629,10 +585,10 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 	}
 	if envPort, configured, envErr := config.GetPortOverride(); configured {
 		if envErr != nil {
-			logger.Warning("Ignoring invalid DUI_PORT; using configured web port:", port, envErr)
+			logger.Warning("Ignoring invalid XUI_PORT; using configured web port:", port, envErr)
 		} else {
 			port = envPort
-			logger.Info("Using DUI_PORT override for web panel port:", port)
+			logger.Info("Using XUI_PORT override for web panel port:", port)
 		}
 	}
 	listenAddr := net.JoinHostPort(listen, strconv.Itoa(port))
@@ -687,6 +643,7 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 
 	// Wire xray crash callback BEFORE startTask so it's ready
 	xray.OnCrash = func(err error) {
+		service.StopSharedPortFrontMuxAfterXrayCrash()
 		if s.bus != nil {
 			s.bus.Publish(eventbus.Event{
 				Type: eventbus.EventXrayCrash,
@@ -711,7 +668,7 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 		if err := s.tgbotService.TestConnection(); err != nil {
 			return fmt.Errorf("telegram API test failed: %w", err)
 		}
-		s.tgbotService.SendMsgToTgbotAdmins("✅ Test message from d-ui")
+		s.tgbotService.SendMsgToTgbotAdmins("✅ Test message from 3x-ui")
 		return nil
 	})
 
@@ -754,6 +711,9 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 
 // Stop gracefully shuts down the web server, stops Xray, cron jobs, and Telegram bot.
 func (s *Server) Stop() error {
+	// Release the Activity Unix socket and background workers.
+	job.StopClientActivityCollector()
+
 	return s.stop(true, true)
 }
 

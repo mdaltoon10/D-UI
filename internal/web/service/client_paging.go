@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mdaltoon10/D-UI/v3/internal/database"
+	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
 	"github.com/mdaltoon10/D-UI/v3/internal/xray"
 )
 
@@ -15,20 +17,21 @@ import (
 // so the list payload stays compact even when the panel manages thousands
 // of clients. Modals that need the full record still call /get/:email.
 type ClientSlim struct {
-	Email      string              `json:"email"`
-	SubID      string              `json:"subId"`
-	Enable     bool                `json:"enable"`
-	TotalGB    int64               `json:"totalGB"`
-	ExpiryTime int64               `json:"expiryTime"`
-	LimitIP    int                 `json:"limitIp"`
-	Reset      int                 `json:"reset"`
-	Group      string              `json:"group,omitempty"`
-	Comment    string              `json:"comment,omitempty"`
-	CreatedBy  string              `json:"createdBy,omitempty"`
-	InboundIds []int               `json:"inboundIds"`
-	Traffic    *xray.ClientTraffic `json:"traffic,omitempty"`
-	CreatedAt  int64               `json:"createdAt"`
-	UpdatedAt  int64               `json:"updatedAt"`
+	Email        string              `json:"email"`
+	SubID        string              `json:"subId"`
+	Enable       bool                `json:"enable"`
+	TotalGB      int64               `json:"totalGB"`
+	ExpiryTime   int64               `json:"expiryTime"`
+	LimitIP      int                 `json:"limitIp"`
+	UploadMbps   int                 `json:"uploadMbps"`
+	DownloadMbps int                 `json:"downloadMbps"`
+	Reset        int                 `json:"reset"`
+	Group        string              `json:"group,omitempty"`
+	Comment      string              `json:"comment,omitempty"`
+	InboundIds   []int               `json:"inboundIds"`
+	Traffic      *xray.ClientTraffic `json:"traffic,omitempty"`
+	CreatedAt    int64               `json:"createdAt"`
+	UpdatedAt    int64               `json:"updatedAt"`
 }
 
 // ClientPageParams are the query params accepted by /panel/api/clients/list/paged.
@@ -56,14 +59,17 @@ type ClientPageParams struct {
 	HasTgID    string `form:"hasTgId"`
 	HasComment string `form:"hasComment"`
 	Group      string `form:"group"`
-	CreatedBy  string `form:"createdBy"`
+	Owner      string `form:"owner"`
+
+	Scope            ClientAccessScope `form:"-" json:"-"`
+	AllowOwnerFilter bool              `form:"-" json:"-"`
 }
 
 // ClientPageResponse is the shape returned by ListPaged. `Total` is the
 // row count in the DB; `Filtered` is the count after Search/Filter/Protocol
 // were applied, before pagination. The page contains at most PageSize items.
-// Summary is computed across the full DB row set so dashboard counters
-// on the clients page stay stable as the user paginates/filters.
+// Summary is computed across the scoped DB row set and respects the owner
+// segment so cards match the selected owner while staying stable across pages.
 type ClientPageResponse struct {
 	Items    []ClientSlim   `json:"items"`
 	Total    int            `json:"total"`
@@ -78,12 +84,17 @@ type ClientPageResponse struct {
 // the clients page can render the dashboard stat cards and their hover
 // popovers without shipping the full client array.
 type ClientsSummary struct {
-	Total    int      `json:"total"`
-	Active   int      `json:"active"`
-	Online   []string `json:"online"`
-	Depleted []string `json:"depleted"`
-	Expiring []string `json:"expiring"`
-	Deactive []string `json:"deactive"`
+	Total            int      `json:"total"`
+	Active           int      `json:"active"`
+	Online           []string `json:"online"`
+	Depleted         []string `json:"depleted"`
+	Expiring         []string `json:"expiring"`
+	Deactive         []string `json:"deactive"`
+	TrafficUp        int64    `json:"trafficUp"`
+	TrafficDown      int64    `json:"trafficDown"`
+	TrafficUsed      int64    `json:"trafficUsed"`
+	TrafficTotal     int64    `json:"trafficTotal"`
+	TrafficRemaining int64    `json:"trafficRemaining"`
 }
 
 const (
@@ -91,48 +102,25 @@ const (
 	clientPageMaxSize     = 200
 )
 
+func clientPageScope(params ClientPageParams) ClientAccessScope {
+	scope := params.Scope
+	if params.AllowOwnerFilter {
+		scope.Mode = ClientAccessAll
+	}
+	return normalizeClientAccessScope(scope)
+}
+
 // ListPaged loads every client (with traffic + attachments) into memory,
 // applies the requested filter / search / protocol predicates, sorts, and
 // returns the requested page along with total and filtered counts. The DB
 // query itself is unchanged from List(); the win is that the response
 // only carries 25-ish slim rows over the wire instead of all 2000 full
 // records, which on real panels was the dominant cost.
-func (s *ClientService) ListPaged(inboundSvc *InboundService, settingSvc *SettingService, params ClientPageParams, adminUsername string) (*ClientPageResponse, error) {
-	all, err := s.List()
+func (s *ClientService) ListPaged(inboundSvc *InboundService, settingSvc *SettingService, params ClientPageParams) (*ClientPageResponse, error) {
+	pageScope := clientPageScope(params)
+	all, err := s.ListForScope(pageScope)
 	if err != nil {
 		return nil, err
-	}
-
-	if adminUsername == "" {
-		// Master Admin: filter by CreatedBy if provided, otherwise filter out reseller clients by default
-		if params.CreatedBy != "" {
-			var filtered []ClientWithAttachments
-			for _, c := range all {
-				if c.CreatedBy == params.CreatedBy {
-					filtered = append(filtered, c)
-				}
-			}
-			all = filtered
-		} else {
-			// DEFAULT behavior for Master Admin on main clients list:
-			// Show only clients created by admin (CreatedBy == "")
-			var filtered []ClientWithAttachments
-			for _, c := range all {
-				if c.CreatedBy == "" {
-					filtered = append(filtered, c)
-				}
-			}
-			all = filtered
-		}
-	} else {
-		// Reseller: filter strictly by their own username
-		var filtered []ClientWithAttachments
-		for _, c := range all {
-			if c.CreatedBy == adminUsername {
-				filtered = append(filtered, c)
-			}
-		}
-		all = filtered
 	}
 	total := len(all)
 
@@ -180,9 +168,15 @@ func (s *ClientService) ListPaged(inboundSvc *InboundService, settingSvc *Settin
 	}
 
 	nowMs := time.Now().UnixMilli()
+	summaryBase := ownerSummaryBase(all, params.Owner, pageScope.AdminID)
+	summary := buildClientsSummary(summaryBase, onlineSet, nowMs, expireDiffMs, trafficDiffBytes)
+	if dataLimit, usedBytes, ok := s.summaryAdminDataQuota(pageScope, params.Owner); ok {
+		applyAdminTrafficQuota(&summary, dataLimit, usedBytes)
+	}
+
 	needle := strings.ToLower(strings.TrimSpace(params.Search))
 
-	preBucketFiltered := make([]ClientWithAttachments, 0, len(all))
+	filtered := make([]ClientWithAttachments, 0, len(all))
 	for _, c := range all {
 		if needle != "" && !clientMatchesSearch(c, needle) {
 			continue
@@ -191,6 +185,12 @@ func (s *ClientService) ListPaged(inboundSvc *InboundService, settingSvc *Settin
 			continue
 		}
 		if len(inboundIDs) > 0 && !clientMatchesAnyInbound(c, inboundIDs) {
+			continue
+		}
+		if len(buckets) > 0 && !clientMatchesAnyBucket(c, buckets, onlineSet, nowMs, expireDiffMs, trafficDiffBytes) {
+			continue
+		}
+		if !clientMatchesOwner(c, params.Owner, pageScope.AdminID) {
 			continue
 		}
 		if !clientMatchesExpiryRange(c, params.ExpiryFrom, params.ExpiryTo) {
@@ -209,16 +209,6 @@ func (s *ClientService) ListPaged(inboundSvc *InboundService, settingSvc *Settin
 			continue
 		}
 		if !clientMatchesAnyGroup(c, params.Group) {
-			continue
-		}
-		preBucketFiltered = append(preBucketFiltered, c)
-	}
-
-	summary := buildClientsSummary(preBucketFiltered, onlineSet, nowMs, expireDiffMs, trafficDiffBytes)
-
-	filtered := make([]ClientWithAttachments, 0, len(preBucketFiltered))
-	for _, c := range preBucketFiltered {
-		if len(buckets) > 0 && !clientMatchesAnyBucket(c, buckets, onlineSet, nowMs, expireDiffMs, trafficDiffBytes) {
 			continue
 		}
 		filtered = append(filtered, c)
@@ -262,6 +252,108 @@ func (s *ClientService) ListPaged(inboundSvc *InboundService, settingSvc *Settin
 	}, nil
 }
 
+func clientMatchesOwner(c ClientWithAttachments, owner string, currentAdminID int) bool {
+	raw := strings.TrimSpace(strings.ToLower(owner))
+	if raw == "" || raw == "all" {
+		return true
+	}
+
+	if raw == "me" {
+		return currentAdminID > 0 && c.OwnerAdminId == currentAdminID
+	}
+
+	id, err := strconv.Atoi(raw)
+	if err != nil {
+		return false
+	}
+
+	return c.OwnerAdminId == id
+}
+
+func ownerSummaryBase(all []ClientWithAttachments, owner string, currentAdminID int) []ClientWithAttachments {
+	raw := strings.TrimSpace(strings.ToLower(owner))
+	if raw == "" || raw == "all" {
+		return all
+	}
+
+	out := make([]ClientWithAttachments, 0, len(all))
+	for _, c := range all {
+		if clientMatchesOwner(c, raw, currentAdminID) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func summaryQuotaAdminID(scope ClientAccessScope, owner string) (int, bool) {
+	scope = normalizeClientAccessScope(scope)
+	if scope.Mode == ClientAccessOwn && scope.AdminID > 0 {
+		return scope.AdminID, true
+	}
+
+	raw := strings.TrimSpace(strings.ToLower(owner))
+	if raw == "" || raw == "all" {
+		return 0, false
+	}
+	if raw == "me" {
+		if scope.AdminID > 0 {
+			return scope.AdminID, true
+		}
+		return 0, false
+	}
+
+	id, err := strconv.Atoi(raw)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+	return id, true
+}
+
+func (s *ClientService) summaryAdminDataQuota(scope ClientAccessScope, owner string) (int64, int64, bool) {
+	adminID, ok := summaryQuotaAdminID(scope, owner)
+	if !ok {
+		return 0, 0, false
+	}
+
+	db := database.GetDB()
+	if db == nil {
+		return 0, 0, false
+	}
+
+	var user model.User
+	if err := db.Model(&model.User{}).Select("data_limit", "used_bytes").Where("id = ?", adminID).First(&user).Error; err != nil {
+		return 0, 0, false
+	}
+	if user.DataLimit <= 0 {
+		return 0, 0, false
+	}
+	usedBytes := user.UsedBytes
+	if usedBytes < 0 {
+		usedBytes = 0
+	}
+	return user.DataLimit, usedBytes, true
+}
+
+func applyAdminTrafficQuota(summary *ClientsSummary, dataLimit int64, usedBytesValues ...int64) {
+	if summary == nil || dataLimit <= 0 {
+		return
+	}
+
+	usedBytes := summary.TrafficUsed
+	if len(usedBytesValues) > 0 {
+		usedBytes = usedBytesValues[0]
+	}
+	if usedBytes > summary.TrafficUsed {
+		summary.TrafficUsed = usedBytes
+	}
+	summary.TrafficTotal = dataLimit
+	remaining := dataLimit - summary.TrafficUsed
+	if remaining < 0 {
+		remaining = 0
+	}
+	summary.TrafficRemaining = remaining
+}
+
 func buildClientsSummary(all []ClientWithAttachments, onlineSet map[string]struct{}, nowMs, expireDiffMs, trafficDiffBytes int64) ClientsSummary {
 	s := ClientsSummary{
 		Total:    len(all),
@@ -271,10 +363,25 @@ func buildClientsSummary(all []ClientWithAttachments, onlineSet map[string]struc
 		Deactive: []string{},
 	}
 	for _, c := range all {
-		used := int64(0)
+		up := int64(0)
+		down := int64(0)
 		if c.Traffic != nil {
-			used = c.Traffic.Up + c.Traffic.Down
+			up = c.Traffic.Up
+			down = c.Traffic.Down
 		}
+		used := up + down
+
+		s.TrafficUp += up
+		s.TrafficDown += down
+		s.TrafficUsed += used
+		if c.TotalGB > 0 {
+			s.TrafficTotal += c.TotalGB
+			remaining := c.TotalGB - used
+			if remaining > 0 {
+				s.TrafficRemaining += remaining
+			}
+		}
+
 		exhausted := c.TotalGB > 0 && used >= c.TotalGB
 		expired := c.ExpiryTime > 0 && c.ExpiryTime <= nowMs
 		if c.Enable {
@@ -303,20 +410,21 @@ func buildClientsSummary(all []ClientWithAttachments, onlineSet map[string]struc
 
 func toClientSlim(c ClientWithAttachments) ClientSlim {
 	return ClientSlim{
-		Email:      c.Email,
-		SubID:      c.SubID,
-		Enable:     c.Enable,
-		TotalGB:    c.TotalGB,
-		ExpiryTime: c.ExpiryTime,
-		LimitIP:    c.LimitIP,
-		Reset:      c.Reset,
-		Group:      c.Group,
-		Comment:    c.Comment,
-		CreatedBy:  c.CreatedBy,
-		InboundIds: c.InboundIds,
-		Traffic:    c.Traffic,
-		CreatedAt:  c.CreatedAt,
-		UpdatedAt:  c.UpdatedAt,
+		Email:        c.Email,
+		SubID:        c.SubID,
+		Enable:       c.Enable,
+		TotalGB:      c.TotalGB,
+		ExpiryTime:   c.ExpiryTime,
+		LimitIP:      c.LimitIP,
+		UploadMbps:   c.UploadMbps,
+		DownloadMbps: c.DownloadMbps,
+		Reset:        c.Reset,
+		Group:        c.Group,
+		Comment:      c.Comment,
+		InboundIds:   c.InboundIds,
+		Traffic:      c.Traffic,
+		CreatedAt:    c.CreatedAt,
+		UpdatedAt:    c.UpdatedAt,
 	}
 }
 
@@ -329,6 +437,9 @@ func clientMatchesSearch(c ClientWithAttachments, needle string) bool {
 		if v != "" && strings.Contains(strings.ToLower(v), needle) {
 			return true
 		}
+	}
+	if c.TgID != 0 && strings.Contains(strconv.FormatInt(c.TgID, 10), needle) {
+		return true
 	}
 	return false
 }

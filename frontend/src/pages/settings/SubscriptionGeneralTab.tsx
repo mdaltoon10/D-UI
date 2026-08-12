@@ -1,5 +1,6 @@
-import { Input, InputNumber, Select, Switch, Tabs } from 'antd';
-import { BranchesOutlined, CompassOutlined, IdcardOutlined, InfoCircleOutlined, NodeIndexOutlined, SafetyCertificateOutlined, SettingOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { useMemo } from 'react';
+import { Input, InputNumber, Switch, Tabs, Select, Space } from 'antd';
+import { BranchesOutlined, CompassOutlined, IdcardOutlined, InfoCircleOutlined, NodeIndexOutlined, SafetyCertificateOutlined, SettingOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { AllSetting } from '@/models/setting';
 import { SettingListItem } from '@/components/ui';
@@ -7,7 +8,37 @@ import { RemarkTemplateField } from '@/components/form';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { catTabLabel } from './catTabLabel';
 import { sanitizePath, normalizePath } from './uriPath';
+import { SMART_IRAN_DIRECT_RULES_JSON, isSmartIranDirectRules } from './smartIranDirect';
 
+type HeimdallSettingExtras = {
+  remarkModel?: string;
+};
+
+function getRemarkModelSetting(allSetting: unknown): string {
+  return ((allSetting as HeimdallSettingExtras).remarkModel || '').toString();
+}
+
+function withRemarkModelPatch(remarkModel: string) {
+  return { remarkModel } as Partial<never> & HeimdallSettingExtras;
+}
+
+
+const REMARK_MODELS: Record<string, string> = { i: 'Inbound', e: 'Email', o: 'Other' };
+const REMARK_SAMPLES: Record<string, string> = { i: 'Germany', e: 'john', o: 'Relay' };
+const REMARK_SEPARATORS = [' ', '-', '_', '@', ':', '~', '|', ',', '.', '/'];
+
+const OURENUS_SUB_TEMPLATE_DIR = '/usr/local/x-ui/sub_templates/ourenus';
+const SANAEI_SUB_TEMPLATE_SENTINEL = '__heimdall_sanaei_default__';
+const CUSTOM_SUB_TEMPLATE_DIR = '/usr/local/x-ui/sub_templates/custom';
+
+type SubscriptionTemplatePreset = 'default' | 'sanaei' | 'custom';
+
+function getSubscriptionTemplatePreset(themeDir?: string): SubscriptionTemplatePreset {
+  const normalized = (themeDir || '').trim();
+  if (!normalized || normalized === OURENUS_SUB_TEMPLATE_DIR) return 'default';
+  if (normalized === SANAEI_SUB_TEMPLATE_SENTINEL) return 'sanaei';
+  return 'custom';
+}
 interface SubscriptionGeneralTabProps {
   allSetting: AllSetting;
   updateSetting: (patch: Partial<AllSetting>) => void;
@@ -17,6 +48,66 @@ export default function SubscriptionGeneralTab({ allSetting, updateSetting }: Su
   const { t } = useTranslation();
   const { isMobile } = useMediaQuery();
 
+  const smartIranDirectEnabled = isSmartIranDirectRules(allSetting.subJsonRules || '');
+  const subscriptionTemplatePreset = useMemo(
+    () => getSubscriptionTemplatePreset(allSetting.subThemeDir),
+    [allSetting.subThemeDir],
+  );
+
+  function setSmartIranDirectEnabled(enabled: boolean) {
+    updateSetting({ subJsonRules: enabled ? SMART_IRAN_DIRECT_RULES_JSON : '' });
+  }
+
+  function setSubscriptionTemplatePreset(preset: SubscriptionTemplatePreset) {
+    if (preset === 'default') {
+      updateSetting({ subThemeDir: '' });
+      return;
+    }
+    if (preset === 'sanaei') {
+      updateSetting({ subThemeDir: SANAEI_SUB_TEMPLATE_SENTINEL });
+      return;
+    }
+
+    const current = (allSetting.subThemeDir || '').trim();
+    updateSetting({
+      subThemeDir:
+        current && current !== OURENUS_SUB_TEMPLATE_DIR && current !== SANAEI_SUB_TEMPLATE_SENTINEL
+          ? current
+          : CUSTOM_SUB_TEMPLATE_DIR,
+    });
+  }
+
+
+  const remarkModel = useMemo(() => {
+    const rm = getRemarkModelSetting(allSetting);
+    return rm.length > 1 ? rm.substring(1).split('') : [];
+  }, [allSetting]);
+
+  const remarkSeparator = useMemo(() => {
+    const rm = getRemarkModelSetting(allSetting) || '-';
+    return rm.length > 1 ? rm.charAt(0) : '-';
+  }, [allSetting]);
+
+  const remarkSample = useMemo(() => {
+    const parts = remarkModel.map((k: string) => REMARK_SAMPLES[k]);
+    return parts.length === 0 ? '' : parts.join(remarkSeparator);
+  }, [remarkModel, remarkSeparator]);
+
+  function setRemarkModel(parts: string[]) {
+    updateSetting(withRemarkModelPatch(remarkSeparator + parts.join('')));
+  }
+
+  function setRemarkSeparator(sep: string) {
+    const tail = (getRemarkModelSetting(allSetting) || '-').substring(1);
+    updateSetting(withRemarkModelPatch(sep + tail));
+  }
+
+  // Preserve Heimdall remark-model helpers after upstream sync; the full UI wiring is validated later.
+  void REMARK_MODELS;
+  void REMARK_SEPARATORS;
+  void remarkSample;
+  void setRemarkModel;
+  void setRemarkSeparator;
   return (
     <Tabs defaultActiveKey="1" items={[
       {
@@ -29,6 +120,32 @@ export default function SubscriptionGeneralTab({ allSetting, updateSetting }: Su
             </SettingListItem>
             <SettingListItem paddings="small" title={t('pages.settings.subJsonEnableTitle')} description={t('pages.settings.subJsonEnable')}>
               <Switch checked={allSetting.subJsonEnable} onChange={(v) => updateSetting({ subJsonEnable: v })} />
+            </SettingListItem>
+              <SettingListItem
+                paddings="small"
+                title={t('pages.settings.subClientImportFormat')}
+                description={t('pages.settings.subClientImportFormatDesc')}
+              >
+                <Select
+                  value={allSetting.subClientImportFormat || 'normal'}
+                  onChange={(v) => updateSetting({ subClientImportFormat: v as 'normal' | 'json' })}
+                  style={{ width: '100%' }}
+                  options={[
+                    { value: 'normal', label: t('pages.settings.subClientImportFormatNormal') },
+                    { value: 'json', label: t('pages.settings.subClientImportFormatJson') },
+                  ]}
+                />
+              </SettingListItem>
+            <SettingListItem
+              paddings="small"
+              title="Smart Iran Direct for JSON Subscription"
+              description="Bypass all .ir domains, 1000 selected Iranian non-.ir domains, geoip:ir and private IPs in JSON subscriptions. Supported subdomains are included automatically."
+            >
+              <Switch
+                checked={smartIranDirectEnabled}
+                disabled={!allSetting.subJsonEnable}
+                onChange={setSmartIranDirectEnabled}
+              />
             </SettingListItem>
             <SettingListItem paddings="small" title={t('pages.settings.subClashEnableTitle')}>
               <Switch checked={allSetting.subClashEnable} onChange={(v) => updateSetting({ subClashEnable: v })} />
@@ -79,7 +196,7 @@ export default function SubscriptionGeneralTab({ allSetting, updateSetting }: Su
             </SettingListItem>
 
             <SettingListItem paddings="small" title={t('pages.settings.subUpdates')} description={t('pages.settings.subUpdatesDesc')}>
-              <InputNumber value={allSetting.subUpdates} min={1} style={{ width: '100%' }}
+              <InputNumber value={allSetting.subUpdates} min={0} max={525600} style={{ width: '100%' }}
                 onChange={(v) => updateSetting({ subUpdates: Number(v) || 0 })} />
             </SettingListItem>
           </>
@@ -112,7 +229,7 @@ export default function SubscriptionGeneralTab({ allSetting, updateSetting }: Su
                 <>
                   {t('pages.settings.subThemeDirDesc')}{' '}
                   <a
-                    href="https://github.com/mdaltoon10/D-UI/blob/main/docs/custom-subscription-templates.md"
+                    href="https://github.com/sh7CBAC/Heimdall-Panel/blob/main/docs/custom-subscription-templates.md"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -121,8 +238,25 @@ export default function SubscriptionGeneralTab({ allSetting, updateSetting }: Su
                 </>
               )}
             >
-              <Input value={allSetting.subThemeDir} placeholder="/etc/d-ui/sub_templates/my-theme/"
-                onChange={(e) => updateSetting({ subThemeDir: e.target.value })} />
+              <Space direction="vertical" style={{ width: '100%' }}>
+                  <Select
+                    value={subscriptionTemplatePreset}
+                    onChange={setSubscriptionTemplatePreset}
+                    style={{ width: '100%' }}
+                    options={[
+                      { value: 'default', label: 'Default Heimdall' },
+                      { value: 'sanaei', label: 'Sanaei' },
+                      { value: 'custom', label: 'Custom Path' },
+                    ]}
+                  />
+                  {subscriptionTemplatePreset === 'custom' && (
+                    <Input
+                      value={allSetting.subThemeDir}
+                      placeholder="/usr/local/x-ui/sub_templates/custom"
+                      onChange={(e) => updateSetting({ subThemeDir: e.target.value })}
+                    />
+                  )}
+                </Space>
             </SettingListItem>
           </>
         ),
@@ -189,52 +323,6 @@ export default function SubscriptionGeneralTab({ allSetting, updateSetting }: Su
             <SettingListItem paddings="small" title={t('pages.settings.subIncyRoutingRules')} description={t('pages.settings.subIncyRoutingRulesDesc')}>
               <Input.TextArea value={allSetting.subIncyRoutingRules} placeholder="incy://routing/onadd/..."
                 onChange={(e) => updateSetting({ subIncyRoutingRules: e.target.value })} />
-            </SettingListItem>
-          </>
-        ),
-      },
-      {
-        key: '8',
-        label: catTabLabel(<ThunderboltOutlined />, 'Daltoon & Iran Routing', isMobile),
-        children: (
-          <>
-            <SettingListItem
-              paddings="small"
-              title="Daltoon Subscription Template (Ourenus-based)"
-              description="Clean subscription page experience with speed gauges, real-time client limits, and OS client quick-importers."
-            >
-              <Switch checked={true} onChange={() => {}} />
-            </SettingListItem>
-            <SettingListItem
-              paddings="small"
-              title="Show Speed & Traffic Gauges"
-              description="Display upload/download speed limit gauges and connection stats in client subscription pages."
-            >
-              <Switch checked={true} onChange={() => {}} />
-            </SettingListItem>
-            <SettingListItem
-              paddings="small"
-              title="Iran Direct Routing (مسیریابی مستقیم ایران)"
-              description="Directly route Iranian domestic traffic (.ir domains & IR IP ranges) to bypass proxy for higher performance."
-            >
-              <Switch checked={allSetting.subClashEnableRouting} onChange={(v) => updateSetting({ subClashEnableRouting: v })} />
-            </SettingListItem>
-            <SettingListItem
-              paddings="small"
-              title="Iran Routing Rule Presets"
-              description="Preset rules for Iranian services, banks, and domestic domains."
-            >
-              <Select
-                mode="multiple"
-                defaultValue={['geosite:category-ir', 'geoip:ir', 'domain:.ir']}
-                style={{ width: '100%' }}
-                options={[
-                  { label: 'GEOSITE:category-ir (Iranian Websites)', value: 'geosite:category-ir' },
-                  { label: 'GEOIP:IR (Iranian IP Ranges)', value: 'geoip:ir' },
-                  { label: 'Domain: .ir (Iran TLD)', value: 'domain:.ir' },
-                  { label: 'Iranian Banking & Payment Gateways', value: 'geosite:ir-banking' },
-                ]}
-              />
             </SettingListItem>
           </>
         ),

@@ -5,7 +5,6 @@ export const EXAMPLES: Record<string, unknown> = {
     "expireDiff": 0,
     "externalTrafficInformEnable": false,
     "externalTrafficInformURI": "",
-    "ipLimitPolicy": "",
     "ldapAutoCreate": false,
     "ldapAutoDelete": false,
     "ldapBaseDN": "",
@@ -49,6 +48,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "subClashPath": "",
     "subClashRules": "",
     "subClashURI": "",
+    "subClientImportFormat": "",
     "subDomain": "",
     "subEnable": false,
     "subEnableRouting": false,
@@ -109,7 +109,6 @@ export const EXAMPLES: Record<string, unknown> = {
     "hasTgBotToken": false,
     "hasTwoFactorToken": false,
     "hasWarpSecret": false,
-    "ipLimitPolicy": "",
     "ldapAutoCreate": false,
     "ldapAutoDelete": false,
     "ldapBaseDN": "",
@@ -153,6 +152,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "subClashPath": "",
     "subClashRules": "",
     "subClashURI": "",
+    "subClientImportFormat": "",
     "subDomain": "",
     "subEnable": false,
     "subEnableRouting": false,
@@ -203,26 +203,42 @@ export const EXAMPLES: Record<string, unknown> = {
   },
   "ApiToken": {
     "createdAt": 0,
+    "createdByAdminId": null,
     "enabled": false,
+    "expiresAt": 0,
     "id": 0,
+    "kind": "",
     "name": "",
-    "token": ""
+    "subjectAdminId": null
   },
   "ApiTokenView": {
     "createdAt": 1736000000,
+    "createdByAdminId": 1,
     "enabled": true,
+    "expired": false,
+    "expiresAt": 1767536000,
     "id": 2,
-    "name": "central-panel-a",
-    "token": "new-token-string"
+    "kind": "delegated",
+    "name": "telegram-bot-a",
+    "scopes": [
+      "clients:read",
+      "clients:create"
+    ],
+    "subjectAdminId": 3,
+    "subjectRoleName": "Operator",
+    "subjectUsername": "operator-a",
+    "token": "hmd_d_new-token-string"
   },
   "Client": {
+    "adTag": "0123456789abcdef0123456789abcdef",
     "allowedIPs": [
       ""
     ],
     "auth": "",
+    "clientGuid": "",
     "comment": "",
-    "createdBy": "",
     "created_at": 0,
+    "downloadMbps": 0,
     "email": "",
     "enable": false,
     "expiryTime": 0,
@@ -237,11 +253,13 @@ export const EXAMPLES: Record<string, unknown> = {
     "publicKey": "",
     "reset": 0,
     "reverse": null,
+    "secret": "ee1234567890abcdef1234567890abcd7777772e636c6f7564666c6172652e636f6d",
     "security": "",
     "subId": "",
     "tgId": 0,
     "totalGB": 0,
-    "updated_at": 0
+    "updated_at": 0,
+    "uploadMbps": 0
   },
   "ClientInbound": {
     "clientId": 0,
@@ -250,11 +268,15 @@ export const EXAMPLES: Record<string, unknown> = {
     "inboundId": 0
   },
   "ClientRecord": {
+    "adTag": "",
     "allowedIPs": "",
     "auth": "",
+    "clientGuid": "",
     "comment": "",
     "createdAt": 0,
-    "createdBy": "",
+    "createdByAdminId": 0,
+    "disabledByOwnerAdminId": 0,
+    "downloadMbps": 0,
     "email": "",
     "enable": false,
     "expiryTime": 0,
@@ -263,17 +285,20 @@ export const EXAMPLES: Record<string, unknown> = {
     "id": 0,
     "keepAlive": 0,
     "limitIp": 0,
+    "ownerAdminId": 0,
     "password": "",
     "preSharedKey": "",
     "privateKey": "",
     "publicKey": "",
     "reset": 0,
     "reverse": null,
+    "secret": "",
     "security": "",
     "subId": "",
     "tgId": 0,
     "totalGB": 0,
     "updatedAt": 0,
+    "uploadMbps": 0,
     "uuid": ""
   },
   "ClientReverse": {
@@ -314,6 +339,7 @@ export const EXAMPLES: Record<string, unknown> = {
     ],
     "finalMask": "",
     "fingerprint": "",
+    "groupId": "",
     "hostHeader": "",
     "id": 1,
     "inboundId": 1,
@@ -345,6 +371,53 @@ export const EXAMPLES: Record<string, unknown> = {
     "updatedAt": 0,
     "verifyPeerCertByName": "",
     "vlessRoute": "443"
+  },
+  "HostGroup": {
+    "allowInsecure": false,
+    "alpn": [
+      ""
+    ],
+    "echConfigList": "",
+    "excludeFromSubTypes": [
+      ""
+    ],
+    "finalMask": "",
+    "fingerprint": "",
+    "groupId": "",
+    "hostHeader": "",
+    "hosts": [
+      ""
+    ],
+    "inboundIds": [
+      0
+    ],
+    "isDisabled": false,
+    "isHidden": false,
+    "keepSniBlank": false,
+    "mihomoIpVersion": "dual",
+    "mihomoX25519": false,
+    "muxParams": "",
+    "nodeGuids": [
+      ""
+    ],
+    "overrideSniFromAddress": false,
+    "path": "",
+    "pinnedPeerCertSha256": [
+      ""
+    ],
+    "port": 0,
+    "remark": "",
+    "security": "same",
+    "serverDescription": "",
+    "shuffleHost": false,
+    "sni": "",
+    "sockoptParams": "",
+    "sortOrder": 0,
+    "tags": [
+      ""
+    ],
+    "verifyPeerCertByName": "",
+    "vlessRoute": ""
   },
   "Inbound": {
     "clientStats": [
@@ -384,7 +457,8 @@ export const EXAMPLES: Record<string, unknown> = {
     "tag": "in-443-tcp",
     "total": 0,
     "trafficReset": "never",
-    "up": 0
+    "up": 0,
+    "usageMultiplier": 1
   },
   "InboundClientIps": {
     "clientEmail": "",
@@ -403,8 +477,10 @@ export const EXAMPLES: Record<string, unknown> = {
     "xver": 0
   },
   "InboundOption": {
+    "enable": true,
     "id": 1,
     "listen": "",
+    "mtprotoDomain": "",
     "nodeAddress": "",
     "nodeId": null,
     "port": 443,
@@ -522,8 +598,23 @@ export const EXAMPLES: Record<string, unknown> = {
     "value": ""
   },
   "User": {
+    "createdAt": 0,
+    "dataLimit": 0,
+    "discordWebhook": "",
     "id": 0,
+    "note": "",
+    "notificationFilters": "",
     "password": "",
+    "permissionOverrides": "",
+    "profileTitle": "",
+    "roleId": 0,
+    "status": "",
+    "subscriptionDomain": "",
+    "subscriptionTemplatePath": "",
+    "supportUrl": "",
+    "telegramId": "",
+    "updatedAt": 0,
+    "usedBytes": 0,
     "username": ""
   }
 };

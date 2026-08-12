@@ -1,72 +1,1798 @@
 .ext-proxy-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
 .ext-proxy-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--ant-color-fill-quaternary);
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.ext-proxy-card--disabled {
+  opacity: 0.62;
 }
 
 .ext-proxy-card__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
+}
+
+.ext-proxy-card__identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .ext-proxy-card__title {
+  overflow: hidden;
   font-weight: 600;
   font-size: 13px;
-  opacity: 0.85;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ext-proxy-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
+  min-width: 0;
 }
 
 .ext-proxy-flabel {
   font-size: 12px;
   line-height: 1.2;
-  opacity: 0.65;
+  opacity: 0.72;
+}
+
+.ext-proxy-fhint {
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.55;
 }
 
 .ext-proxy-grid {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
-.ext-proxy-grid--dest {
-  grid-template-columns: 1fr 1.7fr 0.9fr;
+.ext-proxy-grid--common {
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.5fr) minmax(120px, 0.55fr);
 }
 
-.ext-proxy-grid--tls {
-  grid-template-columns: 1fr 1fr 1fr;
+.ext-proxy-grid--selectors,
+.ext-proxy-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.ext-proxy-tls {
+.ext-proxy-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ext-proxy-section {
+  overflow: hidden;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 10px;
+  background: var(--ant-color-bg-container);
+}
+
+.ext-proxy-section > summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+}
+
+.ext-proxy-section[open] > summary {
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.ext-proxy-section__body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 2px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--ant-color-border-secondary);
+  gap: 12px;
+  padding: 12px;
 }
 
 .ext-proxy-add {
-  margin-top: 10px;
+  margin-top: 12px;
+}
+
+@media (max-width: 991px) {
+  .ext-proxy-grid--common,
+  .ext-proxy-grid--three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 575px) {
-  .ext-proxy-grid--dest,
-  .ext-proxy-grid--tls {
+  .ext-proxy-card__head {
+    align-items: flex-start;
+  }
+
+  .ext-proxy-card__identity {
+    flex-wrap: wrap;
+  }
+
+  .ext-proxy-grid--common,
+  .ext-proxy-grid--selectors,
+  .ext-proxy-grid--two,
+  .ext-proxy-grid--three {
     grid-template-columns: 1fr;
+  }
+}
+
+/* SECX UI POLISH: subscription profile responsive polish */
+.ext-proxy-card {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.ext-proxy-card__head {
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ext-proxy-card__identity {
+  min-width: 0;
+  flex: 1 1 280px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ext-proxy-card__title {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ext-proxy-card__summary {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ext-proxy-card__actions {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
+
+.ext-proxy-grid,
+.ext-proxy-field,
+.ext-proxy-section,
+.ext-proxy-section__body {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ext-proxy-section {
+  overflow: hidden;
+}
+
+.ext-proxy-section summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.ext-proxy-section__body {
+  overflow-x: hidden;
+}
+
+.ext-proxy-field > * {
+  min-width: 0;
+}
+
+.ext-proxy-field .ant-switch {
+  width: auto !important;
+  min-width: 44px;
+  flex: 0 0 auto;
+  align-self: flex-start;
+}
+
+.ext-proxy-field:has(.ant-switch) {
+  align-items: flex-start;
+}
+
+.ext-proxy-field .ant-select,
+.ext-proxy-field .ant-input,
+.ext-proxy-field .ant-input-number,
+.ext-proxy-field .ant-input-number-affix-wrapper {
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .ext-proxy-card {
+    padding: 12px;
+  }
+
+  .ext-proxy-card__head {
+    align-items: stretch;
+  }
+
+  .ext-proxy-card__identity {
+    flex-basis: 100%;
+  }
+
+  .ext-proxy-card__actions {
+    width: 100%;
+    margin-inline-start: 0;
+    justify-content: flex-end;
+  }
+
+  .ext-proxy-card__summary {
+    max-width: 120px;
+  }
+
+  .ext-proxy-grid,
+  .ext-proxy-grid--two,
+  .ext-proxy-grid--three,
+  .ext-proxy-grid--common,
+  .ext-proxy-grid--selectors {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* SECX UI POLISH: collapsed subscription profile body */
+.ext-proxy-card--collapsed > :not(.ext-proxy-card__head) {
+  display: none !important;
+}
+
+.ext-proxy-card--collapsed {
+  padding-bottom: 12px;
+}
+
+.ext-proxy-runtime-security,
+.ext-proxy-runtime-sockopt {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+/* PROFILE TLS UX: inbound-parity security layout */
+.ext-proxy-security-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 920px;
+}
+
+.ext-proxy-security-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  align-items: start;
+  column-gap: 16px;
+  row-gap: 5px;
+  min-width: 0;
+}
+
+.ext-proxy-security-label {
+  padding-top: 7px;
+  text-align: end;
+  line-height: 1.35;
+}
+
+.ext-proxy-security-control {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ext-proxy-security-control > .ant-switch {
+  align-self: flex-start;
+  margin-top: 5px;
+}
+
+.ext-proxy-security-control .ant-select,
+.ext-proxy-security-control .ant-input,
+.ext-proxy-security-control .ant-input-affix-wrapper,
+.ext-proxy-security-control .ant-input-number,
+.ext-proxy-security-control .ant-input-number-affix-wrapper,
+.ext-proxy-security-control .ant-space-compact {
+  width: 100%;
+  max-width: 100%;
+}
+
+.ext-proxy-security-wide {
+  width: 100%;
+  max-width: 920px;
+}
+
+.ext-proxy-certificate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ext-proxy-certificate {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 10px;
+  background: var(--ant-color-fill-quaternary);
+}
+
+.ext-proxy-certificate__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.ext-proxy-certificate__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.ext-proxy-certificate__title {
+  white-space: nowrap;
+}
+
+.ext-proxy-security-form--certificate {
+  max-width: none;
+}
+
+@media (max-width: 768px) {
+  .ext-proxy-security-form,
+  .ext-proxy-security-wide {
+    max-width: none;
+  }
+
+  .ext-proxy-security-row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 6px;
+  }
+
+  .ext-proxy-security-label {
+    padding-top: 0;
+    text-align: start;
+  }
+
+  .ext-proxy-security-control > .ant-switch {
+    margin-top: 0;
+  }
+
+  .ext-proxy-certificate {
+    padding: 12px;
+  }
+
+  .ext-proxy-certificate__head {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .ext-proxy-certificate__head {
+    flex-direction: column;
+  }
+
+  .ext-proxy-certificate__identity,
+  .ext-proxy-certificate__identity .ant-radio-group {
+    width: 100%;
+  }
+
+  .ext-proxy-certificate__identity .ant-radio-button-wrapper {
+    width: 50%;
+    padding-inline: 8px;
+    text-align: center;
+  }
+}
+
+/* Subscription profile Security Settings: inbound-parity redesign */
+.ext-proxy-section--security .ext-proxy-section__body {
+  padding: clamp(14px, 2vw, 22px);
+}
+
+.ext-proxy-security-shell {
+  gap: 18px;
+  overflow: visible;
+}
+
+.ext-proxy-security-mode-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 16px;
+  width: 100%;
+  max-width: 920px;
+}
+
+.ext-proxy-security-mode {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: 100%;
+}
+
+.ext-proxy-security-mode .ant-radio-button-wrapper {
+  min-width: 0;
+  padding-inline: 10px;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ext-proxy-security-mode .ant-radio-button-wrapper:first-child {
+  border-start-start-radius: var(--ant-border-radius);
+  border-end-start-radius: var(--ant-border-radius);
+}
+
+.ext-proxy-security-mode .ant-radio-button-wrapper:last-child {
+  border-start-end-radius: var(--ant-border-radius);
+  border-end-end-radius: var(--ant-border-radius);
+}
+
+.ext-proxy-security-block {
+  width: 100%;
+  max-width: 920px;
+  min-width: 0;
+  padding-block-start: 2px;
+  border-block-start: 1px solid var(--ant-color-border-secondary);
+}
+
+.ext-proxy-security-block__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 14px 10px;
+}
+
+.ext-proxy-security-block__copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ext-proxy-security-block__title {
+  color: var(--ant-color-text);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.ext-proxy-security-block__description {
+  max-width: 680px;
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ext-proxy-security-block__action {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 32px;
+}
+
+.ext-proxy-security-block__body {
+  min-width: 0;
+}
+
+.ext-proxy-security-block--server {
+  padding-block-start: 4px;
+}
+
+.ext-proxy-security-override {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ext-proxy-security-required {
+  padding: 2px 7px;
+  border: 1px solid var(--ant-color-warning-border);
+  border-radius: 999px;
+  background: var(--ant-color-warning-bg);
+  color: var(--ant-color-warning-text);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.ext-proxy-security-status {
+  display: flex;
+  width: 100%;
+  max-width: 920px;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  background: var(--ant-color-fill-quaternary);
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ext-proxy-security-status__dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  margin-block-start: 4px;
+  border-radius: 50%;
+  background: var(--ant-color-text-quaternary);
+}
+
+.ext-proxy-security-status--success {
+  border-color: var(--ant-color-success-border);
+  background: var(--ant-color-success-bg);
+  color: var(--ant-color-success-text);
+}
+
+.ext-proxy-security-status--success .ext-proxy-security-status__dot {
+  background: var(--ant-color-success);
+}
+
+.ext-proxy-security-status--warning {
+  border-color: var(--ant-color-warning-border);
+  background: var(--ant-color-warning-bg);
+  color: var(--ant-color-warning-text);
+}
+
+.ext-proxy-security-status--warning .ext-proxy-security-status__dot {
+  background: var(--ant-color-warning);
+}
+
+.ext-proxy-security-form {
+  gap: 13px;
+}
+
+.ext-proxy-security-form--runtime,
+.ext-proxy-security-form--client {
+  padding-block: 4px 2px;
+}
+
+.ext-proxy-security-row {
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  column-gap: 16px;
+}
+
+.ext-proxy-security-label {
+  display: inline-flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 5px;
+  color: var(--ant-color-text-secondary);
+  opacity: 1;
+}
+
+.ext-proxy-security-help {
+  flex: 0 0 auto;
+  margin-block-start: 1px;
+  color: var(--ant-color-text-tertiary);
+  cursor: help;
+  font-size: 12px;
+}
+
+.ext-proxy-security-help:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--ant-color-primary-border);
+  outline-offset: 2px;
+}
+
+.ext-proxy-security-control {
+  gap: 7px;
+}
+
+.ext-proxy-security-control .ant-form-item {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.ext-proxy-security-control--short,
+.ext-proxy-security-control .ext-proxy-security-control--short {
+  width: min(180px, 100%) !important;
+}
+
+.ext-proxy-security-input-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.ext-proxy-security-input-actions > .ant-form-item,
+.ext-proxy-security-input-actions > .ant-select,
+.ext-proxy-security-input-actions > .ant-input,
+.ext-proxy-security-input-actions > .ant-input-affix-wrapper {
+  min-width: 0;
+  width: 100%;
+}
+
+.ext-proxy-security-input-actions > .ant-btn {
+  border-radius: 0;
+  margin-inline-start: -1px;
+}
+
+.ext-proxy-security-input-actions > .ant-btn:last-child {
+  border-start-end-radius: var(--ant-border-radius);
+  border-end-end-radius: var(--ant-border-radius);
+}
+
+.ext-proxy-security-input-actions .ant-select-selector,
+.ext-proxy-security-input-actions > .ant-input,
+.ext-proxy-security-input-actions > .ant-input-affix-wrapper {
+  border-start-end-radius: 0 !important;
+  border-end-end-radius: 0 !important;
+}
+
+.ext-proxy-security-actions {
+  margin-block-start: 1px;
+}
+
+.ext-proxy-security-actions .ant-btn {
+  min-height: 28px;
+}
+
+.ext-proxy-security-target {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.ext-proxy-security-target > .ant-form-item,
+.ext-proxy-security-target > .ant-input {
+  min-width: 0;
+  width: 100%;
+}
+
+.ext-proxy-security-target > .ant-btn {
+  border-radius: 0;
+  margin-inline-start: -1px;
+}
+
+.ext-proxy-security-target > .ant-btn:last-child {
+  border-start-end-radius: var(--ant-border-radius);
+  border-end-end-radius: var(--ant-border-radius);
+}
+
+.ext-proxy-security-target > .ant-input,
+.ext-proxy-security-target .ant-form-item-control-input-content > .ant-input {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.ext-proxy-security-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin-inline-start: min(24px, 3vw);
+  padding: 12px 0 2px 14px;
+  border-inline-start: 2px solid var(--ant-color-border-secondary);
+}
+
+.ext-proxy-security-alert {
+  margin: 0 0 12px;
+}
+
+.ext-proxy-security-alert.ant-alert {
+  border-radius: 8px;
+}
+
+.ext-proxy-certificate-list {
+  gap: 20px;
+  padding-block: 2px 6px;
+}
+
+.ext-proxy-certificate {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ext-proxy-certificate + .ext-proxy-certificate {
+  padding-block-start: 18px;
+  border-block-start: 1px solid var(--ant-color-border-secondary);
+}
+
+.ext-proxy-certificate__head {
+  align-items: flex-start;
+  margin-bottom: 14px;
+  padding-inline-start: min(236px, 26%);
+}
+
+.ext-proxy-certificate__title {
+  color: var(--ant-color-text);
+  font-size: 13px;
+}
+
+.ext-proxy-certificate__identity .ant-radio-button-wrapper {
+  min-width: 105px;
+  text-align: center;
+}
+
+.ext-proxy-security-collapse {
+  width: 100%;
+  max-width: 920px;
+  margin-block-start: 14px;
+  background: transparent;
+}
+
+.ext-proxy-security-collapse .ant-collapse-header {
+  font-weight: 500;
+}
+
+.ext-proxy-security-collapse .ant-collapse-content-box {
+  padding: 14px clamp(10px, 2vw, 18px) !important;
+}
+
+.ext-proxy-security-fallbacks {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ext-proxy-security-fallback .ant-divider {
+  margin: 0 0 14px;
+  color: var(--ant-color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ext-proxy-security-form--compact {
+  max-width: 760px;
+}
+
+.ext-proxy-security-form--compact .ant-input-number {
+  width: min(190px, 100%);
+}
+
+@media (max-width: 768px) {
+  .ext-proxy-security-mode-row,
+  .ext-proxy-security-row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 7px;
+  }
+
+  .ext-proxy-security-label {
+    justify-content: flex-start;
+    padding-top: 0;
+    text-align: start;
+  }
+
+  .ext-proxy-security-mode {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ext-proxy-security-mode .ant-radio-button-wrapper {
+    width: 100%;
+    border-radius: 6px !important;
+    border-inline-start-width: 1px !important;
+    margin: 2px;
+  }
+
+  .ext-proxy-security-block__head {
+    gap: 12px;
+  }
+
+  .ext-proxy-certificate__head {
+    padding-inline-start: 0;
+  }
+
+  .ext-proxy-security-subsection {
+    margin-inline-start: 0;
+  }
+}
+
+@media (max-width: 575px) {
+  .ext-proxy-section--security .ext-proxy-section__body {
+    padding: 12px;
+  }
+
+  .ext-proxy-security-block__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ext-proxy-security-block__action {
+    justify-content: space-between;
+  }
+
+  .ext-proxy-security-override {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .ext-proxy-security-target {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .ext-proxy-security-target > .ant-form-item,
+  .ext-proxy-security-target > .ant-input {
+    grid-column: 1 / -1;
+  }
+
+  .ext-proxy-security-target > .ant-btn {
+    width: 100%;
+    margin-inline-start: 0;
+    border-radius: var(--ant-border-radius) !important;
+  }
+
+  .ext-proxy-security-target > .ant-input,
+  .ext-proxy-security-target .ant-form-item-control-input-content > .ant-input {
+    border-radius: var(--ant-border-radius);
+  }
+
+  .ext-proxy-security-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .ext-proxy-security-actions .ant-btn {
+    width: 100%;
+  }
+
+  .ext-proxy-certificate__identity {
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 380px) {
+  .ext-proxy-security-mode {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ext-proxy-security-target,
+  .ext-proxy-security-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ext-proxy-security-input-actions--icons {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+}
+
+.ext-proxy-security-block.ext-proxy-runtime-security {
+  gap: 0;
+}
+
+@media (max-width: 768px) {
+  .ext-proxy-security-mode {
+    gap: 4px;
+  }
+
+  .ext-proxy-security-mode .ant-radio-button-wrapper {
+    margin: 0;
+  }
+
+  .ext-proxy-security-mode .ant-radio-button-wrapper::before {
+    display: none !important;
+  }
+}
+
+/* Security profile alignment refinement: left-anchored TLS and REALITY forms */
+.ext-proxy-section--security .ext-proxy-section__body {
+  padding-inline: clamp(20px, 3vw, 32px);
+}
+
+.ext-proxy-security-shell {
+  align-items: flex-start;
+}
+
+.ext-proxy-security-mode-row,
+.ext-proxy-security-row {
+  grid-template-columns: minmax(140px, 190px) minmax(0, 1fr);
+  column-gap: clamp(14px, 2vw, 22px);
+}
+
+.ext-proxy-security-mode-row,
+.ext-proxy-security-block,
+.ext-proxy-security-status,
+.ext-proxy-security-form,
+.ext-proxy-security-wide,
+.ext-proxy-security-collapse {
+  margin-inline-start: 0;
+  margin-inline-end: auto;
+}
+
+.ext-proxy-security-label {
+  justify-content: flex-start;
+  padding-inline-start: 0;
+  text-align: start;
+}
+
+.ext-proxy-security-block--server .ext-proxy-security-block__head {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.ext-proxy-security-block--server .ext-proxy-security-block__action,
+.ext-proxy-security-block--server .ext-proxy-security-override {
+  justify-content: flex-start;
+  margin-inline-start: 0;
+}
+
+.ext-proxy-certificate__head {
+  padding-inline-start: 0;
+}
+
+@media (max-width: 768px) {
+  .ext-proxy-security-mode-row,
+  .ext-proxy-security-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 575px) {
+  .ext-proxy-section--security .ext-proxy-section__body {
+    padding-inline: 14px;
+  }
+}
+
+@media (max-width: 380px) {
+  .ext-proxy-section--security .ext-proxy-section__body {
+    padding-inline: 12px;
+  }
+}
+
+/* TRANSPORT UI: profile transport blocks and compact header editor */
+.ext-proxy-transport-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+}
+
+.ext-proxy-transport-block {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 10px;
+  background: var(--ant-color-bg-container);
+}
+
+.ext-proxy-transport-block__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.ext-proxy-transport-block__identity {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ext-proxy-transport-block__title,
+.ext-proxy-transport-subsection__title {
+  margin: 0;
+  color: var(--ant-color-text);
+  font-weight: 600;
+}
+
+.ext-proxy-transport-block__title {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.ext-proxy-transport-block__description {
+  color: var(--ant-color-text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.ext-proxy-transport-block__action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.ext-proxy-transport-block__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.ext-proxy-transport-grid {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ext-proxy-transport-grid--1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ext-proxy-transport-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ext-proxy-transport-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ext-proxy-transport-field {
+  gap: 5px;
+  min-width: 0;
+}
+
+.ext-proxy-transport-field--wide {
+  grid-column: 1 / -1;
+}
+
+.ext-proxy-transport-field__control {
+  min-width: 0;
+  width: 100%;
+}
+
+.ext-proxy-transport-field__control > .ant-input,
+.ext-proxy-transport-field__control > .ant-input-affix-wrapper,
+.ext-proxy-transport-field__control > .ant-input-number,
+.ext-proxy-transport-field__control > .ant-select,
+.ext-proxy-transport-field__control > .ant-space-compact {
+  width: 100%;
+  max-width: 100%;
+}
+
+.ext-proxy-transport-toggle.ext-proxy-field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  background: var(--ant-color-fill-quaternary);
+}
+
+.ext-proxy-transport-toggle__copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ext-proxy-transport-toggle__label {
+  color: var(--ant-color-text);
+  font-weight: 500;
+  opacity: 1;
+}
+
+.ext-proxy-transport-toggle__control {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.ext-proxy-transport-toggle .ant-switch,
+.ext-proxy-transport-toggle__control > .ant-switch {
+  align-self: auto;
+  margin: 0;
+}
+
+.ext-proxy-transport-request-response {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.ext-proxy-transport-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  background: var(--ant-color-fill-quaternary);
+}
+
+.ext-proxy-transport-subsection__title {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ext-proxy-transport-subsection__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ext-proxy-header-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+.ext-proxy-header-editor__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ext-proxy-header-editor__title {
+  overflow: hidden;
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ext-proxy-header-editor__add.ant-btn {
+  flex: 0 0 auto;
+  width: auto;
+  align-self: auto;
+}
+
+.ext-proxy-header-editor__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ext-proxy-header-editor__row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(160px, 1.2fr) 32px;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.ext-proxy-header-editor__name,
+.ext-proxy-header-editor__value {
+  min-width: 0;
+}
+
+.ext-proxy-header-editor__remove.ant-btn {
+  width: 32px;
+  min-width: 32px;
+  padding-inline: 0;
+}
+
+@media (max-width: 1100px) {
+  .ext-proxy-transport-request-response {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .ext-proxy-transport-grid--2,
+  .ext-proxy-transport-grid--3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ext-proxy-transport-block__head {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 575px) {
+  .ext-proxy-transport-block__body,
+  .ext-proxy-transport-subsection {
+    padding: 10px;
+  }
+
+  .ext-proxy-transport-toggle.ext-proxy-field {
+    min-height: 44px;
+    padding: 9px 10px;
+  }
+
+  .ext-proxy-header-editor__row {
+    grid-template-columns: minmax(0, 1fr) 32px;
+  }
+
+  .ext-proxy-header-editor__name,
+  .ext-proxy-header-editor__value {
+    grid-column: 1;
+  }
+
+  .ext-proxy-header-editor__remove.ant-btn {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: stretch;
+    height: auto;
+  }
+}
+
+/* TRANSPORT UI V2: compact, unified transport option rows */
+.ext-proxy-transport-block--connection .ext-proxy-transport-block__body {
+  gap: 0;
+  padding: 0;
+}
+
+.ext-proxy-transport-block--connection .ext-proxy-transport-grid {
+  gap: 0;
+}
+
+.ext-proxy-transport-block--connection .ext-proxy-transport-toggle.ext-proxy-field {
+  min-height: 58px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ext-proxy-transport-block--connection .ext-proxy-transport-toggle +
+.ext-proxy-transport-toggle {
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.ext-proxy-transport-options {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 10px;
+  background: var(--ant-color-bg-container);
+}
+
+.ext-proxy-transport-option {
+  min-width: 0;
+}
+
+.ext-proxy-transport-option + .ext-proxy-transport-option {
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.ext-proxy-transport-option > .ext-proxy-transport-toggle.ext-proxy-field,
+.ext-proxy-transport-option > .ext-proxy-runtime-sockopt >
+.ext-proxy-transport-toggle.ext-proxy-field {
+  min-height: 62px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ext-proxy-transport-option--expanded > .ext-proxy-transport-toggle,
+.ext-proxy-transport-option--expanded > .ext-proxy-runtime-sockopt >
+.ext-proxy-transport-toggle {
+  background: var(--ant-color-fill-quaternary);
+}
+
+.ext-proxy-transport-option__content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.ext-proxy-transport-option--client-sockopt >
+.ext-proxy-transport-option__content,
+.ext-proxy-transport-option--listener-sockopt
+.ext-proxy-transport-option__content {
+  background: var(--ant-color-fill-quaternary);
+}
+
+.ext-proxy-transport-option--client-sockopt
+.ext-proxy-transport-option__content > .ant-form-item,
+.ext-proxy-transport-option--listener-sockopt
+.ext-proxy-transport-option__content > .ant-form-item {
+  margin-bottom: 0;
+}
+
+.ext-proxy-transport-option--listener-sockopt .ext-proxy-runtime-sockopt {
+  gap: 0;
+  padding-top: 0;
+}
+
+.ext-proxy-transport-toggle__hint {
+  display: block;
+}
+
+.ext-proxy-section__body > .ext-proxy-grid--selectors {
+  grid-template-columns: minmax(0, 680px);
+}
+
+@media (max-width: 768px) {
+  .ext-proxy-section__body > .ext-proxy-grid--selectors {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 575px) {
+  .ext-proxy-transport-block--connection .ext-proxy-transport-toggle.ext-proxy-field,
+  .ext-proxy-transport-option > .ext-proxy-transport-toggle.ext-proxy-field,
+  .ext-proxy-transport-option > .ext-proxy-runtime-sockopt >
+  .ext-proxy-transport-toggle.ext-proxy-field {
+    min-height: 56px;
+    padding: 11px 12px;
+  }
+
+  .ext-proxy-transport-option__content {
+    padding: 12px;
+  }
+}
+
+/* TRANSPORT UI V4: full-width HTTP obfuscation editor for modal layouts */
+.ext-proxy-transport-block--camouflage-expanded
+.ext-proxy-transport-toggle:last-child {
+  background: var(--ant-color-fill-quaternary);
+}
+
+.ext-proxy-transport-camouflage {
+  min-width: 0;
+  padding: 0;
+  border-top: 1px solid var(--ant-color-border-secondary);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.ext-proxy-transport-request-response--stacked {
+  display: block;
+  min-width: 0;
+}
+
+.ext-proxy-transport-subsection--camouflage {
+  gap: 14px;
+  min-width: 0;
+  padding: 18px 20px 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ext-proxy-transport-subsection--camouflage +
+.ext-proxy-transport-subsection--camouflage {
+  padding: 18px 20px 20px;
+  border: 0;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.ext-proxy-transport-subsection--camouflage
+.ext-proxy-transport-subsection__title {
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ext-proxy-transport-subsection--camouflage
+.ext-proxy-transport-subsection__body {
+  gap: 16px;
+}
+
+.ext-proxy-transport-grid--http-request,
+.ext-proxy-transport-grid--http-response {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+.ext-proxy-transport-subsection--camouflage
+.ext-proxy-transport-grid--http-request >
+.ext-proxy-transport-field,
+.ext-proxy-transport-subsection--camouflage
+.ext-proxy-transport-grid--http-response >
+.ext-proxy-transport-field {
+  gap: 8px;
+}
+
+.ext-proxy-transport-grid--http-request >
+.ext-proxy-transport-field,
+.ext-proxy-transport-grid--http-response >
+.ext-proxy-transport-field {
+  width: 100%;
+  max-width: 100%;
+}
+
+.ext-proxy-transport-grid--http-request >
+.ext-proxy-transport-field:nth-child(1),
+.ext-proxy-transport-grid--http-response >
+.ext-proxy-transport-field:nth-child(1) {
+  max-width: 220px;
+}
+
+.ext-proxy-transport-grid--http-request >
+.ext-proxy-transport-field:nth-child(2),
+.ext-proxy-transport-grid--http-response >
+.ext-proxy-transport-field:nth-child(2) {
+  max-width: 320px;
+}
+
+.ext-proxy-transport-subsection--camouflage
+.ext-proxy-header-editor {
+  padding-top: 14px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.ext-proxy-transport-subsection--camouflage
+.ext-proxy-header-editor__toolbar {
+  min-height: 32px;
+}
+
+.ext-proxy-transport-subsection--camouflage
+.ext-proxy-header-editor__title {
+  color: var(--ant-color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ext-proxy-transport-subsection--camouflage
+.ext-proxy-header-editor__add.ant-btn {
+  min-width: 84px;
+  height: 32px;
+}
+
+@media (max-width: 720px) {
+  .ext-proxy-transport-grid--http-request >
+  .ext-proxy-transport-field:nth-child(1),
+  .ext-proxy-transport-grid--http-request >
+  .ext-proxy-transport-field:nth-child(2),
+  .ext-proxy-transport-grid--http-response >
+  .ext-proxy-transport-field:nth-child(1),
+  .ext-proxy-transport-grid--http-response >
+  .ext-proxy-transport-field:nth-child(2) {
+    max-width: none;
+  }
+}
+
+@media (max-width: 575px) {
+  .ext-proxy-transport-subsection--camouflage,
+  .ext-proxy-transport-subsection--camouflage +
+  .ext-proxy-transport-subsection--camouflage {
+    padding: 14px;
+  }
+}
+
+/* TRANSPORT UI V5: unified layouts for every subscription transport */
+.ext-proxy-transport-shell:not([data-transport="tcp"]) {
+  gap: 14px;
+  margin-top: 2px;
+}
+
+.ext-proxy-transport-shell:not([data-transport="tcp"])
+.ext-proxy-transport-block__head {
+  min-height: 54px;
+  padding: 12px 14px;
+}
+
+.ext-proxy-transport-shell:not([data-transport="tcp"])
+.ext-proxy-transport-block__title {
+  font-size: 14px;
+}
+
+.ext-proxy-transport-shell:not([data-transport="tcp"])
+.ext-proxy-transport-block__description {
+  max-width: 760px;
+  font-size: 12px;
+}
+
+.ext-proxy-transport-shell:not([data-transport="tcp"])
+.ext-proxy-transport-block__body {
+  gap: 16px;
+  padding: 16px;
+}
+
+.ext-proxy-transport-shell:not([data-transport="tcp"])
+.ext-proxy-transport-grid {
+  gap: 16px;
+}
+
+.ext-proxy-transport-shell:not([data-transport="tcp"])
+.ext-proxy-transport-field {
+  gap: 8px;
+}
+
+.ext-proxy-transport-shell:not([data-transport="tcp"])
+.ext-proxy-transport-toggle.ext-proxy-field {
+  min-height: 58px;
+  padding: 12px 14px;
+}
+
+.ext-proxy-transport-inline-headers {
+  min-width: 0;
+  margin-top: 2px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 10px;
+  background: var(--ant-color-fill-quaternary);
+}
+
+.ext-proxy-transport-block--headers .ext-proxy-header-editor,
+.ext-proxy-transport-inline-headers .ext-proxy-header-editor {
+  gap: 12px;
+}
+
+.ext-proxy-transport-block--headers
+.ext-proxy-header-editor__toolbar,
+.ext-proxy-transport-inline-headers
+.ext-proxy-header-editor__toolbar {
+  min-height: 34px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.ext-proxy-transport-block--headers
+.ext-proxy-header-editor__title,
+.ext-proxy-transport-inline-headers
+.ext-proxy-header-editor__title {
+  color: var(--ant-color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ext-proxy-transport-block--headers
+.ext-proxy-header-editor__add.ant-btn,
+.ext-proxy-transport-inline-headers
+.ext-proxy-header-editor__add.ant-btn {
+  min-width: 88px;
+  height: 34px;
+}
+
+@media (max-width: 575px) {
+  .ext-proxy-transport-inline-headers {
+    padding: 12px;
+  }
+}
+
+.ext-proxy-transport-block--toggle-section
+.ext-proxy-transport-block__body {
+  padding: 0;
+}
+
+.ext-proxy-transport-block--toggle-section
+.ext-proxy-transport-block__body > .ext-proxy-transport-toggle {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ext-proxy-transport-block--toggle-section
+.ext-proxy-transport-block__body > .ext-proxy-transport-grid {
+  padding: 16px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.ext-proxy-xhttp-shell .ext-proxy-transport-block {
+  scroll-margin-top: 16px;
+}
+
+.ext-proxy-xhttp-shell
+.ext-proxy-transport-block--advanced
+.ext-proxy-transport-grid--1 {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+}
+
+.ext-proxy-xhttp-shell
+.ext-proxy-transport-block--advanced
+.ext-proxy-transport-grid--1
+.ext-proxy-transport-toggle.ext-proxy-field {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ext-proxy-xhttp-shell
+.ext-proxy-transport-block--advanced
+.ext-proxy-transport-grid--1
+.ext-proxy-transport-toggle +
+.ext-proxy-transport-toggle {
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+/* Expanded Final Mask: vertical labels with readable control spacing. */
+.ext-proxy-profile-finalmask-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ext-proxy-profile-finalmask-form .ant-form-item {
+  margin-bottom: 16px;
+}
+
+.ext-proxy-profile-finalmask-form .ant-form-item-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+}
+
+.ext-proxy-profile-finalmask-form .ant-form-item-label,
+.ext-proxy-profile-finalmask-form .ant-form-item-control {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+.ext-proxy-profile-finalmask-form .ant-form-item-label {
+  padding: 0;
+  text-align: start;
+}
+
+.ext-proxy-profile-finalmask-form .ant-form-item-label > label {
+  height: auto;
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+}
+
+.ext-proxy-profile-finalmask-form .ant-input,
+.ext-proxy-profile-finalmask-form .ant-input-number,
+.ext-proxy-profile-finalmask-form .ant-select,
+.ext-proxy-profile-finalmask-form .ant-space-compact {
+  width: 100%;
+  max-width: 100%;
+}
+
+.ext-proxy-profile-finalmask-form .ant-divider {
+  margin-block: 18px 14px;
+}
+
+/* Expanded client Sockopt: compact two-column editor on desktop. */
+.ext-proxy-profile-client-sockopt.ext-proxy-transport-option__content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.ext-proxy-profile-client-sockopt > .ant-form-item {
+  min-width: 0;
+  margin: 0;
+}
+
+.ext-proxy-profile-client-sockopt > .ant-form-item .ant-form-item-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+}
+
+.ext-proxy-profile-client-sockopt > .ant-form-item .ant-form-item-label,
+.ext-proxy-profile-client-sockopt > .ant-form-item .ant-form-item-control {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+.ext-proxy-profile-client-sockopt > .ant-form-item .ant-form-item-label {
+  padding: 0;
+  text-align: start;
+}
+
+.ext-proxy-profile-client-sockopt > .ant-form-item .ant-form-item-label > label {
+  height: auto;
+}
+
+.ext-proxy-profile-client-sockopt > .ant-form-item .ant-input,
+.ext-proxy-profile-client-sockopt > .ant-form-item .ant-input-number,
+.ext-proxy-profile-client-sockopt > .ant-form-item .ant-select {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Expanded listener Sockopt: grouped instead of one long undifferentiated grid. */
+.ext-proxy-profile-listener-sockopt {
+  gap: 16px;
+}
+
+.ext-proxy-transport-subsection--plain {
+  gap: 14px;
+  padding: 14px;
+  background: var(--ant-color-bg-container);
+}
+
+.ext-proxy-transport-subsection--plain
+.ext-proxy-transport-subsection__title {
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ext-proxy-transport-subsection--plain
+.ext-proxy-transport-grid {
+  gap: 14px;
+}
+
+.ext-proxy-transport-subsection--plain
+.ext-proxy-transport-field {
+  gap: 7px;
+}
+
+.ext-proxy-transport-subsection--plain
+.ext-proxy-transport-toggle.ext-proxy-field {
+  min-height: 52px;
+  border-color: var(--ant-color-border-secondary);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.ext-proxy-profile-custom-sockopt {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  background: var(--ant-color-bg-container);
+}
+
+@media (max-width: 900px) {
+  .ext-proxy-profile-client-sockopt.ext-proxy-transport-option__content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .ext-proxy-transport-shell:not([data-transport="tcp"])
+  .ext-proxy-transport-block__body {
+    padding: 14px;
+  }
+
+  .ext-proxy-transport-block--toggle-section
+  .ext-proxy-transport-block__body {
+    padding: 0;
+  }
+}
+
+@media (max-width: 575px) {
+  .ext-proxy-transport-shell:not([data-transport="tcp"])
+  .ext-proxy-transport-block__head,
+  .ext-proxy-transport-shell:not([data-transport="tcp"])
+  .ext-proxy-transport-block__body {
+    padding: 12px;
+  }
+
+  .ext-proxy-transport-block--toggle-section
+  .ext-proxy-transport-block__body {
+    padding: 0;
+  }
+
+  .ext-proxy-transport-block--toggle-section
+  .ext-proxy-transport-block__body > .ext-proxy-transport-grid {
+    padding: 12px;
+  }
+
+  .ext-proxy-profile-finalmask-form .ant-form-item {
+    margin-bottom: 14px;
   }
 }

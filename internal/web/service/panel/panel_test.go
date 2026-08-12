@@ -225,7 +225,7 @@ func TestAcquireUpdateSlotHardCeilingOverridesLiveness(t *testing.T) {
 // at the in-memory started-at timestamp, never at the status file's own
 // terminal state.
 func TestAcquireUpdateSlotReleasesOnTerminalStatus(t *testing.T) {
-	t.Setenv("DUI_DB_FOLDER", t.TempDir())
+	t.Setenv("XUI_DB_FOLDER", t.TempDir())
 	resetUpdateSlot(t)
 	path := config.GetUpdateStatusFilePath()
 
@@ -245,7 +245,7 @@ func TestAcquireUpdateSlotReleasesOnTerminalStatus(t *testing.T) {
 // by some earlier, unrelated run (different runID) must not be mistaken for
 // this run finishing.
 func TestAcquireUpdateSlotIgnoresStaleUnrelatedStatus(t *testing.T) {
-	t.Setenv("DUI_DB_FOLDER", t.TempDir())
+	t.Setenv("XUI_DB_FOLDER", t.TempDir())
 	resetUpdateSlot(t)
 	path := config.GetUpdateStatusFilePath()
 
@@ -289,7 +289,7 @@ func TestAcquireUpdateSlotConcurrency(t *testing.T) {
 }
 
 func TestGetUpdateStatus(t *testing.T) {
-	t.Setenv("DUI_DB_FOLDER", t.TempDir())
+	t.Setenv("XUI_DB_FOLDER", t.TempDir())
 	path := config.GetUpdateStatusFilePath()
 	svc := &PanelService{}
 

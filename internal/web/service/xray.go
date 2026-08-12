@@ -9,9 +9,11 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/mdaltoon10/D-UI/v3/internal/config"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
+	"github.com/mdaltoon10/D-UI/v3/internal/frontmux"
 	"github.com/mdaltoon10/D-UI/v3/internal/logger"
 	"github.com/mdaltoon10/D-UI/v3/internal/util/json_util"
 	"github.com/mdaltoon10/D-UI/v3/internal/xray"
@@ -20,12 +22,50 @@ import (
 )
 
 var (
-	p                 *xray.Process
-	lock              sync.Mutex
-	isNeedXrayRestart atomic.Bool // Indicates that restart was requested for Xray
-	isManuallyStopped atomic.Bool // Indicates that Xray was stopped manually from the panel
-	result            string
+	p                     *xray.Process
+	lock                  sync.Mutex
+	onlineUsersPollMu     sync.Mutex
+	isNeedXrayRestart     atomic.Bool   // Indicates that restart was requested for Xray
+	xrayRestartGeneration atomic.Uint64 // Monotonic generation of restart/reconcile requests
+	isManuallyStopped     atomic.Bool   // Indicates that Xray was stopped manually from the panel
+	result                string
+	frontMuxManager       = frontmux.NewManager(func(err error) {
+		logger.Warning("shared-port frontmux: ", err)
+	})
 )
+
+const onlineUsersSnapshotMaxAge = 3 * time.Second
+
+// OnlineUsersPoll binds one raw GetUsersStats result to the exact Xray process
+// that produced it. The process identity is intentionally private; callers may
+// inspect Users but can only commit the poll through XrayService.
+type OnlineUsersPoll struct {
+	process *xray.Process
+	Users   []xray.OnlineUser
+}
+
+// markXrayRestartNeeded records a new restart/reconcile request. The generation
+// lets an in-flight restart distinguish an older request it has covered from a
+// newer request that arrived while it was building or applying its config.
+func markXrayRestartNeeded() {
+	xrayRestartGeneration.Inc()
+	isNeedXrayRestart.Store(true)
+}
+
+// finishXrayRestart preserves newer requests that arrived during the operation.
+// A failed operation always schedules another attempt with a new generation.
+func finishXrayRestart(startGeneration uint64, clearPending bool, err error) error {
+	if err != nil {
+		markXrayRestartNeeded()
+		return err
+	}
+
+	if clearPending && xrayRestartGeneration.Load() == startGeneration {
+		isNeedXrayRestart.Store(false)
+	}
+
+	return nil
+}
 
 // XrayService provides business logic for Xray process management.
 // It handles starting, stopping, restarting Xray, and managing its configuration.
@@ -132,6 +172,10 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	backendAllocator, err := newSharedBackendAllocatorForConfig(xrayConfig, inbounds)
+	if err != nil {
+		return nil, err
+	}
 	for _, inbound := range inbounds {
 		if !inbound.Enable {
 			continue
@@ -150,6 +194,17 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 			return nil, listErr
 		}
 
+		// Keep canonical client/client_inbound rows in sync with the same inbound
+		// client list used to generate Xray runtime users. This prevents freshly
+		// created or attached clients from being emitted as hmstat_* users without
+		// a matching client_inbound_traffics resolver row.
+		if syncErr := s.inboundService.clientService.SyncInbound(nil, inbound.Id, dbClients); syncErr != nil {
+			return nil, syncErr
+		}
+		if mapErr := s.inboundService.EnsureClientInboundTrafficMappingsForInbound(inbound.Id); mapErr != nil {
+			return nil, mapErr
+		}
+
 		clientStats := inbound.ClientStats
 		enableMap := make(map[string]bool, len(clientStats))
 		for _, clientTraffic := range clientStats {
@@ -160,6 +215,10 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 		var wgPeers []any
 		for i := range dbClients {
 			c := dbClients[i]
+			runtimeEmail := model.RuntimeClientEmailForInbound(inbound, c.Email)
+			if runtimeEmail == "" {
+				runtimeEmail = c.Email
+			}
 			if enable, exists := enableMap[c.Email]; exists && !enable {
 				logger.Infof("Remove Inbound User %s due to expiration or traffic limit", c.Email)
 				continue
@@ -171,7 +230,7 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 			if flow == "xtls-rprx-vision-udp443" {
 				flow = "xtls-rprx-vision"
 			}
-			entry := map[string]any{"email": c.Email}
+			entry := map[string]any{"email": runtimeEmail}
 			switch inbound.Protocol {
 			case model.VLESS:
 				if c.ID != "" {
@@ -206,20 +265,7 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 					entry["auth"] = c.Auth
 				}
 			case model.WireGuard:
-				peer := map[string]any{"email": c.Email, "level": 0}
-				if c.PublicKey != "" {
-					peer["publicKey"] = c.PublicKey
-				}
-				if len(c.AllowedIPs) > 0 {
-					peer["allowedIPs"] = c.AllowedIPs
-				}
-				if c.PreSharedKey != "" {
-					peer["preSharedKey"] = c.PreSharedKey
-				}
-				if c.KeepAlive > 0 {
-					peer["keepAlive"] = c.KeepAlive
-				}
-				wgPeers = append(wgPeers, peer)
+				wgPeers = append(wgPeers, model.WireguardPeerFromClient(c))
 				continue
 			}
 			finalClients = append(finalClients, entry)
@@ -264,10 +310,14 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 			inbound.Settings = string(modifiedSettings)
 		}
 
+		var rawRuntimeProfileStream map[string]any
 		if len(inbound.StreamSettings) > 0 {
-			// Unmarshal stream JSON
+			// Unmarshal stream JSON. Keep an untouched copy for the runtime-profile
+			// compiler before stripping panel-only externalProxy metadata from the
+			// parent Xray inbound.
 			var stream map[string]any
 			_ = json.Unmarshal([]byte(inbound.StreamSettings), &stream)
+			rawRuntimeProfileStream, _ = cloneMap(stream)
 
 			// Remove the "settings" field under "tlsSettings" and "realitySettings"
 			tlsSettings, ok1 := stream["tlsSettings"].(map[string]any)
@@ -281,6 +331,23 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 			}
 
 			delete(stream, "externalProxy")
+
+			// HTTPUpgrade keeps Host as a dedicated field. The pinned core rejects
+			// Host inside headers, including legacy case variants. Normalize only
+			// the generated runtime config; persisted/subscription data stays intact.
+			normalizeHTTPUpgradeRuntimeHeaders(stream)
+
+			// finalmask.tcp + REALITY panics Xray-core on the first connection
+			// (XTLS/Xray-core#6453). AddInbound/UpdateInbound reject this
+			// combination at save time, but a row saved before that guard
+			// existed (upgrade, node sync, restored backup, direct DB edit)
+			// would still crash Xray on the next restart without this — drop
+			// it here too, the same way liftXhttpSessionIDKeys and
+			// HealShadowsocksClientMethods heal other legacy data in place.
+			if len(finalMaskRealityTcpMasks(stream)) > 0 {
+				logger.Warningf("Inbound %q: dropping finalmask, incompatible with REALITY security (crashes Xray-core, see XTLS/Xray-core#6453)", inbound.Tag)
+				delete(stream, "finalmask")
+			}
 
 			// xray-core v26.6.22 (#6258) renamed the XHTTP session keys and
 			// kept no fallback. Lift legacy sessionPlacement/sessionKey onto the
@@ -301,8 +368,20 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 			}
 		}
 
-		inboundConfig := inbound.GenXrayInboundConfig()
-		xrayConfig.InboundConfigs = append(xrayConfig.InboundConfigs, *inboundConfig)
+		topology, topologyErr := compileRuntimeProfileTopology(
+			inbound,
+			rawRuntimeProfileStream,
+			backendAllocator,
+		)
+		if topologyErr != nil {
+			return nil, topologyErr
+		}
+		xrayConfig.InboundConfigs = append(xrayConfig.InboundConfigs, topology.Parent)
+		xrayConfig.InboundConfigs = append(xrayConfig.InboundConfigs, topology.Synthetic...)
+		xrayConfig.SharedPortPlan.Groups = append(
+			xrayConfig.SharedPortPlan.Groups,
+			topology.SharedPlan.Groups...,
+		)
 	}
 
 	// Merge subscription-derived outbounds (if any) into the final outbounds array.
@@ -342,6 +421,14 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 	} else {
 		injectNodeEgresses(xrayConfig, nodes)
 	}
+
+	if err := validateRuntimeProfileBindings(xrayConfig); err != nil {
+		return nil, err
+	}
+	if err := validateSharedPortPlanAgainstXrayConfig(xrayConfig); err != nil {
+		return nil, err
+	}
+	xrayConfig.SharedPortPlan = xrayConfig.SharedPortPlan.Canonical()
 
 	return xrayConfig, nil
 }
@@ -824,41 +911,189 @@ func (s *XrayService) GetXrayTraffic() ([]*xray.Traffic, []*xray.ClientTraffic, 
 	return traffic, clientTraffic, nil
 }
 
-// GetOnlineUsers returns connection-based online users (email + source IPs)
-// from the running core's online-stats API. ok=false means the API is not
-// available — xray isn't running or the core predates the online-stats RPCs —
-// and callers must use the legacy traffic-delta / access-log paths. The
-// capability is probed lazily per process: an Unimplemented answer pins this
-// core as unsupported until the next restart, while transient errors leave the
-// capability undecided so a flaky poll can't lock in legacy mode.
-func (s *XrayService) GetOnlineUsers() ([]xray.OnlineUser, bool, error) {
-	if !s.IsXrayRunning() {
-		return nil, false, nil
+// GetOnlineUsers performs the authoritative online-stats RPC. The one-second
+// ClientPresenceJob is the production owner of this direct poll. The returned
+// poll remains bound to the exact process that answered the RPC.
+func (s *XrayService) GetOnlineUsers() (OnlineUsersPoll, bool, error) {
+	onlineUsersPollMu.Lock()
+	defer onlineUsersPollMu.Unlock()
+
+	lock.Lock()
+	proc := p
+	lock.Unlock()
+	if proc == nil || !proc.IsRunning() {
+		return OnlineUsersPoll{}, false, nil
 	}
-	if p.OnlineAPISupport() == xray.OnlineAPIUnsupported {
-		return nil, false, nil
+	if proc.OnlineAPISupport() == xray.OnlineAPIUnsupported {
+		return OnlineUsersPoll{}, false, nil
 	}
-	if err := s.xrayAPI.Init(p.GetAPIPort()); err != nil {
+	if err := s.xrayAPI.Init(proc.GetAPIPort()); err != nil {
 		logger.Debug("Failed to initialize Xray API:", err)
-		return nil, false, err
+		return OnlineUsersPoll{}, false, err
 	}
 	defer s.xrayAPI.Close()
 
 	users, err := s.xrayAPI.GetOnlineUsers()
 	if err != nil {
 		if xray.IsUnimplementedErr(err) {
-			p.SetOnlineAPISupport(xray.OnlineAPIUnsupported)
-			logger.Info("xray core does not support the online-stats API; falling back to traffic-delta onlines and access-log IP limit")
-			return nil, false, nil
+			proc.SetOnlineAPISupport(xray.OnlineAPIUnsupported)
+			logger.Info("xray core does not support the online-stats API; falling back to traffic-delta onlines")
+			return OnlineUsersPoll{}, false, nil
 		}
 		logger.Debug("Failed to fetch Xray online users:", err)
-		return nil, false, err
+		return OnlineUsersPoll{}, false, err
 	}
-	if p.OnlineAPISupport() == xray.OnlineAPIUnknown {
-		p.SetOnlineAPISupport(xray.OnlineAPISupported)
-		logger.Info("xray core supports the online-stats API; using connection-based onlines and access-log-free IP limit")
+	if proc.OnlineAPISupport() == xray.OnlineAPIUnknown {
+		proc.SetOnlineAPISupport(xray.OnlineAPISupported)
+		logger.Info("xray online-stats API detected; connection-aware online clients enabled")
 	}
-	return users, true, nil
+
+	lock.Lock()
+	valid := p == proc && proc.IsRunning()
+	lock.Unlock()
+	if !valid {
+		return OnlineUsersPoll{}, false, nil
+	}
+	return OnlineUsersPoll{
+		process: proc,
+		Users:   users,
+	}, true, nil
+}
+
+func commitOnlineUsersPoll(
+	current, polled *xray.Process,
+	running bool,
+	logicalEmails []string,
+	users []xray.OnlineUser,
+	at time.Time,
+) (changed, committed bool) {
+	if current == nil || polled == nil || current != polled || !running {
+		return false, false
+	}
+	changed = polled.CommitXrayOnlineSnapshot(
+		logicalEmails,
+		users,
+		at,
+		at.UnixMilli(),
+		onlineGracePeriodMs,
+	)
+	return changed, true
+}
+
+// CommitOnlineUsersSnapshot atomically commits canonical presence and the raw
+// user/IP snapshot only when the process that produced the poll is still the
+// current running process. RestartXray uses the same lock for process swaps.
+func (s *XrayService) CommitOnlineUsersSnapshot(
+	poll OnlineUsersPoll,
+	logicalEmails []string,
+) (changed, committed bool) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	proc := poll.process
+	return commitOnlineUsersPoll(
+		p,
+		proc,
+		proc != nil && proc.IsRunning(),
+		logicalEmails,
+		poll.Users,
+		time.Now(),
+	)
+}
+
+// ClearStoppedXrayOnlineSnapshot clears only Xray-owned presence when the
+// current process is still stopped. A concurrent restart wins and the clear is
+// rejected instead of erasing the replacement process.
+func (s *XrayService) ClearStoppedXrayOnlineSnapshot() (changed, committed bool) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	proc := p
+	if proc == nil {
+		return false, true
+	}
+	if proc.IsRunning() {
+		return false, false
+	}
+	now := time.Now().UnixMilli()
+	return proc.ClearXrayOnlineSnapshot(now, onlineGracePeriodMs), true
+}
+
+// GetCachedOnlineUsers returns the latest fresh snapshot without opening another
+// gRPC connection or issuing another GetUsersStats RPC.
+func (s *XrayService) GetCachedOnlineUsers() ([]xray.OnlineUser, bool) {
+	lock.Lock()
+	proc := p
+	lock.Unlock()
+	if proc == nil || !proc.IsRunning() {
+		return nil, false
+	}
+	if proc.OnlineAPISupport() == xray.OnlineAPIUnsupported {
+		return nil, false
+	}
+
+	users, ok := proc.CachedOnlineUsersSnapshot(onlineUsersSnapshotMaxAge, time.Now())
+	if !ok {
+		return nil, false
+	}
+	lock.Lock()
+	valid := p == proc && proc.IsRunning()
+	lock.Unlock()
+	if !valid {
+		return nil, false
+	}
+	return users, true
+}
+
+// HasFreshOnlineUsersSnapshot reports whether secondary consumers may trust the
+// current process cache without copying its full user/IP payload.
+func (s *XrayService) HasFreshOnlineUsersSnapshot() bool {
+	lock.Lock()
+	proc := p
+	lock.Unlock()
+	if proc == nil || !proc.IsRunning() {
+		return false
+	}
+	if proc.OnlineAPISupport() == xray.OnlineAPIUnsupported {
+		return false
+	}
+	fresh := proc.HasFreshOnlineUsersSnapshot(onlineUsersSnapshotMaxAge, time.Now())
+	if !fresh {
+		return false
+	}
+	lock.Lock()
+	valid := p == proc && proc.IsRunning()
+	lock.Unlock()
+	return valid
+}
+
+// GetFreshExactXrayOnlineClients returns a process-bound exact Xray-only set
+// whose matching raw snapshot is still fresh. Auxiliary clients are excluded.
+func (s *XrayService) GetFreshExactXrayOnlineClients() ([]string, bool) {
+	lock.Lock()
+	proc := p
+	lock.Unlock()
+	if proc == nil || !proc.IsRunning() {
+		return nil, false
+	}
+	if proc.OnlineAPISupport() == xray.OnlineAPIUnsupported {
+		return nil, false
+	}
+
+	online, ok := proc.FreshExactXrayOnlineClients(
+		onlineUsersSnapshotMaxAge,
+		time.Now(),
+	)
+	if !ok {
+		return nil, false
+	}
+	lock.Lock()
+	valid := p == proc && proc.IsRunning()
+	lock.Unlock()
+	if !valid {
+		return nil, false
+	}
+	return online, true
 }
 
 // BalancerStatus is the live view of one balancer for the panel UI. Running
@@ -906,16 +1141,63 @@ func (s *XrayService) GetBalancersStatus(tags []string) ([]BalancerStatus, error
 }
 
 // OverrideBalancer forces a balancer in the running core to use the given
-// outbound tag; an empty target clears the override.
+// outbound tag; an empty target clears the override. When target names
+// another balancer, the override resolves to the loopback outbound that
+// routes traffic through the target balancer via the routing rules.
 func (s *XrayService) OverrideBalancer(tag, target string) error {
 	if !s.IsXrayRunning() {
 		return errors.New("xray is not running")
+	}
+	if target != "" {
+		resolved, err := s.resolveOverrideTarget(target)
+		if err != nil {
+			return err
+		}
+		if resolved != "" {
+			target = resolved
+		}
 	}
 	if err := s.xrayAPI.Init(p.GetAPIPort()); err != nil {
 		return err
 	}
 	defer s.xrayAPI.Close()
 	return s.xrayAPI.SetBalancerTarget(tag, target)
+}
+
+// resolveOverrideTarget checks if target names a balancer and, if so,
+// returns the loopback outbound tag that routes to it through the
+// routing rules. Returns empty if target is already a concrete outbound.
+func (s *XrayService) resolveOverrideTarget(target string) (string, error) {
+	template, err := s.settingService.GetXrayConfigTemplate()
+	if err != nil {
+		return "", err
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal([]byte(template), &cfg); err != nil {
+		return "", err
+	}
+	routing, _ := cfg["routing"].(map[string]any)
+	if routing == nil {
+		return "", nil
+	}
+	rules, _ := routing["rules"].([]any)
+	for _, r := range rules {
+		rule, ok := r.(map[string]any)
+		if !ok {
+			continue
+		}
+		if rule["balancerTag"] != target {
+			continue
+		}
+		inboundTags, ok := rule["inboundTag"].([]any)
+		if !ok || len(inboundTags) == 0 {
+			continue
+		}
+		if lbTag, ok := inboundTags[0].(string); ok && strings.HasPrefix(lbTag, "_bl_") {
+			return lbTag, nil
+		}
+	}
+	return "", nil
 }
 
 // TestRoute asks the running core which outbound its router picks for the
@@ -937,38 +1219,143 @@ func (s *XrayService) TestRoute(req xray.RouteTestRequest) (*xray.RouteTestResul
 // routing rules/balancers are hot-reloadable); only changes the core cannot
 // take at runtime — or a force request — stop and restart the process.
 func (s *XrayService) RestartXray(isForce bool) error {
+	return s.restartXray(isForce, true, true)
+}
+
+// ReconcileXray immediately reconciles the generated configuration with the
+// running core without treating an unrelated pending flag as a reason for a
+// forced process restart. It is used after successful runtime API mutations,
+// where keeping the Process config snapshot aligned is required.
+func (s *XrayService) ReconcileXray() error {
+	return s.restartXray(false, false, false)
+}
+
+func (s *XrayService) restartXray(isForce, honorPending, clearPending bool) error {
 	lock.Lock()
 	defer lock.Unlock()
-	logger.Debug("restart Xray, force:", isForce)
+
+	startGeneration := xrayRestartGeneration.Load()
+
+	logger.Debug(
+		"restart Xray, force:", isForce,
+		"honor pending:", honorPending,
+	)
 	isManuallyStopped.Store(false)
 
 	xrayConfig, err := s.GetXrayConfig()
 	if err != nil {
-		return err
+		return finishXrayRestart(
+			startGeneration,
+			clearPending,
+			err,
+		)
 	}
 
-	if s.IsXrayRunning() {
-		configUnchanged := p.GetConfig().Equals(xrayConfig)
-		if !isForce && configUnchanged && !isNeedXrayRestart.Load() {
+	var previousConfig *xray.Config
+	var auxiliaryPresence xray.AuxiliaryPresenceSnapshot
+	if p != nil {
+		auxiliaryPresence = p.SnapshotAuxiliaryPresence()
+	}
+	restoreAuxiliaryPresence := func(proc *xray.Process) {
+		if proc == nil {
+			return
+		}
+		proc.RestoreAuxiliaryPresence(
+			auxiliaryPresence,
+			time.Now().UnixMilli(),
+			onlineGracePeriodMs,
+		)
+	}
+
+	wasRunning := s.IsXrayRunning()
+	if wasRunning {
+		previousConfig = p.GetConfig()
+		configUnchanged := previousConfig.Equals(xrayConfig)
+		pending := isNeedXrayRestart.Load()
+
+		if !isForce &&
+			configUnchanged &&
+			(!honorPending || !pending) {
 			logger.Debug("It does not need to restart Xray")
-			return nil
+			return finishXrayRestart(
+				startGeneration,
+				clearPending,
+				nil,
+			)
 		}
-		if !isForce && !configUnchanged && s.tryHotApply(xrayConfig) {
-			logger.Info("Xray config changes applied through the core API, no restart needed")
-			return nil
+
+		if !isForce &&
+			!configUnchanged &&
+			previousConfig.SharedPortPlan.Empty() &&
+			xrayConfig.SharedPortPlan.Empty() &&
+			s.tryHotApply(xrayConfig) {
+			logger.Info(
+				"Xray config changes applied through the core API, no restart needed",
+			)
+			return finishXrayRestart(
+				startGeneration,
+				clearPending,
+				nil,
+			)
 		}
-		_ = p.Stop()
+
+		// Stop the public frontmux before its private Xray backends. If Xray
+		// refuses to stop, restore the old public listeners immediately.
+		if stopErr := stopXrayRuntime(p); stopErr != nil {
+			recovered, recoverErr := recoverPreviousXrayRuntime(p, previousConfig)
+			if recoverErr == nil {
+				p = recovered
+				restoreAuxiliaryPresence(p)
+			}
+			return finishXrayRestart(
+				startGeneration,
+				clearPending,
+				errors.Join(
+					fmt.Errorf("stop Xray/shared-port runtime before restart: %w", stopErr),
+					recoverErr,
+				),
+			)
+		}
 	}
 
-	p = xray.NewProcess(xrayConfig)
 	result = ""
 	s.xrayAPI.StatsLastValues = nil
-	err = p.Start()
-	if err != nil {
-		return err
+
+	newProcess, startErr := startXrayRuntime(xrayConfig)
+	p = newProcess
+	restoreAuxiliaryPresence(p)
+	if startErr != nil {
+		// startXrayRuntime already performs best-effort cleanup. Defensively
+		// retry when a partially-started process survived, and never launch the
+		// rollback process while that replacement still owns listener sockets.
+		var cleanupErr error
+		if newProcess != nil && newProcess.IsRunning() {
+			cleanupErr = stopXrayRuntime(newProcess)
+		}
+
+		var rollbackErr error
+		if wasRunning && (newProcess == nil || !newProcess.IsRunning()) {
+			var restored *xray.Process
+			restored, rollbackErr = restoreXrayRuntime(previousConfig)
+			if rollbackErr == nil {
+				p = restored
+				restoreAuxiliaryPresence(p)
+			}
+		} else if wasRunning {
+			rollbackErr = errors.New("replacement Xray process is still running; previous runtime was not started to avoid socket corruption")
+		}
+		return finishXrayRestart(
+			startGeneration,
+			clearPending,
+			errors.Join(startErr, cleanupErr, rollbackErr),
+		)
 	}
 
-	return nil
+	return finishXrayRestart(
+		startGeneration,
+		clearPending,
+		nil,
+	)
 }
 
 // tryHotApply attempts to reconcile the running Xray instance with newCfg
@@ -979,6 +1366,10 @@ func (s *XrayService) RestartXray(isForce bool) error {
 // partially applied. Callers must hold the package-level lock.
 func (s *XrayService) tryHotApply(newCfg *xray.Config) bool {
 	oldCfg := p.GetConfig()
+	if !oldCfg.SharedPortPlan.Empty() || !newCfg.SharedPortPlan.Empty() {
+		logger.Debug("hot apply: shared-port topology requires a transactional full restart")
+		return false
+	}
 	diff, ok := xray.ComputeHotDiff(oldCfg, newCfg)
 	if !ok {
 		logger.Debug("hot apply: config change is not API-applicable, falling back to restart")
@@ -1108,15 +1499,15 @@ func (s *XrayService) StopXray() error {
 	defer lock.Unlock()
 	isManuallyStopped.Store(true)
 	logger.Debug("Attempting to stop Xray...")
-	if s.IsXrayRunning() {
-		return p.Stop()
+	if s.IsXrayRunning() || frontMuxManager.Running() {
+		return stopXrayRuntime(p)
 	}
 	return errors.New("xray is not running")
 }
 
 // SetToNeedRestart marks that Xray needs to be restarted.
 func (s *XrayService) SetToNeedRestart() {
-	isNeedXrayRestart.Store(true)
+	markXrayRestartNeeded()
 }
 
 // GetXrayAPIPort returns the port the local xray process is listening on

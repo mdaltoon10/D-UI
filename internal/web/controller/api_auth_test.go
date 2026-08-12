@@ -29,14 +29,14 @@ func newAPIAuthTestEngine(t *testing.T) (*gin.Engine, *APIController) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	dbDir := t.TempDir()
-	t.Setenv("DUI_DB_FOLDER", dbDir)
-	if err := database.InitDB(filepath.Join(dbDir, "d-ui.db")); err != nil {
+	t.Setenv("XUI_DB_FOLDER", dbDir)
+	if err := database.InitDB(filepath.Join(dbDir, "x-ui.db")); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	t.Cleanup(func() { _ = database.CloseDB() })
 	engine := gin.New()
 	store := cookie.NewStore([]byte("api-auth-test-secret"))
-	engine.Use(sessions.Sessions("d-ui", store))
+	engine.Use(sessions.Sessions("3x-ui", store))
 
 	a := &APIController{}
 
@@ -88,6 +88,33 @@ func TestCheckAPIAuth_BearerSuccess(t *testing.T) {
 	}
 	if got := w.Body.String(); got != `{"api_authed":true}` {
 		t.Fatalf("body = %s, want api_authed true", got)
+	}
+}
+
+func TestCheckAPIAuthRejectsXAPIKeyOnStandardAPI(t *testing.T) {
+	engine, _ := newAPIAuthTestEngine(t)
+
+	const plaintext = "standard-api-x-api-key-must-not-authenticate"
+	if err := database.GetDB().Create(&model.ApiToken{
+		Name:    "x-api-key-standard-api",
+		Token:   crypto.HashTokenSHA256(plaintext),
+		Enabled: true,
+	}).Error; err != nil {
+		t.Fatalf("seed token: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/panel/api/ping", nil)
+	req.Header.Set("X-API-Key", plaintext)
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
+	w := httptest.NewRecorder()
+	engine.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf(
+			"status = %d, want 401; body=%s",
+			w.Code,
+			w.Body.String(),
+		)
 	}
 }
 

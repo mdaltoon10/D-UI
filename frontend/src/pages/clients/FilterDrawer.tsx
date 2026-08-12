@@ -31,6 +31,7 @@ interface FilterDrawerProps {
   protocols: string[];
   groups: string[];
   nodes: NodeRecord[];
+  ownerOptions?: Array<{ value: string; label: string }>;
 }
 
 const BUCKET_KEYS = ['active', 'expiring', 'depleted', 'deactive', 'online'] as const;
@@ -44,14 +45,9 @@ export default function FilterDrawer({
   protocols,
   groups,
   nodes,
+  ownerOptions = [],
 }: FilterDrawerProps) {
   const { t } = useTranslation();
-
-  const isReseller = useMemo(() => {
-    return (typeof window !== 'undefined' && typeof window.X_UI_BASE_PATH !== 'undefined')
-      ? !!localStorage.getItem('daltoon_current_admin')
-      : false;
-  }, []);
 
   function patch<K extends keyof ClientFilters>(key: K, value: ClientFilters[K]) {
     onChange({ ...filters, [key]: value });
@@ -124,6 +120,21 @@ export default function FilterDrawer({
           </Checkbox.Group>
         </Form.Item>
 
+        {ownerOptions.length > 0 && (
+          <Form.Item label="Admin">
+            <Select
+              value={filters.owner || undefined}
+              onChange={(v) => patch('owner', (v || '') as string)}
+              options={ownerOptions}
+              placeholder="Admin"
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              listHeight={220}
+            />
+          </Form.Item>
+        )}
+
         <Form.Item label={t('pages.inbounds.protocol')}>
           <Select
             mode="multiple"
@@ -136,24 +147,22 @@ export default function FilterDrawer({
           />
         </Form.Item>
 
-        {!isReseller && (
-          <Form.Item label={t('inbounds')}>
-            <Select
-              mode="multiple"
-              value={filters.inboundIds}
-              onChange={(v) => patch('inboundIds', v as number[])}
-              options={inboundOptions}
-              placeholder={t('inbounds')}
-              maxTagCount="responsive"
-              allowClear
-              showSearch
-              optionFilterProp="label"
-              listHeight={220}
-            />
-          </Form.Item>
-        )}
+        <Form.Item label={t('inbounds')}>
+          <Select
+            mode="multiple"
+            value={filters.inboundIds}
+            onChange={(v) => patch('inboundIds', v as number[])}
+            options={inboundOptions}
+            placeholder={t('inbounds')}
+            maxTagCount="responsive"
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            listHeight={220}
+          />
+        </Form.Item>
 
-        {!isReseller && nodes.length > 0 && (
+        {nodes.length > 0 && (
           <Form.Item label={t('pages.clients.filters.nodes')}>
             <Select
               mode="multiple"

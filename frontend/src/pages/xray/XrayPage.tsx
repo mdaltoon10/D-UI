@@ -21,7 +21,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useXraySetting } from '@/hooks/useXraySetting';
 import type { XraySettingsValue } from '@/hooks/useXraySetting';
-import AppSidebar from '@/layouts/AppSidebar';
 import { JsonEditor } from '@/components/form';
 import { setMessageInstance } from '@/utils/messageBus';
 
@@ -30,6 +29,7 @@ import { propagateOutboundTagRename } from './basics/helpers';
 import { RoutingTab } from './routing';
 import { OutboundsTab } from './outbounds';
 import { BalancersTab } from './balancers';
+import { cleanupOrphanedBalancerLoopbacks, ensureMissingBalancerLoopbacks, detectBalancerCycles } from './balancers/balancer-loopback';
 import { DnsTab } from './dns';
 import { WarpModal, NordModal } from './overrides';
 import './XrayPage.css';
@@ -190,6 +190,20 @@ export default function XrayPage() {
       navigate('/xray#advanced');
       return;
     }
+    if (templateSettings) {
+      const clone = JSON.parse(JSON.stringify(templateSettings));
+      ensureMissingBalancerLoopbacks(clone);
+      cleanupOrphanedBalancerLoopbacks(clone);
+      const cycles = detectBalancerCycles(clone);
+      if (cycles.length > 0) {
+        const names = cycles.map((c) => c.join(' → ')).join(', ');
+        messageApi.error(t('pages.xray.balancer.balancerFallbackCycle') + ' (' + names + ')');
+        return;
+      }
+      const serialized = JSON.stringify(clone, null, 2);
+      setXraySetting(serialized);
+      setTemplateSettings(clone);
+    }
     saveAll();
   }
 
@@ -293,8 +307,7 @@ export default function XrayPage() {
     <ConfigProvider theme={antdThemeConfig}>
       {messageContextHolder}
       <Layout className={pageClass}>
-        <AppSidebar />
-
+        
         <Layout className="content-shell">
           <Layout.Content id="content-layout" className="content-area">
             <Spin spinning={spinning || !fetched} delay={200} description={t('loading')} size="large">

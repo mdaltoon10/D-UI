@@ -1,7 +1,6 @@
 export const keys = {
   server: {
     status: () => ['server', 'status'] as const,
-    fail2banStatus: () => ['server', 'fail2banStatus'] as const,
   },
   nodes: {
     root: () => ['nodes'] as const,
@@ -32,6 +31,15 @@ export const keys = {
     activeInbounds: () => ['clients', 'activeInbounds'] as const,
     lastOnline: () => ['clients', 'lastOnline'] as const,
     groups: () => ['clients', 'groups'] as const,
+  },
+  admins: {
+    root: () => ['admins'] as const,
+    list: () => ['admins', 'list'] as const,
+    stats: () => ['admins', 'stats'] as const,
+  },
+  adminRoles: {
+    root: () => ['adminRoles'] as const,
+    list: () => ['adminRoles', 'list'] as const,
   },
   xray: {
     root: () => ['xray'] as const,

@@ -14,7 +14,7 @@ import (
 
 	"github.com/op/go-logging"
 
-	duilogger "github.com/mdaltoon10/D-UI/v3/internal/logger"
+	xuilogger "github.com/mdaltoon10/D-UI/v3/internal/logger"
 )
 
 func TestWriteFileAtomicModeAndRenameFailure(t *testing.T) {
@@ -120,8 +120,8 @@ func TestStopKillsProcessThatIgnoresSIGTERM(t *testing.T) {
 
 func initProcessTestLogger(t *testing.T) {
 	t.Helper()
-	t.Setenv("DUI_LOG_FOLDER", t.TempDir())
-	duilogger.InitLogger(logging.ERROR)
+	t.Setenv("XUI_LOG_FOLDER", t.TempDir())
+	xuilogger.InitLogger(logging.ERROR)
 }
 
 func startProcessHelper(t *testing.T, mode string) *process {

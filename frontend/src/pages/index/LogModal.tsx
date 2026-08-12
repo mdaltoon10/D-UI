@@ -66,7 +66,7 @@ export default function LogModal({ open, onClose }: LogModalProps) {
   const parsedLogs = useMemo(() => logs.map(parseLogLine), [logs]);
 
   function download() {
-    FileManager.downloadTextFile(logs.join('\n'), 'd-ui.log');
+    FileManager.downloadTextFile(logs.join('\n'), 'x-ui.log');
   }
 
   const titleNode = (

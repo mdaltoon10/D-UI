@@ -3,12 +3,17 @@ package xray
 import (
 	"bytes"
 
+	"github.com/mdaltoon10/D-UI/v3/internal/frontmux"
 	"github.com/mdaltoon10/D-UI/v3/internal/util/json_util"
 )
 
 // Config represents the complete Xray configuration structure.
 // It contains all sections of an Xray config file including inbounds, outbounds, routing, etc.
 type Config struct {
+	// SharedPortPlan is panel-runtime metadata and is never serialized into the
+	// Xray JSON document. The process reconciler uses it to start/stop the
+	// in-process TCP frontmux atomically with the Xray listener topology.
+	SharedPortPlan   frontmux.Plan        `json:"-"`
 	LogConfig        json_util.RawMessage `json:"log"`
 	RouterConfig     json_util.RawMessage `json:"routing"`
 	DNSConfig        json_util.RawMessage `json:"dns,omitempty"`
@@ -24,10 +29,14 @@ type Config struct {
 	BurstObservatory json_util.RawMessage `json:"burstObservatory,omitempty"`
 	Metrics          json_util.RawMessage `json:"metrics"`
 	Geodata          json_util.RawMessage `json:"geodata,omitempty"`
+	Env              json_util.RawMessage `json:"env,omitempty"`
 }
 
 // Equals compares two Config instances for deep equality.
 func (c *Config) Equals(other *Config) bool {
+	if other == nil || !c.SharedPortPlan.Equal(other.SharedPortPlan) {
+		return false
+	}
 	if len(c.InboundConfigs) != len(other.InboundConfigs) {
 		return false
 	}
@@ -76,6 +85,9 @@ func (c *Config) Equals(other *Config) bool {
 		return false
 	}
 	if !bytes.Equal(c.Geodata, other.Geodata) {
+		return false
+	}
+	if !bytes.Equal(c.Env, other.Env) {
 		return false
 	}
 	return true

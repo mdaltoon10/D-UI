@@ -10,8 +10,8 @@ import (
 
 func TestSyncInbound_PreservesCredentialsAcrossProtocols(t *testing.T) {
 	dbDir := t.TempDir()
-	t.Setenv("DUI_DB_FOLDER", dbDir)
-	if err := database.InitDB(filepath.Join(dbDir, "d-ui.db")); err != nil {
+	t.Setenv("XUI_DB_FOLDER", dbDir)
+	if err := database.InitDB(filepath.Join(dbDir, "x-ui.db")); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	t.Cleanup(func() { _ = database.CloseDB() })
@@ -73,8 +73,8 @@ func TestSyncInbound_PreservesCredentialsAcrossProtocols(t *testing.T) {
 
 func TestSyncInbound_AllowsClearingFlow(t *testing.T) {
 	dbDir := t.TempDir()
-	t.Setenv("DUI_DB_FOLDER", dbDir)
-	if err := database.InitDB(filepath.Join(dbDir, "d-ui.db")); err != nil {
+	t.Setenv("XUI_DB_FOLDER", dbDir)
+	if err := database.InitDB(filepath.Join(dbDir, "x-ui.db")); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	t.Cleanup(func() { _ = database.CloseDB() })
@@ -108,6 +108,6 @@ func TestSyncInbound_AllowsClearingFlow(t *testing.T) {
 		t.Fatalf("expected 1 client, got %d", len(list))
 	}
 	if list[0].Flow != "" {
-		t.Errorf("flow should be clearable on the owning inbound, got %q (Copilot review on #4545)", list[0].Flow)
+		t.Errorf("flow should be clearable on the owning inbound, got %q", list[0].Flow)
 	}
 }

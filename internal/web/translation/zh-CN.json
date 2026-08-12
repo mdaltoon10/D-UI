@@ -1,4 +1,5 @@
 {
+  "get": "获取",
   "username": "用户名",
   "password": "密码",
   "login": "登录",
@@ -155,7 +156,7 @@
       "xraySwitchClick": "选择你要切换到的版本",
       "xraySwitchClickDesk": "请谨慎选择，因为较旧版本可能与当前配置不兼容",
       "updatePanel": "更新面板",
-      "panelUpdateDesc": "这将把 Daltoon-UI 更新到最新版本并重启面板服务。",
+      "panelUpdateDesc": "这将把 HEIMDALL 更新到最新版本并重启面板服务。",
       "currentPanelVersion": "当前面板版本",
       "latestPanelVersion": "最新面板版本",
       "panelUpToDate": "面板已是最新",
@@ -228,11 +229,11 @@
       "xraySwitchVersionDialogDesc": "这将把Xray版本更改为#version#。",
       "xraySwitchVersionPopover": "Xray 更新成功",
       "panelUpdateDialog": "您确定要更新面板吗？",
-      "panelUpdateDialogDesc": "这将把 Daltoon-UI 更新到 #version# 并重启面板服务。",
+      "panelUpdateDialogDesc": "这将把 HEIMDALL 更新到 #version# 并重启面板服务。",
       "panelUpdateCheckPopover": "面板更新检查失败",
       "panelUpdateStartedPopover": "已开始更新面板",
       "panelUpdateFailedTitle": "面板更新失败",
-      "panelUpdateFailedDesc": "更新未成功完成。请检查服务器日志，或在命令行运行「d-ui update」。",
+      "panelUpdateFailedDesc": "更新未成功完成。请检查服务器日志，或在命令行运行「x-ui update」。",
       "panelUpdateUnknownTitle": "无法确认更新是否已完成",
       "panelUpdateUnknownDesc": "面板未能及时返回结果。请刷新页面查看当前版本，或检查服务器日志。",
       "geofileUpdateDialog": "您确定要更新地理文件吗？",
@@ -261,40 +262,19 @@
       "backup": "备份",
       "backupTitle": "备份和恢复",
       "exportDatabase": "备份",
-      "exportDatabaseDesc": "点击下载包含当前数据库备份的 .db 文件到您的设备。",
+      "exportDatabaseDesc": "点击下载包含当前数据库备份的 .db 文件到您的设备。同一文件也可以恢复到运行 PostgreSQL 的面板中。",
       "importDatabase": "恢复",
-      "importDatabaseDesc": "点击选择并上传设备中的 .db 文件以从备份恢复数据库。",
+      "importDatabaseDesc": "点击选择并上传设备中的 .db 备份或迁移导出文件（.dump）以恢复数据库。",
       "importDatabaseSuccess": "数据库导入成功",
       "importDatabaseError": "导入数据库时出错",
       "readDatabaseError": "读取数据库时出错",
       "getDatabaseError": "检索数据库时出错",
       "getConfigError": "检索配置文件时出错",
-      "backupPostgresNote": "此面板运行在 PostgreSQL 上。「备份」会下载一个 pg_dump 归档（.dump），「恢复」会通过 pg_restore 重新载入。服务器需要安装 PostgreSQL 客户端工具（pg_dump 和 pg_restore）。",
+      "backupPostgresNote": "此面板运行在 PostgreSQL 上。「备份」会下载一个 pg_dump 归档（.dump），「恢复」会通过 pg_restore 重新载入。「恢复」也接受 SQLite 数据库（.db）或 SQLite 迁移导出文件，并将其数据导入 PostgreSQL。服务器需要安装 PostgreSQL 客户端工具（pg_dump 和 pg_restore）。",
       "exportDatabasePgDesc": "点击将当前数据库的 PostgreSQL 转储（.dump）下载到您的设备。",
-      "importDatabasePgDesc": "点击选择并上传 .dump 文件以恢复您的 PostgreSQL 数据库。此操作将替换所有当前数据。",
+      "importDatabasePgDesc": "点击选择并上传 PostgreSQL 备份（.dump）、SQLite 数据库（.db）或 SQLite 迁移导出文件以恢复您的数据库。此操作将替换所有当前数据。",
       "migrationDownload": "下载迁移文件",
-      "migrationDownloadDesc": "点击下载当前 SQLite 数据库的可移植 .dump（SQL 文本）导出文件。",
-      "migrationDownloadPgDesc": "点击下载由 PostgreSQL 数据构建的 .db SQLite 数据库，可用于在 SQLite 上运行本面板。",
-      "openSockets": "open sockets",
-      "throughputSub": "2m window",
-      "avgWindow": "Avg (2m)",
-      "avg": "AVG",
-      "peak": "PEAK",
-      "free": "FREE",
-      "uptime": "Uptime",
-      "panel": "Panel",
-      "healthCritical": "High utilization: {list}",
-      "healthWarm": "Elevated utilization: {list}",
-      "restartXrayConfirm": "Are you sure you want to restart Xray service?",
-      "stopXrayConfirm": "Are you sure you want to stop Xray service?",
-      "restartingXray": "Restarting Xray...",
-      "stoppingXray": "Stopping Xray...",
-      "refreshStats": "Refresh Stats",
-      "refreshed": "Status refreshed",
-      "restartingXrayNotice": "Xray service is restarting. Connection may briefly pause.",
-      "stopXrayNotice": "Xray service is stopping.",
-      "restartedSuccess": "Xray restarted successfully.",
-      "stoppedSuccess": "Xray stopped successfully."
+      "migrationDownloadPgDesc": "点击下载由 PostgreSQL 数据构建的 .db SQLite 数据库，可用于在 SQLite 上运行本面板。"
     },
     "inbounds": {
       "title": "入站",
@@ -562,6 +542,13 @@
         "mtgRouteOutbound": "出站",
         "mtgRouteOutboundHint": "可选。强制 Telegram 流量经由此出站（或负载均衡器）发出。留空则由您的路由规则决定。",
         "mtgRouteOutboundPlaceholder": "使用路由规则",
+        "mtprotoFakeTlsDomainHint": "生成新客户端密钥时使用的默认 FakeTLS 域名。每个客户端可使用各自的域名。",
+        "mtgThrottleMaxConnections": "最大连接数",
+        "mtgThrottleMaxConnectionsHint": "按公平分配限制所有用户的并发连接数。0 表示不限制。",
+        "mtgAdTagInvalid": "广告标签必须为 32 位十六进制字符。",
+        "mtgPublicIpv4": "公网 IPv4",
+        "mtgPublicIpv6": "公网 IPv6",
+        "mtgPublicIpHint": "本服务器可访问的公网地址，供广告标签的中间代理使用。留空则由 mtg 自动检测。",
         "visionTestseed": "Vision testseed",
         "version": "版本",
         "udpIdleTimeout": "UDP 空闲超时 (s)",
@@ -707,7 +694,8 @@
           "listen": "入站监听地址",
           "custom": "自定义"
         },
-        "verifyPeerCertByName": "按名称验证对端证书"
+        "verifyPeerCertByName": "按名称验证对端证书",
+        "generateRandomPin": "生成随机哈希"
       },
       "info": {
         "mode": "模式",
@@ -743,7 +731,9 @@
           "responseHeader": "响应头"
         }
       },
-      "sniffingDestOverride": "目标覆盖"
+      "sniffingDestOverride": "目标覆盖",
+      "usageMultiplier": "倍率",
+      "usageMultiplierHelp": "客户端流量计费倍率"
     },
     "clients": {
       "tabBasics": "基本",
@@ -788,7 +778,7 @@
       "renew": "自动续期",
       "renewDesc": "到期后自动续期。(0 = 禁用) (单位: 天)",
       "renewDays": "自动续期 (天)",
-      "searchPlaceholder": "搜索邮箱、备注、sub ID、UUID、密码、auth…",
+      "searchPlaceholder": "搜索邮箱、备注、sub ID、UUID、密码、auth、Telegram ID…",
       "filterTitle": "筛选客户端",
       "clearAllFilters": "清除全部",
       "filters": {
@@ -815,10 +805,9 @@
       "addClients": "添加客户端",
       "limitIp": "IP 限制",
       "limitIpDesc": "最大同时连接 IP 数。0 = 不限制。",
-      "limitIpFail2banMissing": "未安装 Fail2ban，无法实施 IP 限制。请从 d-ui 命令行菜单安装 Fail2ban 以启用此选项。",
-      "limitIpFail2banWindows": "Windows 上不支持 Fail2ban，无法实施 IP 限制。",
       "limitIpDisabled": "此服务器已禁用 IP 限制功能。",
       "password": "密码",
+      "passwordDesc": "仅 Trojan 和 Shadowsocks 客户端使用；VLESS、VMess、Hysteria 和 WireGuard 会忽略此项。",
       "subId": "订阅 ID",
       "online": "在线",
       "email": "邮箱",
@@ -829,6 +818,7 @@
       "groupPlaceholder": "如 customer-a",
       "comment": "备注",
       "traffic": "流量",
+      "speed": "速度",
       "offline": "离线",
       "addClient": "添加客户端",
       "qrCode": "二维码",
@@ -918,6 +908,7 @@
       "delOrphansConfirmContent": "删除所有未关联到任何入站的客户端及其流量记录。该操作不可撤销。",
       "auth": "认证",
       "hysteriaAuth": "Hysteria 认证",
+      "hysteriaAuthDesc": "仅 Hysteria 客户端使用的凭据。Trojan 和 Shadowsocks 请改用上方的“密码”字段。",
       "uuid": "UUID",
       "flow": "Flow",
       "vmessSecurity": "VMess 加密",
@@ -926,6 +917,10 @@
       "wireguardPreSharedKey": "WireGuard 预共享密钥",
       "wireguardAllowedIPs": "WireGuard 允许的 IP",
       "wireguardAllowedIPsHint": "留空则自动分配；多个条目用逗号分隔",
+      "mtprotoSecret": "MTProto 密钥",
+      "mtprotoSecretHint": "该客户端的 FakeTLS 密钥。重新生成即可更换。",
+      "mtprotoAdTag": "广告标签（赞助频道）",
+      "mtprotoAdTagHint": "可选的 32 位十六进制标签，从 Telegram 代理注册处获取。设置后，该客户端将通过 Telegram 中间代理路由，赞助频道会显示在其聊天列表顶部。",
       "reverseTag": "反向标签",
       "reverseTagPlaceholder": "可选 Reverse tag",
       "telegramId": "Telegram 用户 ID",
@@ -951,7 +946,11 @@
         "delOrphans": "已删除 {count} 个未关联的客户端",
         "imported": "已导入 {count} 个客户端",
         "importedMixed": "已导入 {ok} 个，跳过 {failed} 个"
-      }
+      },
+      "uploadMbps": "Upload Limit (Mbps)",
+      "uploadMbpsDesc": "Aggregate upload speed across all connections. 0 = unlimited.",
+      "downloadMbps": "Download Limit (Mbps)",
+      "downloadMbpsDesc": "Aggregate download speed across all connections. 0 = unlimited."
     },
     "groups": {
       "title": "分组",
@@ -1207,12 +1206,12 @@
       "subAnnounce": "公告",
       "subAnnounceDesc": "VPN 客户端中显示的公告文本",
       "subThemeDir": "订阅主题目录",
-      "subThemeDirDesc": "包含自定义订阅页面模板 (index.html/sub.html) 的文件夹的绝对路径（例如 /etc/d-ui/sub_templates/my-theme/）。留空则使用默认页面。",
+      "subThemeDirDesc": "包含自定义订阅页面模板 (index.html/sub.html) 的文件夹的绝对路径（例如 /etc/3x-ui/sub_templates/my-theme/）。留空则使用默认页面。",
       "subThemeDirDocs": "模板指南 ↗",
       "subEnableRouting": "启用路由",
-      "subEnableRoutingDesc": "在 VPN 客户端中启用路由的全局设置。（仅限 Happ）",
-      "subRoutingRules": "路由规则",
-      "subRoutingRulesDesc": "VPN 用户端的全域路由规则。（仅限 Happ）",
+      "subEnableRoutingDesc": "在 VPN 客户端中启用路由的全局设置。（僅限 Happ）",
+      "subRoutingRules": "路由規則",
+      "subRoutingRulesDesc": "VPN 用戶端的全域路由規則。（僅限 Happ）",
       "subHideSettings": "隐藏服务器设置",
       "subHideSettingsDesc": "在 VPN 客户端中隐藏查看和编辑服务器配置的功能。（仅限 Happ）",
       "subIncyEnableRouting": "启用路由",
@@ -1421,6 +1420,12 @@
       "eventMemoryHigh": "内存使用率高 (%)",
       "remarkTemplate": "备注模板",
       "remarkTemplateDesc": "设置后，将替换每个订阅链接的备注模型 — 使用变量标记编写您自己的格式（用按钮插入它们）。留空则使用上方的模型。",
+      "remarkModel": "备注模型和分隔符",
+      "sampleRemark": "备注示例",
+      "subShowInfo": "显示使用信息",
+      "subShowInfoDesc": "客户端应用中将显示剩余流量和日期信息",
+      "subEmailInRemark": "在名称中包含邮箱",
+      "subEmailInRemarkDesc": "在订阅配置名称中包含客户端邮箱。",
       "validation": {
         "pathLeadingSlash": "路径必须以 / 开头"
       },
@@ -1615,7 +1620,8 @@
         "acceptProxyProtocol": "接受 proxy protocol",
         "proxyProtocol": "Proxy protocol",
         "tcpUserTimeoutMs": "TCP user timeout (ms)",
-        "tcpKeepAliveIdleS": "TCP keep-alive idle (s)"
+        "tcpKeepAliveIdleS": "TCP keep-alive idle (s)",
+        "workers": "Workers"
       },
       "outbound": {
         "addOutbound": "添加出站",
@@ -1628,6 +1634,8 @@
         "tag": "标签",
         "tagDesc": "唯一标签",
         "address": "地址",
+        "egress": "Egress",
+        "egressHint": "Run an HTTP test to show egress IP and country.",
         "reverse": "反向",
         "domain": "域名",
         "type": "类型",
@@ -1646,7 +1654,8 @@
         "testSuccess": "测试成功",
         "testFailed": "测试失败",
         "testError": "测试出站失败",
-        "testModeTooltip": "TCP: 快速 dial-only 探测。HTTP: 通过 xray 的完整请求。",
+        "modeRealDelay": "真实延迟",
+        "testModeTooltip": "TCP: 快速 dial-only 探测。HTTP: 通过 xray 的完整请求。真实延迟: 含建立连接的总耗时。",
         "testAll": "全部测试",
         "httpStatus": "HTTP 状态",
         "breakdownConnect": "代理连接",
@@ -1760,6 +1769,7 @@
         "tagPlaceholder": "唯一均衡器标签",
         "selector": "选择器",
         "fallback": "Fallback",
+        "cycleTooltip": "循环: {path} → (回到 {start})",
         "expected": "期望",
         "expectedPlaceholder": "最佳节点数",
         "maxRtt": "最大 RTT",
@@ -1769,7 +1779,12 @@
         "balancerDesc": "无法同时使用 balancerTag 和 outboundTag。如果同时使用，则只有 outboundTag 会生效。",
         "costMatch": "标签匹配模式",
         "costValue": "权重",
-        "costRegexp": "正则表达式匹配"
+        "costRegexp": "正则表达式匹配",
+        "balancerDeleteInUse": "无法删除此负载均衡器 — 它被用作以下负载均衡器的备用：{names}",
+        "balancerFallbackCycle": "无法将此负载均衡器设置为备用 — 这会创建循环依赖。",
+        "balancerFallbackInfo": "流量将通过以下路径路由：负载均衡器 → Loopback → 服务器 → 目标负载均衡器 → 出站连接。这会增加一个经过服务器的额外跳转，可能会引入轻微延迟。",
+        "fallbackBalancerHint": "选择另一个负载均衡器作为备用",
+        "reservedPrefix": "_bl_ 前缀保留给内部负载均衡器回环对象"
       },
       "wireguard": {
         "secretKey": "密钥",
@@ -1863,14 +1878,17 @@
         "dnsPresetFamily": "家庭",
         "clearAll": "删除全部",
         "clearAllTitle": "删除所有 DNS 服务器？",
-        "clearAllConfirm": "此操作将从列表中删除所有 DNS 服务器，且无法撤销。"
+        "clearAllConfirm": "此操作将从列表中删除所有 DNS 服务器，且无法撤销。",
+        "dnsLeakWarning": "DNS 可能通过 localhost、明文 UDP/TCP、本地模式 DoH/DoQ、回退查询或 EDNS client IP 泄漏。重视隐私时请使用经路由的 DoH、在 hosts 中固定解析器，并禁用回退。"
       },
       "fakedns": {
         "add": "添加假 DNS",
         "edit": "编辑假 DNS",
         "ipPool": "IP 池子网",
         "poolSize": "池大小"
-      }
+      },
+      "defaultOutbound": "默认出站",
+      "defaultOutboundDesc": "未匹配任何路由规则的流量走此出站（列表中的第一个出站）。"
     },
     "hosts": {
       "addHost": "添加主机",
@@ -1926,7 +1944,8 @@
         "shuffleHost": "随机打乱 Host",
         "tags": "标签",
         "nodeGuids": "节点",
-        "excludeFromSubTypes": "从格式中排除"
+        "excludeFromSubTypes": "从格式中排除",
+        "inheritAddress": "继承地址"
       },
       "hints": {
         "address": "留空则继承入站自身的地址。",
@@ -1976,7 +1995,8 @@
         "descRESET_DAYS": "流量重置周期（天）",
         "descPROTOCOL": "入站协议（VLESS、VMess、Trojan……）",
         "descTRANSPORT": "传输网络（tcp、ws、grpc……）",
-        "descSECURITY": "传输安全（TLS、REALITY、NONE）"
+        "descSECURITY": "传输安全（TLS、REALITY、NONE）",
+        "descFACTOR": "Inbound usage factor, for example 3x"
       },
       "toasts": {
         "list": "加载主机失败",
@@ -2027,10 +2047,14 @@
       "startDesc": "显示主菜单",
       "helpDesc": "机器人帮助",
       "statusDesc": "检查机器人状态",
-      "idDesc": "显示您的 Telegram ID"
+      "idDesc": "显示您的 Telegram ID",
+      "usageDesc": "查看客户端用量：/usage 邮箱",
+      "inboundDesc": "搜索入站：/inbound 备注（管理员）",
+      "restartDesc": "重启 Xray 内核（管理员）",
+      "clearallDesc": "重置所有客户端流量（管理员）"
     },
     "messages": {
-      "cpuThreshold": "CPU 使用率为 {{ .Percent }}%，超过阈值 {{ .Threshold }}%",
+      "cpuThreshold": "🔴 CPU 使用率为 {{ .Percent }}%，超过阈值 {{ .Threshold }}%",
       "selectUserFailed": "❌ 用户选择错误！",
       "userSaved": "✅ 电报用户已保存。",
       "loginSuccess": "✅ 成功登录到面板。\r\n",
@@ -2039,7 +2063,7 @@
       "report": "🕰 定时报告：{{ .RunTime }}\r\n",
       "datetime": "⏰ 日期时间：{{ .DateTime }}\r\n",
       "hostname": "💻 主机: {{ .Hostname }}\r\n",
-      "version": "🚀 Daltoon-UI 版本：{{ .Version }}\r\n",
+      "version": "🚀 X-UI 版本：{{ .Version }}\r\n",
       "xrayVersion": "📡 Xray 版本: {{ .XrayVersion }}\r\n",
       "ipv6": "🌐 IPv6: {{ .IPv6 }}\r\n",
       "ipv4": "🌐 IPv4: {{ .IPv4 }}\r\n",
@@ -2139,7 +2163,6 @@
       "confirmNumber": "✅ 确认: {{ .Num }}",
       "confirmNumberAdd": "✅ 确认添加：{{ .Num }}",
       "limitTraffic": "🚧 流量限制",
-      "getBanLogs": "禁止日志",
       "allClients": "所有客户",
       "addClient": "添加客户",
       "submitDisable": "提交为禁用 ☑️",
@@ -2208,5 +2231,8 @@
     "statusFailed": "失败",
     "statusDown": "断开",
     "statusUp": "恢复"
+  },
+  "bulk": {
+    "targets": "Targets"
   }
 }

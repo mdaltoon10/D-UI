@@ -1,4 +1,5 @@
 {
+  "get": "Obtener",
   "username": "Nombre de Usuario",
   "password": "Contraseña",
   "login": "Acceder",
@@ -155,7 +156,7 @@
       "xraySwitchClick": "Elige la versión a la que deseas cambiar.",
       "xraySwitchClickDesk": "Elige sabiamente, ya que las versiones anteriores pueden no ser compatibles con las configuraciones actuales.",
       "updatePanel": "Actualizar panel",
-      "panelUpdateDesc": "Esto actualizará Daltoon-UI a la última versión y reiniciará el servicio del panel.",
+      "panelUpdateDesc": "Esto actualizará HEIMDALL a la última versión y reiniciará el servicio del panel.",
       "currentPanelVersion": "Versión actual del panel",
       "latestPanelVersion": "Última versión del panel",
       "panelUpToDate": "El panel está actualizado",
@@ -228,11 +229,11 @@
       "xraySwitchVersionDialogDesc": "Esto cambiará la versión de Xray a #version#.",
       "xraySwitchVersionPopover": "Xray se actualizó correctamente",
       "panelUpdateDialog": "¿Deseas actualizar el panel?",
-      "panelUpdateDialogDesc": "Esto actualizará Daltoon-UI a la versión #version# y reiniciará el servicio del panel.",
+      "panelUpdateDialogDesc": "Esto actualizará HEIMDALL a la versión #version# y reiniciará el servicio del panel.",
       "panelUpdateCheckPopover": "Fallo al comprobar actualización del panel",
       "panelUpdateStartedPopover": "Actualización del panel iniciada",
       "panelUpdateFailedTitle": "Error al actualizar el panel",
-      "panelUpdateFailedDesc": "La actualización no se completó correctamente. Revisa los registros del servidor o ejecuta 'd-ui update' desde la línea de comandos.",
+      "panelUpdateFailedDesc": "La actualización no se completó correctamente. Revisa los registros del servidor o ejecuta 'x-ui update' desde la línea de comandos.",
       "panelUpdateUnknownTitle": "No se pudo confirmar si la actualización terminó",
       "panelUpdateUnknownDesc": "El panel no informó un resultado a tiempo. Recarga la página para comprobar la versión actual, o revisa los registros del servidor.",
       "geofileUpdateDialog": "¿Realmente deseas actualizar el geofichero?",
@@ -261,40 +262,19 @@
       "backup": "Copia de seguridad",
       "backupTitle": "Copia & Restauración",
       "exportDatabase": "Copia de seguridad",
-      "exportDatabaseDesc": "Haz clic para descargar un archivo .db que contiene una copia de seguridad de tu base de datos actual en tu dispositivo.",
+      "exportDatabaseDesc": "Haz clic para descargar un archivo .db que contiene una copia de seguridad de tu base de datos actual en tu dispositivo. El mismo archivo también puede restaurarse en un panel que funcione con PostgreSQL.",
       "importDatabase": "Restaurar",
-      "importDatabaseDesc": "Haz clic para seleccionar y cargar un archivo .db desde tu dispositivo para restaurar tu base de datos desde una copia de seguridad.",
+      "importDatabaseDesc": "Haz clic para seleccionar y cargar una copia de seguridad .db o un volcado de migración (.dump) desde tu dispositivo para restaurar tu base de datos.",
       "importDatabaseSuccess": "La base de datos se ha importado correctamente",
       "importDatabaseError": "Ocurrió un error al importar la base de datos",
       "readDatabaseError": "Ocurrió un error al leer la base de datos",
       "getDatabaseError": "Ocurrió un error al obtener la base de datos",
       "getConfigError": "Ocurrió un error al obtener el archivo de configuración",
-      "backupPostgresNote": "Este panel funciona con PostgreSQL. «Copia de seguridad» descarga un archivo pg_dump (.dump) y «Restaurar» lo vuelve a cargar con pg_restore. El servidor necesita tener instaladas las herramientas cliente de PostgreSQL (pg_dump y pg_restore).",
+      "backupPostgresNote": "Este panel funciona con PostgreSQL. «Copia de seguridad» descarga un archivo pg_dump (.dump) y «Restaurar» lo vuelve a cargar con pg_restore. «Restaurar» también acepta una base de datos SQLite (.db) o un volcado de migración de SQLite e importa sus datos a PostgreSQL. El servidor necesita tener instaladas las herramientas cliente de PostgreSQL (pg_dump y pg_restore).",
       "exportDatabasePgDesc": "Haz clic para descargar un volcado de PostgreSQL (.dump) de tu base de datos actual en tu dispositivo.",
-      "importDatabasePgDesc": "Haz clic para seleccionar y subir un archivo .dump y restaurar tu base de datos PostgreSQL. Esto reemplaza todos los datos actuales.",
+      "importDatabasePgDesc": "Haz clic para seleccionar y subir una copia de seguridad de PostgreSQL (.dump), una base de datos SQLite (.db) o un volcado de migración de SQLite para restaurar tu base de datos. Esto reemplaza todos los datos actuales.",
       "migrationDownload": "Descargar migración",
-      "migrationDownloadDesc": "Haz clic para descargar una exportación portable .dump (texto SQL) de tu base de datos SQLite.",
-      "migrationDownloadPgDesc": "Haz clic para descargar una base de datos SQLite .db creada a partir de tus datos de PostgreSQL, lista para ejecutar este panel en SQLite.",
-      "openSockets": "open sockets",
-      "throughputSub": "2m window",
-      "avgWindow": "Avg (2m)",
-      "avg": "AVG",
-      "peak": "PEAK",
-      "free": "FREE",
-      "uptime": "Uptime",
-      "panel": "Panel",
-      "healthCritical": "High utilization: {list}",
-      "healthWarm": "Elevated utilization: {list}",
-      "restartXrayConfirm": "Are you sure you want to restart Xray service?",
-      "stopXrayConfirm": "Are you sure you want to stop Xray service?",
-      "restartingXray": "Restarting Xray...",
-      "stoppingXray": "Stopping Xray...",
-      "refreshStats": "Refresh Stats",
-      "refreshed": "Status refreshed",
-      "restartingXrayNotice": "Xray service is restarting. Connection may briefly pause.",
-      "stopXrayNotice": "Xray service is stopping.",
-      "restartedSuccess": "Xray restarted successfully.",
-      "stoppedSuccess": "Xray stopped successfully."
+      "migrationDownloadPgDesc": "Haz clic para descargar una base de datos SQLite .db creada a partir de tus datos de PostgreSQL, lista para ejecutar este panel en SQLite."
     },
     "inbounds": {
       "title": "Entradas",
@@ -542,6 +522,13 @@
         "mtgRouteOutbound": "Salida",
         "mtgRouteOutboundHint": "Opcional. Fuerza el tráfico de Telegram a salir por esta salida (o balanceador). Déjalo vacío para que decidan tus reglas de enrutamiento.",
         "mtgRouteOutboundPlaceholder": "Usar reglas de enrutamiento",
+        "mtprotoFakeTlsDomainHint": "Dominio FakeTLS predeterminado para generar el secreto de un nuevo cliente. Cada cliente puede usar su propio dominio.",
+        "mtgThrottleMaxConnections": "Conexiones máximas",
+        "mtgThrottleMaxConnectionsHint": "Limita las conexiones simultáneas de todos los usuarios con reparto equitativo. 0 desactiva el límite.",
+        "mtgAdTagInvalid": "El ad-tag debe tener exactamente 32 caracteres hexadecimales.",
+        "mtgPublicIpv4": "IPv4 pública",
+        "mtgPublicIpv6": "IPv6 pública",
+        "mtgPublicIpHint": "La dirección pública accesible de este servidor, usada por el proxy intermedio del ad-tag. Déjalo en blanco para que mtg la detecte automáticamente.",
         "visionTestseed": "Vision testseed",
         "version": "Versión",
         "udpIdleTimeout": "UDP idle timeout (s)",
@@ -707,7 +694,8 @@
           "node": "Dirección del nodo",
           "listen": "Dirección de escucha del inbound",
           "custom": "Personalizada"
-        }
+        },
+        "generateRandomPin": "Generar hash aleatorio"
       },
       "info": {
         "mode": "Modo",
@@ -743,7 +731,9 @@
           "responseHeader": "Encabezado de respuesta"
         }
       },
-      "sniffingDestOverride": "Anulación de destino"
+      "sniffingDestOverride": "Anulación de destino",
+      "usageMultiplier": "Factor",
+      "usageMultiplierHelp": "Factor de cálculo del uso del cliente"
     },
     "clients": {
       "tabBasics": "Básico",
@@ -788,7 +778,7 @@
       "renew": "Renovación automática",
       "renewDesc": "Renovación automática tras la expiración. (0 = desactivado) (unidad: día)",
       "renewDays": "Renovación automática (días)",
-      "searchPlaceholder": "Buscar email, comentario, sub ID, UUID, contraseña, auth…",
+      "searchPlaceholder": "Buscar email, comentario, sub ID, UUID, contraseña, auth, Telegram ID…",
       "filterTitle": "Filtrar clientes",
       "clearAllFilters": "Limpiar todo",
       "filters": {
@@ -815,10 +805,9 @@
       "addClients": "Añadir clientes",
       "limitIp": "Límite de IP",
       "limitIpDesc": "Máximo de IP simultáneas. 0 = ilimitado.",
-      "limitIpFail2banMissing": "Fail2ban no está instalado, por lo que no se puede aplicar el límite de IP. Instala Fail2ban desde el menú bash de d-ui para habilitar esta opción.",
-      "limitIpFail2banWindows": "Fail2ban no está disponible en Windows, por lo que no se puede aplicar el límite de IP.",
       "limitIpDisabled": "La función de límite de IP está deshabilitada en este servidor.",
       "password": "Contraseña",
+      "passwordDesc": "Solo la usan los clientes Trojan y Shadowsocks; se ignora para VLESS, VMess, Hysteria y WireGuard.",
       "subId": "ID de suscripción",
       "online": "En línea",
       "email": "Email",
@@ -829,6 +818,7 @@
       "groupPlaceholder": "p. ej. customer-a",
       "comment": "Comentario",
       "traffic": "Tráfico",
+      "speed": "Velocidad",
       "offline": "Sin conexión",
       "addClient": "Añadir cliente",
       "qrCode": "Código QR",
@@ -918,6 +908,7 @@
       "delOrphansConfirmContent": "Elimina todos los clientes que no están vinculados a ningún entrante, junto con su registro de tráfico. No se puede deshacer.",
       "auth": "Auth",
       "hysteriaAuth": "Hysteria Auth",
+      "hysteriaAuthDesc": "Credencial usada únicamente por los clientes Hysteria. Trojan y Shadowsocks usan el campo «Contraseña» en su lugar.",
       "uuid": "UUID",
       "flow": "Flow",
       "vmessSecurity": "Seguridad VMess",
@@ -926,6 +917,10 @@
       "wireguardPreSharedKey": "Clave precompartida de WireGuard",
       "wireguardAllowedIPs": "IP permitidas de WireGuard",
       "wireguardAllowedIPsHint": "Déjalo vacío para asignar automáticamente; separa las entradas con comas",
+      "mtprotoSecret": "Secreto MTProto",
+      "mtprotoSecretHint": "El secreto FakeTLS del cliente. Vuelve a generarlo para cambiarlo.",
+      "mtprotoAdTag": "Ad-tag (canal patrocinado)",
+      "mtprotoAdTagHint": "Etiqueta hexadecimal opcional de 32 caracteres del registro de proxy de Telegram. Si se establece, este cliente se enruta a través de los proxies intermedios de Telegram y aparece un canal patrocinado en la parte superior de su lista de chats.",
       "reverseTag": "Etiqueta inversa",
       "reverseTagPlaceholder": "Reverse tag opcional",
       "telegramId": "ID de usuario de Telegram",
@@ -951,7 +946,11 @@
         "delOrphans": "{count} clientes sin entrante eliminados",
         "imported": "{count} clientes importados",
         "importedMixed": "{ok} importados, {failed} omitidos"
-      }
+      },
+      "uploadMbps": "Upload Limit (Mbps)",
+      "uploadMbpsDesc": "Aggregate upload speed across all connections. 0 = unlimited.",
+      "downloadMbps": "Download Limit (Mbps)",
+      "downloadMbpsDesc": "Aggregate download speed across all connections. 0 = unlimited."
     },
     "groups": {
       "title": "Grupos",
@@ -1207,7 +1206,7 @@
       "subAnnounce": "Anuncio",
       "subAnnounceDesc": "El texto del anuncio mostrado en el cliente VPN",
       "subThemeDir": "Directorio del tema de suscripción",
-      "subThemeDirDesc": "Ruta absoluta a una carpeta que contiene una plantilla personalizada (index.html/sub.html) para la página de suscripción (p. ej. /etc/d-ui/sub_templates/my-theme/). Déjalo vacío para usar la página predeterminada.",
+      "subThemeDirDesc": "Ruta absoluta a una carpeta que contiene una plantilla personalizada (index.html/sub.html) para la página de suscripción (p. ej. /etc/3x-ui/sub_templates/my-theme/). Déjalo vacío para usar la página predeterminada.",
       "subThemeDirDocs": "Guía de plantillas ↗",
       "subEnableRouting": "Habilitar enrutamiento",
       "subEnableRoutingDesc": "Configuración global para habilitar el enrutamiento en el cliente VPN. (Solo para Happ)",
@@ -1421,6 +1420,12 @@
       "eventMemoryHigh": "Uso de memoria alto (%)",
       "remarkTemplate": "Plantilla de notas",
       "remarkTemplateDesc": "Cuando se define, esto reemplaza el modelo de notas para cada enlace de suscripción — escribe tu propio formato con los tokens de variable (usa el botón para insertarlos). Déjalo vacío para usar el modelo anterior.",
+      "remarkModel": "Modelo de observación y carácter de separación",
+      "sampleRemark": "Observación de muestra",
+      "subShowInfo": "Mostrar información de uso",
+      "subShowInfoDesc": "Mostrar tráfico restante y fecha después del nombre de configuración.",
+      "subEmailInRemark": "Incluir Email en el nombre",
+      "subEmailInRemarkDesc": "Incluir el correo del cliente en el nombre del perfil de suscripción.",
       "validation": {
         "pathLeadingSlash": "La ruta debe comenzar con /"
       },
@@ -1615,7 +1620,8 @@
         "acceptProxyProtocol": "Aceptar proxy protocol",
         "proxyProtocol": "Proxy protocol",
         "tcpUserTimeoutMs": "TCP user timeout (ms)",
-        "tcpKeepAliveIdleS": "TCP keep-alive idle (s)"
+        "tcpKeepAliveIdleS": "TCP keep-alive idle (s)",
+        "workers": "Workers"
       },
       "outbound": {
         "addOutbound": "Agregar salida",
@@ -1628,6 +1634,8 @@
         "tag": "Etiqueta",
         "tagDesc": "etiqueta única",
         "address": "Dirección",
+        "egress": "Egress",
+        "egressHint": "Run an HTTP test to show egress IP and country.",
         "reverse": "Reverso",
         "domain": "Dominio",
         "type": "Tipo",
@@ -1646,7 +1654,8 @@
         "testSuccess": "Prueba exitosa",
         "testFailed": "Prueba fallida",
         "testError": "Error al probar la salida",
-        "testModeTooltip": "TCP: sonda rápida solo de dial. HTTP: petición completa a través de xray.",
+        "modeRealDelay": "Retardo real",
+        "testModeTooltip": "TCP: sonda rápida solo de dial. HTTP: petición completa a través de xray. Retardo real: tiempo total incluyendo el establecimiento de la conexión.",
         "testAll": "Probar todo",
         "httpStatus": "Estado HTTP",
         "breakdownConnect": "Conexión al proxy",
@@ -1760,6 +1769,7 @@
         "tagPlaceholder": "etiqueta única de balanceador",
         "selector": "Selector",
         "fallback": "Fallback",
+        "cycleTooltip": "Ciclo: {path} → (volver a {start})",
         "expected": "Esperado",
         "expectedPlaceholder": "número óptimo de nodos",
         "maxRtt": "Máx. RTT",
@@ -1769,7 +1779,12 @@
         "balancerDesc": "No es posible utilizar balancerTag y outboundTag al mismo tiempo. Si se utilizan al mismo tiempo, sólo funcionará outboundTag.",
         "costMatch": "Patrón de etiqueta",
         "costValue": "Peso",
-        "costRegexp": "Coincidencia por expresión regular"
+        "costRegexp": "Coincidencia por expresión regular",
+        "balancerDeleteInUse": "No se puede eliminar este balanceador — se usa como respaldo para: {names}",
+        "balancerFallbackCycle": "No se puede establecer este balanceador como respaldo — crearía una dependencia circular.",
+        "balancerFallbackInfo": "El tráfico se enrutará a través de: Balanceador → Loopback → Servidor → Balanceador destino → Conexión saliente. Esto agrega un salto adicional a través del servidor, lo que puede introducir ligeros retrasos.",
+        "fallbackBalancerHint": "Seleccione otro balanceador como respaldo",
+        "reservedPrefix": "El prefijo _bl_ está reservado para objetos loopback internos del balanceador"
       },
       "wireguard": {
         "secretKey": "Llave secreta",
@@ -1863,14 +1878,17 @@
         "dnsPresetFamily": "Familiar",
         "clearAll": "Eliminar todos",
         "clearAllTitle": "¿Eliminar todos los servidores DNS?",
-        "clearAllConfirm": "Esto eliminará todos los servidores DNS de la lista. No se puede deshacer."
+        "clearAllConfirm": "Esto eliminará todos los servidores DNS de la lista. No se puede deshacer.",
+        "dnsLeakWarning": "El DNS puede filtrarse por localhost, UDP/TCP sin cifrar, DoH/DoQ en modo local, consultas de respaldo o EDNS client IP. Usa DoH enrutado, fija los resolutores en hosts y desactiva el respaldo cuando la privacidad importe."
       },
       "fakedns": {
         "add": "Agregar DNS Falso",
         "edit": "Editar DNS Falso",
         "ipPool": "Subred del grupo de IP",
         "poolSize": "Tamaño del grupo"
-      }
+      },
+      "defaultOutbound": "Salida predeterminada",
+      "defaultOutboundDesc": "El tráfico que no coincide con ninguna regla de enrutamiento usa esta salida (la primera de la lista)."
     },
     "hosts": {
       "addHost": "Agregar host",
@@ -1899,7 +1917,7 @@
       "fields": {
         "remark": "Notas",
         "serverDescription": "Descripción",
-        "inbound": "Inbound",
+        "inbound": "Inbounds",
         "address": "Dirección",
         "port": "Puerto",
         "endpoint": "Punto final",
@@ -1926,7 +1944,8 @@
         "shuffleHost": "Barajar host",
         "tags": "Etiquetas",
         "nodeGuids": "Nodos",
-        "excludeFromSubTypes": "Excluir de formatos"
+        "excludeFromSubTypes": "Excluir de formatos",
+        "inheritAddress": "Hereda dirección"
       },
       "hints": {
         "address": "Déjalo en blanco para heredar la dirección propia del inbound.",
@@ -1976,7 +1995,8 @@
         "descRESET_DAYS": "Periodo de reinicio de tráfico en días",
         "descPROTOCOL": "Protocolo del inbound (VLESS, VMess, Trojan, …)",
         "descTRANSPORT": "Red de transporte (tcp, ws, grpc, …)",
-        "descSECURITY": "Seguridad del transporte (TLS, REALITY, NONE)"
+        "descSECURITY": "Seguridad del transporte (TLS, REALITY, NONE)",
+        "descFACTOR": "Inbound usage factor, for example 3x"
       },
       "toasts": {
         "list": "Error al cargar los hosts",
@@ -2027,10 +2047,14 @@
       "startDesc": "Mostrar el menú principal",
       "helpDesc": "Ayuda del bot",
       "statusDesc": "Comprobar el estado del bot",
-      "idDesc": "Mostrar tu ID de Telegram"
+      "idDesc": "Mostrar tu ID de Telegram",
+      "usageDesc": "Ver el uso del cliente: /usage correo",
+      "inboundDesc": "Buscar entradas: /inbound nombre (admin)",
+      "restartDesc": "Reiniciar el núcleo de Xray (admin)",
+      "clearallDesc": "Restablecer el tráfico de todos los clientes (admin)"
     },
     "messages": {
-      "cpuThreshold": "El uso de CPU {{ .Percent }}% es mayor que el umbral {{ .Threshold }}%",
+      "cpuThreshold": "🔴 El uso de CPU {{ .Percent }}% es mayor que el umbral {{ .Threshold }}%",
       "selectUserFailed": "❌ ¡Error al seleccionar usuario!",
       "userSaved": "✅ Usuario de Telegram guardado.",
       "loginSuccess": "✅ Has iniciado sesión en el panel con éxito.\r\n",
@@ -2039,7 +2063,7 @@
       "report": "🕰 Informes programados: {{ .RunTime }}\r\n",
       "datetime": "⏰ Fecha y Hora: {{ .DateTime }}\r\n",
       "hostname": "💻 Host: {{ .Hostname }}\r\n",
-      "version": "🚀 Versión de Daltoon-UI: {{ .Version }}\r\n",
+      "version": "🚀 Versión de X-UI: {{ .Version }}\r\n",
       "xrayVersion": "📡 Versión de Xray: {{ .XrayVersion }}\r\n",
       "ipv6": "🌐 IPv6: {{ .IPv6 }}\r\n",
       "ipv4": "🌐 IPv4: {{ .IPv4 }}\r\n",
@@ -2139,7 +2163,6 @@
       "confirmNumber": "✅ Confirmar: {{ .Num }}",
       "confirmNumberAdd": "✅ Confirmar agregando: {{ .Num }}",
       "limitTraffic": "🚧 Límite de tráfico",
-      "getBanLogs": "Registros de prohibición",
       "allClients": "Todos los Clientes",
       "addClient": "Añadir cliente",
       "submitDisable": "Enviar como deshabilitado ☑️",
@@ -2208,5 +2231,8 @@
     "statusFailed": "FALLIDO",
     "statusDown": "CAÍDO",
     "statusUp": "ACTIVO"
+  },
+  "bulk": {
+    "targets": "Targets"
   }
 }

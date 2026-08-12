@@ -12,6 +12,7 @@ import type { FinalMaskStreamSettings } from '@/schemas/protocols/stream/finalma
 import type { XHttpStreamSettings } from '@/schemas/protocols/stream/xhttp';
 
 import { getHeaderValue } from './headers';
+import { expandSubscriptionProfileEndpoints } from './subscription-profile';
 import { canEnableTlsFlow } from './protocol-capabilities';
 import { deriveSpiderX } from './spider-x';
 
@@ -153,8 +154,20 @@ function applyExternalProxyTLSObj(
   security: string,
 ): void {
   if (!externalProxy || security !== 'tls') return;
-  const sni = externalProxy.sni && externalProxy.sni.length > 0 ? externalProxy.sni : externalProxy.dest;
-  if (sni && sni.length > 0) obj.sni = sni;
+  const modernProfile = externalProxy.network !== undefined
+    || externalProxy.security !== undefined
+    || externalProxy.tlsSettings !== undefined;
+
+  if (externalProxy.keepSniBlank) {
+    delete obj.sni;
+  } else {
+    const sni = externalProxy.overrideSniFromAddress
+      ? externalProxy.dest
+      : externalProxy.sni
+        || (!modernProfile ? externalProxy.dest : '');
+
+    if (sni && sni.length > 0) obj.sni = sni;
+  }
   if (externalProxy.fingerprint && externalProxy.fingerprint.length > 0) obj.fp = externalProxy.fingerprint;
   const alpn = externalProxyAlpn(externalProxy.alpn);
   if (alpn.length > 0) obj.alpn = alpn;
@@ -266,6 +279,9 @@ export function genVmessLink(input: GenVmessLinkInput): string {
     if (tlsSettings.settings.pinnedPeerCertSha256.length > 0) {
       obj.pcs = tlsSettings.settings.pinnedPeerCertSha256.join(',');
     }
+    if ((tlsSettings.settings as typeof tlsSettings.settings & { allowInsecure?: boolean }).allowInsecure === true) {
+      obj.allowInsecure = true;
+    }
   }
 
   applyExternalProxyTLSObj(externalProxy, obj, tls);
@@ -303,8 +319,20 @@ function applyExternalProxyTLSParams(
   security: string,
 ): void {
   if (!externalProxy || security !== 'tls') return;
-  const sni = externalProxy.sni && externalProxy.sni.length > 0 ? externalProxy.sni : externalProxy.dest;
-  if (sni && sni.length > 0) params.set('sni', sni);
+  const modernProfile = externalProxy.network !== undefined
+    || externalProxy.security !== undefined
+    || externalProxy.tlsSettings !== undefined;
+
+  if (externalProxy.keepSniBlank) {
+    params.delete('sni');
+  } else {
+    const sni = externalProxy.overrideSniFromAddress
+      ? externalProxy.dest
+      : externalProxy.sni
+        || (!modernProfile ? externalProxy.dest : '');
+
+    if (sni && sni.length > 0) params.set('sni', sni);
+  }
   if (externalProxy.fingerprint && externalProxy.fingerprint.length > 0) params.set('fp', externalProxy.fingerprint);
   const alpn = externalProxyAlpn(externalProxy.alpn);
   if (alpn.length > 0) params.set('alpn', alpn);
@@ -416,6 +444,10 @@ export function genVlessLink(input: GenVlessLinkInput): string {
       if (tls.settings.pinnedPeerCertSha256.length > 0) {
         params.set('pcs', tls.settings.pinnedPeerCertSha256.join(','));
       }
+      if ((tls.settings as typeof tls.settings & { allowInsecure?: boolean }).allowInsecure === true) {
+        params.set('allowInsecure', '1');
+      }
+      if (stream.network === 'tcp' && flow.length > 0) params.set('flow', flow);
     }
     applyExternalProxyTLSParams(externalProxy, params, security);
   } else if (security === 'reality') {
@@ -511,6 +543,9 @@ function writeTlsParams(stream: NonNullable<Inbound['streamSettings']>, params: 
   }
   if (tls.settings.pinnedPeerCertSha256.length > 0) {
     params.set('pcs', tls.settings.pinnedPeerCertSha256.join(','));
+  }
+  if ((tls.settings as typeof tls.settings & { allowInsecure?: boolean }).allowInsecure === true) {
+    params.set('allowInsecure', '1');
   }
 }
 
@@ -743,6 +778,9 @@ export function genHysteriaLink(input: GenHysteriaLinkInput): string {
   if (tls.settings.pinnedPeerCertSha256.length > 0) {
     params.set('pinSHA256', tls.settings.pinnedPeerCertSha256.map(hysteriaPinHex).join(','));
   }
+  if ((tls.settings as typeof tls.settings & { allowInsecure?: boolean }).allowInsecure === true) {
+    params.set('insecure', '1');
+  }
   // An external-proxy entry can pin a different endpoint's certificate.
   // Hysteria carries it as hex `pinSHA256` (not the `pcs` other protocols
   // use), so coerce each entry through hysteriaPinHex like the main pin.
@@ -778,18 +816,22 @@ export interface GenMtprotoLinkInput {
   inbound: Inbound;
   address: string;
   port?: number;
+  clientSecret?: string;
 }
 
-// Builds a Telegram proxy deep link for an mtproto inbound:
+// Builds a per-client Telegram proxy deep link for an mtproto inbound from the
+// client's own FakeTLS secret. No remark fragment is added: Telegram proxy deep
+// links have no name field, and a trailing "#remark" gets folded into the last
+// query value by lenient parsers, breaking the server address. The panel shows
+// the remark separately from the link.
 export function genMtprotoLink(input: GenMtprotoLinkInput): string {
-  const { inbound, address, port = inbound.port } = input;
+  const { inbound, address, port = inbound.port, clientSecret = '' } = input;
   if (inbound.protocol !== 'mtproto') return '';
-  const secret = inbound.settings.secret ?? '';
-  if (secret.length === 0) return '';
+  if (clientSecret.length === 0) return '';
   const url = new URL('tg://proxy');
   url.searchParams.set('server', address);
   url.searchParams.set('port', String(port));
-  url.searchParams.set('secret', secret);
+  url.searchParams.set('secret', clientSecret);
   return url.toString();
 }
 
@@ -1044,7 +1086,7 @@ export function preferPublicHost(browserHost: string, publicHost: string): strin
 // `this.clients` getter, which used isSSMultiUser to gate). Returns null
 // for SS single-user, http, mixed, tunnel, wireguard, hysteria2-without-
 // clients, and any protocol without a clients array.
-type ClientShape = { id?: string; security?: VmessSecurity; flow?: VlessClient['flow']; password?: string; auth?: string; email?: string; subId?: string };
+type ClientShape = { id?: string; security?: VmessSecurity; flow?: VlessClient['flow']; password?: string; auth?: string; secret?: string; email?: string; subId?: string };
 
 // Mirror of the Go subKey: the stable per-client identity spx derivation
 // keys on — subscription id first, unique email as the fallback.
@@ -1061,6 +1103,8 @@ export function getInboundClients(inbound: Inbound): ClientShape[] | null {
     case 'trojan':
       return (inbound.settings.clients ?? []) as ClientShape[];
     case 'hysteria':
+      return (inbound.settings.clients ?? []) as ClientShape[];
+    case 'mtproto':
       return (inbound.settings.clients ?? []) as ClientShape[];
     case 'shadowsocks': {
       const isMultiUser = inbound.settings.method !== '2022-blake3-chacha20-poly1305';
@@ -1125,7 +1169,7 @@ export function genLink(input: GenLinkInput): string {
         externalProxy,
       });
     case 'mtproto':
-      return genMtprotoLink({ inbound, address, port });
+      return genMtprotoLink({ inbound, address, port, clientSecret: client.secret ?? '' });
     default:
       return '';
   }
@@ -1163,23 +1207,40 @@ export function genAllLinks(input: GenAllLinksInput): GenAllLinksEntry[] {
   const composeRemark = (proxyRemark: string): string =>
     [remark, proxyRemark].filter((x) => x.length > 0).join('-');
 
-  const externals = inbound.streamSettings?.externalProxy;
-  if (!externals || externals.length === 0) {
-    const r = composeRemark('');
-    return [{ remark: r, link: genLink({ inbound, address: addr, port, forceTls: 'same', remark: r, client }) }];
+  // MTProto is served by mtg and intentionally has no Xray streamSettings.
+  // Render its per-client Telegram deep link directly before the generic
+  // stream-profile expansion used by Xray-served protocols.
+  if (inbound.protocol === 'mtproto') {
+    const link = genLink({
+      inbound,
+      address: addr,
+      port,
+      forceTls: 'same',
+      remark,
+      client,
+      externalProxy: null,
+    });
+    return link ? [{ remark, link }] : [];
   }
-  return externals.map((ep) => {
-    const r = composeRemark(ep.remark);
+
+  if (!inbound.streamSettings) return [];
+  const endpoints = expandSubscriptionProfileEndpoints(inbound.streamSettings, addr, port);
+  return endpoints.map((endpoint) => {
+    const r = composeRemark(endpoint.remark);
+    const profileInbound: Inbound = {
+      ...inbound,
+      streamSettings: endpoint.streamSettings,
+    };
     return {
       remark: r,
       link: genLink({
-        inbound,
-        address: ep.dest,
-        port: ep.port,
-        forceTls: ep.forceTls,
+        inbound: profileInbound,
+        address: endpoint.address,
+        port: endpoint.port,
+        forceTls: 'same',
         remark: r,
         client,
-        externalProxy: ep,
+        externalProxy: null,
       }),
     };
   });

@@ -40,7 +40,7 @@ type PanelUpdateInfo struct {
 }
 
 const (
-	panelUpdaterURL      = "https://raw.githubusercontent.com/mdaltoon10/D-UI/main/update.sh"
+	panelUpdaterURL      = "https://raw.githubusercontent.com/sh7CBAC/Heimdall/main/update.sh"
 	maxPanelUpdaterBytes = 2 << 20
 	// devReleaseTag is the fixed-tag rolling pre-release the CI force-moves to the
 	// newest main commit; the dev update channel installs from it.
@@ -125,9 +125,9 @@ func (s *PanelService) RestartPanel(delay time.Duration) error {
 	return nil
 }
 
-// GetUpdateInfo checks GitHub for the latest d-ui release. When the dev channel
-// is enabled on a dev build it compares commits against the rolling dev release;
-// otherwise it compares versions against the latest stable tag.
+// GetUpdateInfo checks GitHub for the latest Heimdall release. When the dev
+// channel is enabled on a dev build it compares commits against the rolling dev
+// release; otherwise it compares versions against the latest stable tag.
 func (s *PanelService) GetUpdateInfo() (*PanelUpdateInfo, error) {
 	if devChannelActive() {
 		return getDevUpdateInfo()
@@ -140,7 +140,7 @@ func (s *PanelService) GetUpdateInfo() (*PanelUpdateInfo, error) {
 	return &PanelUpdateInfo{
 		Channel:         "stable",
 		CurrentVersion:  current,
-		LatestVersion:   latest,
+		LatestVersion:   normalizeVersionTag(latest),
 		UpdateAvailable: isNewerVersion(latest, current),
 	}, nil
 }
@@ -244,39 +244,22 @@ func (s *PanelService) startUpdate(useDev bool) (int64, error) {
 	updateTag := ""
 	if useDev {
 		updateTag = devReleaseTag
-	} else {
-		// Fetch the latest stable version to avoid update.sh hitting GitHub API rate limits or proxy blocks
-		if latest, err := fetchLatestPanelVersion(); err == nil && latest != "" {
-			updateTag = latest
-		}
 	}
-	proxyUrl := (&service.SettingService{}).PanelEgressProxyURL()
 	updateScript := fmt.Sprintf("set -e; trap 'rm -f %s' EXIT; %s %s", shellQuote(scriptPath), shellQuote(bash), shellQuote(scriptPath))
-	runIDEnv := "DUI_UPDATE_RUN_ID=" + strconv.FormatInt(runID, 10)
-	statusFileEnv := "DUI_UPDATE_STATUS_FILE=" + statusFile
+	runIDEnv := "XUI_UPDATE_RUN_ID=" + strconv.FormatInt(runID, 10)
+	statusFileEnv := "XUI_UPDATE_STATUS_FILE=" + statusFile
 
 	if systemdRun, err := exec.LookPath("systemd-run"); err == nil {
-		unitName := fmt.Sprintf("d-ui-web-update-%d", time.Now().Unix())
-		cmdArgs := []string{
+		unitName := fmt.Sprintf("x-ui-web-update-%d", time.Now().Unix())
+		cmd := exec.CommandContext(context.Background(), systemdRun,
 			"--unit", unitName,
-			"--setenv", "DUI_MAIN_FOLDER=" + mainFolder,
-			"--setenv", "DUI_SERVICE=" + serviceFolder,
-			"--setenv", "DUI_UPDATE_TAG=" + updateTag,
+			"--setenv", "XUI_MAIN_FOLDER="+mainFolder,
+			"--setenv", "XUI_SERVICE="+serviceFolder,
+			"--setenv", "XUI_UPDATE_TAG="+updateTag,
 			"--setenv", runIDEnv,
 			"--setenv", statusFileEnv,
-		}
-		if proxyUrl != "" {
-			cmdArgs = append(cmdArgs,
-				"--setenv", "http_proxy="+proxyUrl,
-				"--setenv", "https_proxy="+proxyUrl,
-				"--setenv", "all_proxy="+proxyUrl,
-				"--setenv", "HTTP_PROXY="+proxyUrl,
-				"--setenv", "HTTPS_PROXY="+proxyUrl,
-				"--setenv", "ALL_PROXY="+proxyUrl,
-			)
-		}
-		cmdArgs = append(cmdArgs, bash, "-lc", updateScript)
-		cmd := exec.CommandContext(context.Background(), systemdRun, cmdArgs...)
+			bash, "-lc", updateScript,
+		)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			output := strings.TrimSpace(string(out))
@@ -294,24 +277,13 @@ func (s *PanelService) startUpdate(useDev bool) (int64, error) {
 	}
 
 	cmd := exec.CommandContext(context.Background(), bash, "-lc", updateScript)
-	cmdEnv := append(os.Environ(),
-		"DUI_MAIN_FOLDER="+mainFolder,
-		"DUI_SERVICE="+serviceFolder,
-		"DUI_UPDATE_TAG="+updateTag,
+	cmd.Env = append(os.Environ(),
+		"XUI_MAIN_FOLDER="+mainFolder,
+		"XUI_SERVICE="+serviceFolder,
+		"XUI_UPDATE_TAG="+updateTag,
 		runIDEnv,
 		statusFileEnv,
 	)
-	if proxyUrl != "" {
-		cmdEnv = append(cmdEnv,
-			"http_proxy="+proxyUrl,
-			"https_proxy="+proxyUrl,
-			"all_proxy="+proxyUrl,
-			"HTTP_PROXY="+proxyUrl,
-			"HTTPS_PROXY="+proxyUrl,
-			"ALL_PROXY="+proxyUrl,
-		)
-	}
-	cmd.Env = cmdEnv
 	setDetachedProcess(cmd)
 	if err := cmd.Start(); err != nil {
 		_ = os.Remove(scriptPath)
@@ -397,7 +369,7 @@ func downloadPanelUpdater() (string, error) {
 		return "", fmt.Errorf("download panel updater: unexpected HTTP %d", resp.StatusCode)
 	}
 
-	file, err := os.CreateTemp("", "d-ui-update-*.sh")
+	file, err := os.CreateTemp("", "heimdall-update-*.sh")
 	if err != nil {
 		return "", err
 	}
@@ -441,9 +413,9 @@ func fetchLatestPanelVersion() (string, error) {
 // fetchPanelRelease fetches a release from GitHub. An empty tag resolves the
 // latest stable release; a non-empty tag (e.g. dev-latest) resolves that tag.
 func fetchPanelRelease(tag string) (*service.Release, error) {
-	url := "https://api.github.com/repos/mdaltoon10/D-UI/releases/latest"
+	url := "https://api.github.com/repos/sh7CBAC/Heimdall/releases/latest"
 	if tag != "" {
-		url = "https://api.github.com/repos/mdaltoon10/D-UI/releases/tags/" + tag
+		url = "https://api.github.com/repos/sh7CBAC/Heimdall/releases/tags/" + tag
 	}
 	client := (&service.SettingService{}).NewProxiedHTTPClient(10 * time.Second)
 	req, reqErr := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
@@ -515,17 +487,17 @@ func commitsEqual(a, b string) bool {
 }
 
 func resolveUpdateFolders() (string, string) {
-	mainFolder := os.Getenv("DUI_MAIN_FOLDER")
+	mainFolder := os.Getenv("XUI_MAIN_FOLDER")
 	if mainFolder == "" {
 		if exePath, err := os.Executable(); err == nil {
 			mainFolder = filepath.Dir(exePath)
 		}
 	}
 	if mainFolder == "" {
-		mainFolder = "/usr/local/d-ui"
+		mainFolder = "/usr/local/x-ui"
 	}
 
-	serviceFolder := os.Getenv("DUI_SERVICE")
+	serviceFolder := os.Getenv("XUI_SERVICE")
 	if serviceFolder == "" {
 		serviceFolder = "/etc/systemd/system"
 	}

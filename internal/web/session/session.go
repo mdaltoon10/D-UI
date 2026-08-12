@@ -3,7 +3,8 @@ package session
 import (
 	"encoding/gob"
 	"net/http"
-	"strconv"
+	"strings"
+	"time"
 
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
@@ -14,39 +15,22 @@ import (
 )
 
 const (
-	loginUserKey      = "LOGIN_USER"
-	loginEpochKey     = "LOGIN_EPOCH"
-	apiAuthUserKey    = "api_auth_user"
-	sessionCookieName = "d-ui"
+	loginUserKey        = "LOGIN_USER"
+	loginEpochKey       = "LOGIN_EPOCH"
+	apiAuthUserKey      = "api_auth_user"
+	apiAuthPrincipalKey = "api_auth_principal"
+	sessionCookieName   = "3x-ui"
 )
 
+const APIAuthPrincipalKindMTLS = "mtls"
 
-var masterBasePath = "/"
-
-func SetMasterBasePath(path string) {
-	masterBasePath = path
-}
-
-func getContextKey(c *gin.Context, key string) string {
-	// For master admin keys, always use the main panel's base path context
-	if key == loginUserKey || key == loginEpochKey {
-		bp := masterBasePath
-		if bp == "" || bp == "/" {
-			return key
-		}
-		return key + "_" + bp
-	}
-
-	// For reseller specific keys, isolate them based on the current request's base_path
-	// which allows different resellers to have independent sessions even on the same domain.
-	bp := c.GetString("base_path")
-	if bp == "" || bp == "/" {
-		bp = masterBasePath
-	}
-	if bp == "" || bp == "/" {
-		return key
-	}
-	return key + "_" + bp
+// APIAuthPrincipal describes how an API request was authenticated. It is held
+// only in the Gin request context and never written to a browser session.
+type APIAuthPrincipal struct {
+	TokenId   int
+	TokenName string
+	Kind      string
+	Scopes    []string
 }
 
 func init() {
@@ -58,16 +42,77 @@ func SetLoginUser(c *gin.Context, user *model.User) error {
 		return nil
 	}
 	s := sessions.Default(c)
-	s.Set(getContextKey(c, loginUserKey), user.Id)
-	s.Set(getContextKey(c, loginEpochKey), user.LoginEpoch)
+	s.Set(loginUserKey, user.Id)
+	s.Set(loginEpochKey, user.LoginEpoch)
 	return s.Save()
 }
 
-func SetAPIAuthUser(c *gin.Context, user *model.User) {
-	if user == nil {
+func SetAPIAuthPrincipal(c *gin.Context, user *model.User, principal *APIAuthPrincipal) {
+	if user == nil || principal == nil {
 		return
 	}
 	c.Set(apiAuthUserKey, user)
+	copyPrincipal := *principal
+	copyPrincipal.Scopes = append([]string(nil), principal.Scopes...)
+	c.Set(apiAuthPrincipalKey, &copyPrincipal)
+}
+
+// SetAPIAuthUser preserves the original helper for older tests and trusted
+// internal callers. Such callers retain the legacy service-token semantics.
+func SetAPIAuthUser(c *gin.Context, user *model.User) {
+	SetAPIAuthPrincipal(c, user, &APIAuthPrincipal{
+		Kind:   model.ApiTokenKindService,
+		Scopes: []string{"*"},
+	})
+}
+
+func GetAPIAuthPrincipal(c *gin.Context) *APIAuthPrincipal {
+	if c == nil {
+		return nil
+	}
+	value, ok := c.Get(apiAuthPrincipalKey)
+	if !ok {
+		return nil
+	}
+	principal, _ := value.(*APIAuthPrincipal)
+	return principal
+}
+
+func IsDelegatedAPIAuth(c *gin.Context) bool {
+	principal := GetAPIAuthPrincipal(c)
+	return principal != nil && principal.Kind == model.ApiTokenKindDelegated
+}
+
+func IsServiceAPIAuth(c *gin.Context) bool {
+	principal := GetAPIAuthPrincipal(c)
+	if principal == nil {
+		return false
+	}
+	return principal.Kind == model.ApiTokenKindService || principal.Kind == APIAuthPrincipalKindMTLS
+}
+
+// APIAuthScopeAllowed supports exact scopes plus resource wildcards for future
+// service integrations. Delegated-token creation currently accepts exact scopes
+// only; service and mTLS principals use the global wildcard.
+func APIAuthScopeAllowed(c *gin.Context, required string) bool {
+	principal := GetAPIAuthPrincipal(c)
+	if principal == nil {
+		return false
+	}
+	required = strings.ToLower(strings.TrimSpace(required))
+	if required == "" {
+		return false
+	}
+	for _, raw := range principal.Scopes {
+		scope := strings.ToLower(strings.TrimSpace(raw))
+		if scope == "*" || scope == required {
+			return true
+		}
+		if strings.HasSuffix(scope, ":*") && strings.HasPrefix(required, strings.TrimSuffix(scope, "*")) {
+			return true
+		}
+	}
+	return false
 }
 
 func GetLoginUser(c *gin.Context) *model.User {
@@ -76,28 +121,22 @@ func GetLoginUser(c *gin.Context) *model.User {
 			return u
 		}
 	}
-	
 	s := sessions.Default(c)
-	resellerId := GetLoginReseller(c)
-	if resellerId != "" {
-		return &model.User{Id: 1, Username: "reseller"} // fake user with Id=1 so they can access inbounds
-	}
-	
-	obj := s.Get(getContextKey(c, loginUserKey))
+	obj := s.Get(loginUserKey)
 	if obj == nil {
 		return nil
 	}
 	userID, ok := sessionUserID(obj)
 	if !ok {
-		s.Delete(getContextKey(c, loginUserKey))
-		s.Delete(getContextKey(c, loginEpochKey))
+		s.Delete(loginUserKey)
+		s.Delete(loginEpochKey)
 		if err := s.Save(); err != nil {
 			logger.Warning("session: failed to drop stale user payload:", err)
 		}
 		return nil
 	}
 	if legacyUserID, ok := legacySessionUserID(obj); ok {
-		s.Set(getContextKey(c, loginUserKey), legacyUserID)
+		s.Set(loginUserKey, legacyUserID)
 		if err := s.Save(); err != nil {
 			logger.Warning("session: failed to migrate legacy user payload:", err)
 		}
@@ -105,16 +144,16 @@ func GetLoginUser(c *gin.Context) *model.User {
 	user, err := getUserByID(userID)
 	if err != nil {
 		logger.Warning("session: failed to load user:", err)
-		s.Delete(getContextKey(c, loginUserKey))
-		s.Delete(getContextKey(c, loginEpochKey))
+		s.Delete(loginUserKey)
+		s.Delete(loginEpochKey)
 		if saveErr := s.Save(); saveErr != nil {
 			logger.Warning("session: failed to drop missing user:", saveErr)
 		}
 		return nil
 	}
-	if !sessionEpochMatches(s.Get(getContextKey(c, loginEpochKey)), user.LoginEpoch) {
-		s.Delete(getContextKey(c, loginUserKey))
-		s.Delete(getContextKey(c, loginEpochKey))
+	if !sessionEpochMatches(s.Get(loginEpochKey), user.LoginEpoch) {
+		s.Delete(loginUserKey)
+		s.Delete(loginEpochKey)
 		if saveErr := s.Save(); saveErr != nil {
 			logger.Warning("session: failed to drop stale epoch:", saveErr)
 		}
@@ -142,7 +181,7 @@ func sessionEpochMatches(cookieVal any, userEpoch int64) bool {
 }
 
 func IsLogin(c *gin.Context) bool {
-	return GetLoginUser(c) != nil || IsResellerLogin(c)
+	return GetLoginUser(c) != nil
 }
 
 func sessionUserID(obj any) (int, bool) {
@@ -196,70 +235,33 @@ func getUserByID(id int) (*model.User, error) {
 
 func ClearSession(c *gin.Context) error {
 	s := sessions.Default(c)
-	s.Delete(getContextKey(c, loginUserKey))
-	s.Delete(getContextKey(c, loginEpochKey))
-	s.Delete(getContextKey(c, loginResellerKey))
-	s.Delete(getContextKey(c, loginResellerUsernameKey))
-	return s.Save()
-}
-
-const (
-	loginResellerKey = "LOGIN_RESELLER"
-)
-
-func GetLoginReseller(c *gin.Context) string {
-	if impersonateID, ok := c.Get("IMPERSONATE_RESELLER_ID"); ok {
-		if str, ok := impersonateID.(string); ok {
-			return str
-		}
+	s.Clear()
+	cookiePath := c.GetString("base_path")
+	if cookiePath == "" {
+		cookiePath = "/"
 	}
-
-	s := sessions.Default(c)
-	obj := s.Get(getContextKey(c, loginResellerKey))
-	if obj == nil {
-		return ""
+	secure := c.Request.TLS != nil
+	s.Options(sessions.Options{
+		Path:     cookiePath,
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+	if err := s.Save(); err != nil {
+		return err
 	}
-	if str, ok := obj.(string); ok {
-		return str
+	if cookiePath != "/" {
+		http.SetCookie(c.Writer, &http.Cookie{
+			Name:     sessionCookieName,
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			Expires:  time.Unix(0, 0),
+			HttpOnly: true,
+			Secure:   secure,
+			SameSite: http.SameSiteLaxMode,
+		})
 	}
-	switch v := obj.(type) {
-	case int:
-		return strconv.Itoa(v)
-	case int64:
-		return strconv.FormatInt(v, 10)
-	case int32:
-		return strconv.FormatInt(int64(v), 10)
-	case float64:
-		return strconv.FormatInt(int64(v), 10)
-	}
-	return ""
-}
-
-func IsResellerLogin(c *gin.Context) bool {
-	return GetLoginReseller(c) != ""
-}
-
-const loginResellerUsernameKey = "LOGIN_RESELLER_USERNAME"
-
-func GetLoginResellerUsername(c *gin.Context) string {
-	if impersonateUser, ok := c.Get("IMPERSONATE_RESELLER_USERNAME"); ok {
-		if str, ok := impersonateUser.(string); ok {
-			return str
-		}
-	}
-
-	s := sessions.Default(c)
-	obj := s.Get(getContextKey(c, loginResellerUsernameKey))
-	if str, ok := obj.(string); ok {
-		return str
-	}
-	return ""
-}
-
-
-func SetLoginReseller(c *gin.Context, id string, username string) error {
-	s := sessions.Default(c)
-	s.Set(getContextKey(c, loginResellerKey), id)
-	s.Set(getContextKey(c, loginResellerUsernameKey), username)
-	return s.Save()
+	return nil
 }

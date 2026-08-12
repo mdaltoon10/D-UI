@@ -9,10 +9,9 @@ import (
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
 )
 
-// hostColumns is the set of columns initModels must create for the hosts table.
 func hostColumns() []string {
 	return []string{
-		"id", "inbound_id", "sort_order", "remark", "server_description", "is_disabled", "is_hidden", "tags",
+		"id", "group_id", "inbound_id", "sort_order", "remark", "server_description", "is_disabled", "is_hidden", "tags",
 		"address", "port",
 		"security", "sni", "host_header", "path", "alpn", "fingerprint",
 		"override_sni_from_address", "keep_sni_blank", "pinned_peer_cert_sha256",
@@ -39,7 +38,7 @@ func assertHostSchema(t *testing.T) {
 // TestHostAutoMigrateCreatesColumns verifies the hosts table and every expected
 // column exist after initModels (SQLite).
 func TestHostAutoMigrateCreatesColumns(t *testing.T) {
-	if err := InitDB(filepath.Join(t.TempDir(), "d-ui.db")); err != nil {
+	if err := InitDB(filepath.Join(t.TempDir(), "x-ui.db")); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	t.Cleanup(func() { _ = CloseDB() })
@@ -48,8 +47,8 @@ func TestHostAutoMigrateCreatesColumns(t *testing.T) {
 
 // TestHostAutoMigrateCreatesColumns_Postgres is the dual-driver counterpart.
 func TestHostAutoMigrateCreatesColumns_Postgres(t *testing.T) {
-	if strings.TrimSpace(os.Getenv("DUI_DB_DSN")) == "" || os.Getenv("DUI_DB_TYPE") != "postgres" {
-		t.Skip("set DUI_DB_TYPE=postgres and DUI_DB_DSN to run the postgres schema test")
+	if strings.TrimSpace(os.Getenv("XUI_DB_DSN")) == "" || os.Getenv("XUI_DB_TYPE") != "postgres" {
+		t.Skip("set XUI_DB_TYPE=postgres and XUI_DB_DSN to run the postgres schema test")
 	}
 	if err := InitDB(""); err != nil {
 		t.Fatalf("InitDB: %v", err)
@@ -61,7 +60,7 @@ func TestHostAutoMigrateCreatesColumns_Postgres(t *testing.T) {
 // TestPruneOrphanedHosts verifies a host whose inbound_id has no matching inbound
 // is removed by the prune step.
 func TestPruneOrphanedHosts(t *testing.T) {
-	if err := InitDB(filepath.Join(t.TempDir(), "d-ui.db")); err != nil {
+	if err := InitDB(filepath.Join(t.TempDir(), "x-ui.db")); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	t.Cleanup(func() { _ = CloseDB() })

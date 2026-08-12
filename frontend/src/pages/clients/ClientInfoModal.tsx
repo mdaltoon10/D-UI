@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Divider, Modal, Popover, Tag, Tooltip, message } from 'antd';
+import { Alert, Button, Divider, Modal, Popover, Spin, Tag, Tooltip, message } from 'antd';
 import { CopyOutlined, EyeOutlined, QrcodeOutlined, ReloadOutlined } from '@ant-design/icons';
 
 import { ClipboardManager, HttpUtil, IntlUtil, SizeFormatter } from '@/utils';
@@ -12,6 +12,7 @@ import { isPostQuantumLink } from '@/lib/xray/inbound-link';
 import { LinkTags, linkMetaText, parseLinkParts } from '@/lib/xray/link-label';
 import { QrPanel } from '@/pages/inbounds/qr';
 import ConfigBlock from '@/components/clients/ConfigBlock';
+import ClientActivityControl from './ClientActivityControl';
 import { buildWireguardClientConfig, findWireguardInbound, isWireguardClient } from './wireguardConfig';
 import './ClientInfoModal.css';
 
@@ -51,6 +52,7 @@ interface ClientInfoModalProps {
 
 interface ApiMsg<T = unknown> {
   success?: boolean;
+  msg?: string;
   obj?: T;
 }
 
@@ -84,14 +86,9 @@ export default function ClientInfoModal({
   };
   const dateLabel = (ts?: number) => (!ts || ts <= 0 ? '-' : IntlUtil.formatDate(ts, datepicker));
   const [messageApi, messageContextHolder] = message.useMessage();
-
-  const isReseller = useMemo(() => {
-    return (typeof window !== 'undefined' && typeof window.X_UI_BASE_PATH !== 'undefined')
-      ? !!localStorage.getItem('daltoon_current_admin')
-      : false;
-  }, []);
-
   const [links, setLinks] = useState<string[]>([]);
+  const [linksLoading, setLinksLoading] = useState(false);
+  const [linksError, setLinksError] = useState('');
   const [clientIps, setClientIps] = useState<ClientIpInfo[]>([]);
   const [ipsLoading, setIpsLoading] = useState(false);
   const [ipsClearing, setIpsClearing] = useState(false);
@@ -100,21 +97,60 @@ export default function ClientInfoModal({
   useEffect(() => {
     if (!open) {
       setLinks([]);
+      setLinksLoading(false);
+      setLinksError('');
       setClientIps([]);
       setIpsModalOpen(false);
       return;
     }
-    if (!client?.subId) return;
+    if (!client?.subId) {
+      setLinks([]);
+      setLinksLoading(false);
+      setLinksError('');
+      return;
+    }
+
     let cancelled = false;
+    setLinks([]);
+    setLinksLoading(true);
+    setLinksError('');
+
     (async () => {
-      const msg = await HttpUtil.get(
-        `/panel/api/clients/subLinks/${encodeURIComponent(client.subId!)}`,
-      ) as ApiMsg<string[]>;
-      if (cancelled) return;
-      setLinks(msg?.success && Array.isArray(msg.obj) ? msg.obj : []);
+      try {
+        const msg = await HttpUtil.get(
+          `/panel/api/clients/subLinks/${encodeURIComponent(client.subId!)}`,
+          undefined,
+          { silent: true },
+        ) as ApiMsg<string[]>;
+        if (cancelled) return;
+
+        if (!msg?.success) {
+          setLinksError(msg?.msg?.trim() || t('pages.clients.configLoadError', {
+            defaultValue: 'Failed to load client configurations.',
+          }));
+          return;
+        }
+        if (!Array.isArray(msg.obj)) {
+          setLinksError(t('pages.clients.configInvalidResponse', {
+            defaultValue: 'The server returned an invalid configuration response.',
+          }));
+          return;
+        }
+        setLinks(msg.obj);
+      } catch (error) {
+        if (cancelled) return;
+        setLinksError(error instanceof Error && error.message
+          ? error.message
+          : t('pages.clients.configLoadError', {
+              defaultValue: 'Failed to load client configurations.',
+            }));
+      } finally {
+        if (!cancelled) setLinksLoading(false);
+      }
     })();
+
     return () => { cancelled = true; };
-  }, [open, client?.subId]);
+  }, [open, client?.subId, t]);
 
   const traffic = client?.traffic || null;
   const totalBytes = client?.totalGB || 0;
@@ -143,6 +179,7 @@ export default function ClientInfoModal({
   }, [client?.subId, subSettings?.subClashEnable, subSettings?.subClashURI]);
 
   const showSubscription = !!(subSettings?.enable && client?.subId);
+  const hasPostQuantumLinks = useMemo(() => links.some(isPostQuantumLink), [links]);
   const wgInbound = useMemo(() => findWireguardInbound(client, inboundsById), [client, inboundsById]);
   const wgConfigText = useMemo(() => {
     if (!client || !wgInbound || !isWireguardClient(client)) return '';
@@ -187,6 +224,7 @@ export default function ClientInfoModal({
     <>
       {messageContextHolder}
       <Modal
+        className="client-info-modal"
         open={open}
         title={client ? `${t('pages.clients.clientInfo')} — ${client.email}` : t('pages.clients.clientInfo')}
         footer={null}
@@ -212,6 +250,19 @@ export default function ClientInfoModal({
                     <Tag color={client.enable ? 'green' : 'default'}>
                       {client.enable ? t('enabled') : t('disabled')}
                     </Tag>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    {t('pages.clients.activity.monitoring', {
+                      defaultValue: 'Activity Monitoring',
+                    })}
+                  </td>
+                  <td>
+                    <ClientActivityControl
+                      email={client.email}
+                      active={open}
+                    />
                   </td>
                 </tr>
                 <tr>
@@ -327,50 +378,48 @@ export default function ClientInfoModal({
                     <td><Tag className="info-large-tag">{client.comment}</Tag></td>
                   </tr>
                 )}
-                {!isReseller && (
-                  <tr>
-                    <td>{t('pages.clients.attachedInbounds')}</td>
-                    <td>
-                      {(() => {
-                        const ids = client.inboundIds || [];
-                        if (ids.length === 0) return <span className="hint">—</span>;
-                        const visible = ids.slice(0, INBOUND_CHIP_LIMIT);
-                        const overflow = ids.slice(INBOUND_CHIP_LIMIT);
-                        const inboundChip = (id: number) => {
-                          const ib = inboundsById[id];
-                          const proto = (ib?.protocol || '').toLowerCase();
-                          const color = INBOUND_PROTOCOL_COLORS[proto] ?? 'default';
-                          const label = formatInboundLabel(ib?.tag, ib?.remark);
-                          return (
-                            <Tooltip key={id} title={label}>
-                              <Tag color={color}>{label}</Tag>
-                            </Tooltip>
-                          );
-                        };
+                <tr>
+                  <td>{t('pages.clients.attachedInbounds')}</td>
+                  <td>
+                    {(() => {
+                      const ids = client.inboundIds || [];
+                      if (ids.length === 0) return <span className="hint">—</span>;
+                      const visible = ids.slice(0, INBOUND_CHIP_LIMIT);
+                      const overflow = ids.slice(INBOUND_CHIP_LIMIT);
+                      const inboundChip = (id: number) => {
+                        const ib = inboundsById[id];
+                        const proto = (ib?.protocol || '').toLowerCase();
+                        const color = INBOUND_PROTOCOL_COLORS[proto] ?? 'default';
+                        const label = formatInboundLabel(ib?.tag, ib?.remark);
                         return (
-                          <div className="chips">
-                            {visible.map((id) => inboundChip(id))}
-                            {overflow.length > 0 && (
-                              <Popover
-                                trigger="click"
-                                placement="bottomRight"
-                                content={
-                                  <div className="chips chips-stack">
-                                    {overflow.map((id) => inboundChip(id))}
-                                  </div>
-                                }
-                              >
-                                <Tag color="default" className="chip-more">
-                                  +{overflow.length} {t('more') !== 'more' ? t('more') : 'more'}
-                                </Tag>
-                              </Popover>
-                            )}
-                          </div>
+                          <Tooltip key={id} title={label}>
+                            <Tag color={color}>{label}</Tag>
+                          </Tooltip>
                         );
-                      })()}
-                    </td>
-                  </tr>
-                )}
+                      };
+                      return (
+                        <div className="chips">
+                          {visible.map((id) => inboundChip(id))}
+                          {overflow.length > 0 && (
+                            <Popover
+                              trigger="click"
+                              placement="bottomRight"
+                              content={
+                                <div className="chips chips-stack">
+                                  {overflow.map((id) => inboundChip(id))}
+                                </div>
+                              }
+                            >
+                              <Tag color="default" className="chip-more">
+                                +{overflow.length} {t('more') !== 'more' ? t('more') : 'more'}
+                              </Tag>
+                            </Popover>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </td>
+                </tr>
               </tbody>
             </table>
 
@@ -386,7 +435,7 @@ export default function ClientInfoModal({
                     className="link-row-title link-row-title-anchor"
                     title={subLink}
                   >
-                    {client.subId}
+                    {subLink}
                   </a>
                   <div className="link-row-actions">
                     <Tooltip title={t('copy')}>
@@ -414,7 +463,7 @@ export default function ClientInfoModal({
                       className="link-row-title link-row-title-anchor"
                       title={subJsonLink}
                     >
-                      {client.subId}
+                      {subJsonLink}
                     </a>
                     <div className="link-row-actions">
                       <Tooltip title={t('copy')}>
@@ -445,7 +494,7 @@ export default function ClientInfoModal({
                       className="link-row-title link-row-title-anchor"
                       title={subClashLink}
                     >
-                      {client.subId}
+                      {subClashLink}
                     </a>
                     <div className="link-row-actions">
                       <Tooltip title={t('copy')}>
@@ -467,41 +516,107 @@ export default function ClientInfoModal({
               </>
             )}
 
-            {links.length > 0 && (
+            {client.subId && (
               <>
                 <Divider>{t('pages.inbounds.copyLink')}</Divider>
-                {links.map((link, idx) => {
-                  const parts = parseLinkParts(link);
-                  const fallback = `${t('pages.clients.link')} ${idx + 1}`;
-                  const rowTitle = (parts && linkMetaText(parts)) || fallback;
-                  const qrRemark = parts?.remark || rowTitle;
-                  const canQr = !isPostQuantumLink(link);
-                  return (
-                    <div key={idx} className="link-row">
-                      {parts
-                        ? <LinkTags parts={parts} />
-                        : <Tag className="link-row-tag">LINK</Tag>}
-                      <span className="link-row-title" title={rowTitle}>{rowTitle}</span>
-                      <div className="link-row-actions">
-                        <Tooltip title={t('copy')}>
-                          <Button size="small" icon={<CopyOutlined />} aria-label={t('copy')} onClick={() => copyValue(link)} />
-                        </Tooltip>
-                        {canQr && (
-                          <Popover
-                            trigger="click"
-                            placement="left"
-                            destroyOnHidden
-                            content={<QrPanel value={link} remark={qrRemark} size={220} />}
-                          >
-                            <Tooltip title={t('pages.clients.qrCode')}>
-                              <Button size="small" icon={<QrcodeOutlined />} aria-label={t('pages.clients.qrCode')} />
+                <Spin spinning={linksLoading}>
+                  {linksError && (
+                    <Alert
+                      type="error"
+                      showIcon
+                      title={t('pages.clients.configLoadErrorTitle', {
+                        defaultValue: 'Configuration loading failed',
+                      })}
+                      description={linksError}
+                      className="client-config-alert"
+                    />
+                  )}
+                  {!linksLoading && !linksError && links.length === 0 && (
+                    <Alert
+                      type="info"
+                      showIcon
+                      title={t('pages.clients.noGeneratedConfigs', {
+                        defaultValue: 'No client configurations were generated.',
+                      })}
+                      description={t('pages.clients.noGeneratedConfigsHint', {
+                        defaultValue: 'Check that the client is attached to at least one enabled and supported inbound.',
+                      })}
+                      className="client-config-alert"
+                    />
+                  )}
+                  {hasPostQuantumLinks && (
+                    <Alert
+                      type="info"
+                      showIcon
+                      title={t('pages.clients.postQuantumQrUnavailable', {
+                        defaultValue: 'Direct QR is unavailable for post-quantum configs',
+                      })}
+                      description={showSubscription && subLink
+                        ? t('pages.clients.postQuantumQrUseSubscription', {
+                            defaultValue: 'These configs contain a large post-quantum parameter. Copy the config directly, or scan the subscription QR above.',
+                          })
+                        : t('pages.clients.postQuantumQrCopy', {
+                            defaultValue: 'These configs contain a large post-quantum parameter. Copy the config directly instead.',
+                          })}
+                      className="client-config-alert"
+                    />
+                  )}
+                  {links.map((link, idx) => {
+                    const parts = parseLinkParts(link);
+                    const fallback = `${t('pages.clients.link')} ${idx + 1}`;
+                    const rowTitle = (parts && linkMetaText(parts)) || fallback;
+                    const qrRemark = parts?.remark || rowTitle;
+                    const canQr = !isPostQuantumLink(link);
+                    return (
+                      <div key={idx} className="link-row">
+                        {parts
+                          ? <LinkTags parts={parts} />
+                          : <Tag className="link-row-tag">LINK</Tag>}
+                        <span className="link-row-title" title={link}>{rowTitle}</span>
+                        <div className="link-row-actions">
+                          <Tooltip title={t('copy')}>
+                            <Button
+                              size="small"
+                              type={canQr ? 'default' : 'primary'}
+                              icon={<CopyOutlined />}
+                              aria-label={t('copy')}
+                              onClick={() => copyValue(link)}
+                            >
+                              {!canQr && t('pages.clients.copyConfig', { defaultValue: 'Copy config' })}
+                            </Button>
+                          </Tooltip>
+                          {canQr ? (
+                            <Popover
+                              trigger="click"
+                              placement="left"
+                              destroyOnHidden
+                              content={<QrPanel value={link} remark={qrRemark} size={220} />}
+                            >
+                              <Tooltip title={t('pages.clients.qrCode')}>
+                                <Button size="small" icon={<QrcodeOutlined />} aria-label={t('pages.clients.qrCode')} />
+                              </Tooltip>
+                            </Popover>
+                          ) : (
+                            <Tooltip title={t('pages.clients.postQuantumQrUnavailable', {
+                              defaultValue: 'Direct QR is unavailable for post-quantum configs',
+                            })}>
+                              <span>
+                                <Button
+                                  size="small"
+                                  disabled
+                                  icon={<QrcodeOutlined />}
+                                  aria-label={t('pages.clients.postQuantumQrUnavailable', {
+                                    defaultValue: 'Direct QR is unavailable for post-quantum configs',
+                                  })}
+                                />
+                              </span>
                             </Tooltip>
-                          </Popover>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </Spin>
               </>
             )}
 

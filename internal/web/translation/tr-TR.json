@@ -1,4 +1,5 @@
 {
+  "get": "Al",
   "username": "Kullanıcı Adı",
   "password": "Şifre",
   "login": "Giriş Yap",
@@ -155,7 +156,7 @@
       "xraySwitchClick": "Geçiş yapmak istediğiniz sürümü seçin.",
       "xraySwitchClickDesk": "Dikkatli seçin, eski sürümler mevcut yapılandırmalarla uyumlu olmayabilir.",
       "updatePanel": "Paneli Güncelle",
-      "panelUpdateDesc": "Bu işlem Daltoon-UI'yi en son sürüme güncelleyecek ve panel servisini yeniden başlatacaktır.",
+      "panelUpdateDesc": "Bu işlem HEIMDALL'yi en son sürüme güncelleyecek ve panel servisini yeniden başlatacaktır.",
       "currentPanelVersion": "Mevcut panel sürümü",
       "latestPanelVersion": "Panelin en son sürümü",
       "panelUpToDate": "Panel güncel",
@@ -228,11 +229,11 @@
       "xraySwitchVersionDialogDesc": "Bu işlem Xray sürümünü #version# olarak değiştirecektir.",
       "xraySwitchVersionPopover": "Xray başarıyla güncellendi",
       "panelUpdateDialog": "Gerçekten paneli güncellemek istiyor musunuz?",
-      "panelUpdateDialogDesc": "Bu işlem Daltoon-UI'yi #version# sürümüne güncelleyecek ve panel servisini yeniden başlatacaktır.",
+      "panelUpdateDialogDesc": "Bu işlem HEIMDALL'yi #version# sürümüne güncelleyecek ve panel servisini yeniden başlatacaktır.",
       "panelUpdateCheckPopover": "Panel güncelleme kontrolü başarısız oldu",
       "panelUpdateStartedPopover": "Panel güncellemesi başlatıldı",
       "panelUpdateFailedTitle": "Panel güncellemesi başarısız oldu",
-      "panelUpdateFailedDesc": "Güncelleme başarıyla tamamlanamadı. Sunucu günlüklerini kontrol edin veya komut satırından 'd-ui update' çalıştırın.",
+      "panelUpdateFailedDesc": "Güncelleme başarıyla tamamlanamadı. Sunucu günlüklerini kontrol edin veya komut satırından 'x-ui update' çalıştırın.",
       "panelUpdateUnknownTitle": "Güncellemenin tamamlandığı doğrulanamadı",
       "panelUpdateUnknownDesc": "Panel zamanında bir sonuç bildirmedi. Geçerli sürümü kontrol etmek için sayfayı yenileyin veya sunucu günlüklerini kontrol edin.",
       "geofileUpdateDialog": "Geofile'ı gerçekten güncellemek istiyor musunuz?",
@@ -261,40 +262,19 @@
       "backup": "Yedek",
       "backupTitle": "Yedekleme ve Geri Yükleme",
       "exportDatabase": "Yedekle",
-      "exportDatabaseDesc": "Mevcut veritabanınızın yedeğini içeren bir .db dosyasını cihazınıza indirmek için tıklayın.",
+      "exportDatabaseDesc": "Mevcut veritabanınızın yedeğini içeren bir .db dosyasını cihazınıza indirmek için tıklayın. Aynı dosya PostgreSQL üzerinde çalışan bir panele de geri yüklenebilir.",
       "importDatabase": "Geri Yükle",
-      "importDatabaseDesc": "Cihazınızdan bir .db dosyası seçip yükleyerek veritabanınızı yedekten geri yüklemek için tıklayın.",
+      "importDatabaseDesc": "Cihazınızdan bir .db yedeği veya taşıma dökümü (.dump) seçip yükleyerek veritabanınızı geri yüklemek için tıklayın.",
       "importDatabaseSuccess": "Veritabanı başarıyla içe aktarıldı.",
       "importDatabaseError": "Veritabanı içe aktarılırken bir hata oluştu.",
       "readDatabaseError": "Veritabanı okunurken bir hata oluştu.",
       "getDatabaseError": "Veritabanı alınırken bir hata oluştu.",
       "getConfigError": "Yapılandırma dosyası alınırken bir hata oluştu.",
-      "backupPostgresNote": "Bu panel PostgreSQL üzerinde çalışıyor. 'Yedekle' bir pg_dump arşivi (.dump) indirir, 'Geri Yükle' ise onu pg_restore ile geri yükler. Sunucuda PostgreSQL istemci araçlarının (pg_dump ve pg_restore) kurulu olması gerekir.",
+      "backupPostgresNote": "Bu panel PostgreSQL üzerinde çalışıyor. 'Yedekle' bir pg_dump arşivi (.dump) indirir, 'Geri Yükle' ise onu pg_restore ile geri yükler. 'Geri Yükle' ayrıca bir SQLite veritabanını (.db) veya SQLite taşıma dökümünü kabul eder ve verilerini PostgreSQL'e aktarır. Sunucuda PostgreSQL istemci araçlarının (pg_dump ve pg_restore) kurulu olması gerekir.",
       "exportDatabasePgDesc": "Mevcut veritabanınızın PostgreSQL dökümünü (.dump) cihazınıza indirmek için tıklayın.",
-      "importDatabasePgDesc": "PostgreSQL veritabanınızı geri yüklemek için bir .dump dosyası seçip yüklemek üzere tıklayın. Bu, tüm mevcut verilerin yerini alır.",
+      "importDatabasePgDesc": "Veritabanınızı geri yüklemek için bir PostgreSQL yedeği (.dump), SQLite veritabanı (.db) veya SQLite taşıma dökümü seçip yüklemek üzere tıklayın. Bu, tüm mevcut verilerin yerini alır.",
       "migrationDownload": "Geçiş Dosyasını İndir",
-      "migrationDownloadDesc": "SQLite veritabanınızın taşınabilir .dump (SQL metni) yedeğini indirmek için tıklayın.",
-      "migrationDownloadPgDesc": "PostgreSQL verilerinizden oluşturulan ve bu paneli SQLite üzerinde çalıştırmaya hazır bir .db SQLite veritabanı indirmek için tıklayın.",
-      "openSockets": "open sockets",
-      "throughputSub": "2m window",
-      "avgWindow": "Avg (2m)",
-      "avg": "AVG",
-      "peak": "PEAK",
-      "free": "FREE",
-      "uptime": "Uptime",
-      "panel": "Panel",
-      "healthCritical": "High utilization: {list}",
-      "healthWarm": "Elevated utilization: {list}",
-      "restartXrayConfirm": "Are you sure you want to restart Xray service?",
-      "stopXrayConfirm": "Are you sure you want to stop Xray service?",
-      "restartingXray": "Restarting Xray...",
-      "stoppingXray": "Stopping Xray...",
-      "refreshStats": "Refresh Stats",
-      "refreshed": "Status refreshed",
-      "restartingXrayNotice": "Xray service is restarting. Connection may briefly pause.",
-      "stopXrayNotice": "Xray service is stopping.",
-      "restartedSuccess": "Xray restarted successfully.",
-      "stoppedSuccess": "Xray stopped successfully."
+      "migrationDownloadPgDesc": "PostgreSQL verilerinizden oluşturulan ve bu paneli SQLite üzerinde çalıştırmaya hazır bir .db SQLite veritabanı indirmek için tıklayın."
     },
     "inbounds": {
       "title": "Gelen Bağlantılar",
@@ -542,6 +522,13 @@
         "mtgRouteOutbound": "Giden",
         "mtgRouteOutboundHint": "İsteğe bağlı. Telegram trafiğini bu giden bağlantı (veya dengeleyici) üzerinden çıkmaya zorlar. Yönlendirme kurallarınızın karar vermesi için boş bırakın.",
         "mtgRouteOutboundPlaceholder": "Yönlendirme kurallarını kullan",
+        "mtprotoFakeTlsDomainHint": "Yeni bir istemcinin sırrını oluştururken kullanılan varsayılan FakeTLS alan adı. Her istemci kendi alan adını kullanabilir.",
+        "mtgThrottleMaxConnections": "Maks. bağlantı",
+        "mtgThrottleMaxConnectionsHint": "Tüm kullanıcıların eşzamanlı bağlantılarını adil paylaşımla sınırlar. 0 devre dışı bırakır.",
+        "mtgAdTagInvalid": "Reklam etiketi tam olarak 32 onaltılık karakter olmalıdır.",
+        "mtgPublicIpv4": "Genel IPv4",
+        "mtgPublicIpv6": "Genel IPv6",
+        "mtgPublicIpHint": "Bu sunucunun erişilebilir genel adresi; reklam etiketi ara proxy'si tarafından kullanılır. mtg'nin otomatik algılaması için boş bırakın.",
         "visionTestseed": "Vision Testseed",
         "version": "Sürüm",
         "udpIdleTimeout": "UDP Idle Timeout (s)",
@@ -707,7 +694,8 @@
         "bytesPerSec": "Saniye Başına Bayt",
         "bytesPerSecTip": "Eşik aşıldıktan sonra fallback trafiğine uygulanan hız sınırı (bayt/sn); böylece sondalar sunucunuzu hedefe ücretsiz bant genişliği olarak kullanamaz. 0 = sınır yok (bu yönü devre dışı bırakır).",
         "burstBytesPerSec": "Saniye Başına Patlama Baytı",
-        "burstBytesPerSecTip": "Sabit hızın üzerindeki kısa patlamalar için pay (token-bucket boyutu). Saniye Başına Bayt değerinden düşükse ona eşitlenecek şekilde yükseltilir."
+        "burstBytesPerSecTip": "Sabit hızın üzerindeki kısa patlamalar için pay (token-bucket boyutu). Saniye Başına Bayt değerinden düşükse ona eşitlenecek şekilde yükseltilir.",
+        "generateRandomPin": "Rastgele Hash Üret"
       },
       "info": {
         "mode": "Mod",
@@ -743,7 +731,9 @@
           "responseHeader": "Yanıt Başlığı"
         }
       },
-      "sniffingDestOverride": "Hedef geçersiz kılma"
+      "sniffingDestOverride": "Hedef geçersiz kılma",
+      "usageMultiplier": "Çarpan",
+      "usageMultiplierHelp": "İstemci kullanım hesaplama çarpanı"
     },
     "clients": {
       "tabBasics": "Temel",
@@ -788,7 +778,7 @@
       "renew": "Otomatik Yenileme",
       "renewDesc": "Süre dolduktan sonra otomatik yeniler. (0 = devre dışı) (birim: gün)",
       "renewDays": "Otomatik Yenileme (gün)",
-      "searchPlaceholder": "E-posta, yorum, sub ID, UUID, parola, auth ara…",
+      "searchPlaceholder": "E-posta, yorum, sub ID, UUID, parola, auth, Telegram ID ara…",
       "filterTitle": "Kullanıcıları Filtrele",
       "clearAllFilters": "Tümünü Temizle",
       "filters": {
@@ -815,10 +805,9 @@
       "addClients": "Kullanıcı Ekle",
       "limitIp": "IP Limiti",
       "limitIpDesc": "Eş zamanlı en fazla IP sayısı. 0 = sınırsız.",
-      "limitIpFail2banMissing": "Fail2ban yüklü değil, bu nedenle IP sınırı uygulanamaz. Bu seçeneği etkinleştirmek için d-ui bash menüsünden Fail2ban'ı yükleyin.",
-      "limitIpFail2banWindows": "Fail2ban Windows'ta kullanılamadığından IP sınırı uygulanamaz.",
       "limitIpDisabled": "IP sınırı özelliği bu sunucuda devre dışı.",
       "password": "Şifre",
+      "passwordDesc": "Yalnızca Trojan ve Shadowsocks istemcileri tarafından kullanılır; VLESS, VMess, Hysteria ve WireGuard için yok sayılır.",
       "subId": "Abonelik ID'si",
       "online": "Çevrimiçi",
       "email": "E-posta",
@@ -829,6 +818,7 @@
       "groupPlaceholder": "örn. customer-a",
       "comment": "Yorum",
       "traffic": "Trafik",
+      "speed": "Hız",
       "offline": "Çevrimdışı",
       "addClient": "Kullanıcı Ekle",
       "qrCode": "QR Kodu",
@@ -918,6 +908,7 @@
       "delOrphansConfirmContent": "Hiçbir gelen bağlantıya bağlı olmayan her kullanıcı, trafik kaydıyla birlikte silinir. Geri alınamaz.",
       "auth": "Auth",
       "hysteriaAuth": "Hysteria Auth",
+      "hysteriaAuthDesc": "Yalnızca Hysteria istemcilerinin kullandığı kimlik bilgisi. Trojan ve Shadowsocks bunun yerine \"Şifre\" alanını kullanır.",
       "uuid": "UUID",
       "flow": "Flow",
       "vmessSecurity": "VMess Güvenlik",
@@ -926,6 +917,10 @@
       "wireguardPreSharedKey": "WireGuard Ön Paylaşımlı Anahtar",
       "wireguardAllowedIPs": "WireGuard İzin Verilen IP'ler",
       "wireguardAllowedIPsHint": "Otomatik atama için boş bırakın; girişleri virgülle ayırın",
+      "mtprotoSecret": "MTProto sırrı",
+      "mtprotoSecretHint": "İstemcinin FakeTLS sırrı. Değiştirmek için yeniden oluşturun.",
+      "mtprotoAdTag": "Reklam etiketi (sponsorlu kanal)",
+      "mtprotoAdTagHint": "Telegram proxy kaydından alınan isteğe bağlı 32 karakterlik onaltılık etiket. Ayarlandığında bu istemci Telegram ara proxy'leri üzerinden yönlendirilir ve sohbet listesinin en üstünde sponsorlu bir kanal görünür.",
       "reverseTag": "Reverse Tag",
       "reverseTagPlaceholder": "İsteğe Bağlı Reverse Tag",
       "telegramId": "Telegram Kullanıcı ID'si",
@@ -951,7 +946,11 @@
         "delOrphans": "{count} bağsız kullanıcı silindi",
         "imported": "{count} kullanıcı içe aktarıldı",
         "importedMixed": "{ok} içe aktarıldı, {failed} atlandı"
-      }
+      },
+      "uploadMbps": "Upload Limit (Mbps)",
+      "uploadMbpsDesc": "Aggregate upload speed across all connections. 0 = unlimited.",
+      "downloadMbps": "Download Limit (Mbps)",
+      "downloadMbpsDesc": "Aggregate download speed across all connections. 0 = unlimited."
     },
     "groups": {
       "title": "Gruplar",
@@ -1207,7 +1206,7 @@
       "subAnnounce": "Duyuru",
       "subAnnounceDesc": "VPN istemcisinde görüntülenen duyuru metni",
       "subThemeDir": "Abonelik Tema Dizini",
-      "subThemeDirDesc": "Abonelik sayfası için özel bir şablon (index.html/sub.html) içeren klasörün mutlak yolu (örn. /etc/d-ui/sub_templates/my-theme/). Varsayılan sayfayı kullanmak için boş bırakın.",
+      "subThemeDirDesc": "Abonelik sayfası için özel bir şablon (index.html/sub.html) içeren klasörün mutlak yolu (örn. /etc/3x-ui/sub_templates/my-theme/). Varsayılan sayfayı kullanmak için boş bırakın.",
       "subThemeDirDocs": "Şablon kılavuzu ↗",
       "subEnableRouting": "Yönlendirmeyi etkinleştir",
       "subEnableRoutingDesc": "VPN istemcisinde yönlendirmeyi etkinleştirmek için genel ayar. (Yalnızca Happ için)",
@@ -1344,7 +1343,51 @@
         "apiTokenEmpty": "Henüz token yok — botları veya uzak panelleri doğrulamak için bir tane oluşturun.",
         "apiTokenDeleteWarning": "Bu token'ı kullanan tüm bağlantılar anında kimlik doğrulamasını kaybeder.",
         "apiTokenCreatedTitle": "Token Oluşturuldu",
-        "apiTokenCreatedNotice": "Bu token'ı şimdi kopyalayın. Güvenlik nedeniyle okunabilir biçimde saklanmaz ve tekrar gösterilmez."
+        "apiTokenCreatedNotice": "Bu token'ı şimdi kopyalayın. Güvenlik nedeniyle okunabilir biçimde saklanmaz ve tekrar gösterilmez.",
+        "apiTokenManagementTitle": "API kimlik bilgileri",
+        "apiTokenManagementHint": "Yetkilendirilmiş token'lar seçilen yönetici olarak çalışır ve hem güncel RBAC izinleri hem de açık token kapsamlarıyla sınırlandırılır.",
+        "apiTokenLoadError": "API token'ları yüklenemedi.",
+        "apiTokenSubjectsLoadError": "Uygun yöneticiler yüklenemedi.",
+        "apiTokenInvalidResponse": "Panel geçersiz API token verisi döndürdü.",
+        "apiTokenCreateInvalidResponse": "Token oluşturuldu ancak panel geçerli tek seferlik kimlik bilgisini döndürmedi. Yeni token'ı iptal edip tekrar deneyin.",
+        "apiTokenFormInvalid": "Token ayarlarını kontrol edip tekrar deneyin.",
+        "apiTokenRetry": "Tekrar dene",
+        "apiTokenCopyFailed": "Token kopyalanamadı. Metni seçip elle kopyalayın.",
+        "apiTokenNameTooLong": "Ad en fazla 64 karakter olabilir.",
+        "apiTokenCreate": "Token oluştur",
+        "apiTokenKind": "Kimlik bilgisi türü",
+        "apiTokenKindDelegated": "Kullanıcı token'ı",
+        "apiTokenKindService": "Servis token'ı",
+        "apiTokenDelegatedInfoTitle": "RBAC kapsamlı kullanıcı kimlik bilgisi",
+        "apiTokenDelegatedInfo": "Her istek seçilen yöneticinin güncel rolünü, sahipliğini, gruplarını, sınırlarını ve özelliklerini kullanır. Token kapsamları bu erişimi yalnızca azaltabilir, genişletemez.",
+        "apiTokenSubject": "Panel yöneticisi",
+        "apiTokenSubjectPlaceholder": "Etkin bir yönetici seçin",
+        "apiTokenSubjectRequired": "Bu token'ın temsil edeceği yöneticiyi seçin.",
+        "apiTokenNoSubjects": "Kullanıcı token'ı için uygun etkin ve owner olmayan yönetici yok.",
+        "apiTokenScopes": "Token kapsamları",
+        "apiTokenScopeRequired": "En az bir token kapsamı seçin.",
+        "apiTokenScopeClientsRead": "İstemcileri oku",
+        "apiTokenScopeClientsReadDesc": "Yöneticinin RBAC kapsamındaki istemcileri, ayrıntıları, trafiği, bağlantıları ve etkinlik durumunu okuyun.",
+        "apiTokenScopeClientsCreate": "İstemci oluştur",
+        "apiTokenScopeClientsCreateDesc": "Yalnızca yöneticinin güncel RBAC izinlerinin izin verdiği yerlerde tekil veya toplu istemci oluşturun.",
+        "apiTokenScopeFullAccess": "Tam servis erişimi",
+        "apiTokenExpiry": "Son kullanma",
+        "apiTokenExpiryHint": "Varsayılan süre 90 gündür. Süresiz seçeneği yalnızca belgelenmiş bir yenileme prosedürü olan entegrasyonlarda kullanın.",
+        "apiTokenExpiryDays": "{count} gün sonra sona erer",
+        "apiTokenNeverExpires": "Süresiz",
+        "apiTokenServiceWarningTitle": "Tam güvenilen altyapı kimlik bilgisi",
+        "apiTokenServiceWarning": "Servis token'ları yetkilendirilmiş kullanıcı RBAC'ını atlar ve güvenilir paneller arası API sözleşmesini korur. Yalnızca kontrol ettiğiniz Heimdall altyapısı için kullanın; kullanıcı botu için kullanmayın.",
+        "apiTokenServiceAcknowledgement": "Bu kimlik bilgisinin servis düzeyinde erişimi olduğunu ve korunan bir sır olarak saklanması gerektiğini anlıyorum.",
+        "apiTokenServiceAcknowledgementRequired": "Servis token'ı güvenlik uyarısını onaylayın.",
+        "apiTokenServiceCredential": "Güvenilir panel servisi",
+        "apiTokenSubjectUnavailable": "Yönetici kullanılamıyor (#{id})",
+        "apiTokenExpired": "Süresi doldu",
+        "apiTokenDisabled": "Devre dışı",
+        "apiTokenCreatedAt": "Oluşturuldu: {date}",
+        "apiTokenExpiresAt": "Bitiş: {date}",
+        "apiTokenEnabledLabel": "{name} token'ını etkinleştir",
+        "apiTokenValue": "Tek seferlik API token'ı",
+        "apiTokenSavedAcknowledgement": "Bu token'ı güvenli bir konuma kaydettim."
       },
       "toasts": {
         "modifySettings": "Parametreler değiştirildi.",
@@ -1421,6 +1464,12 @@
       "eventMemoryHigh": "Bellek kullanımı yüksek (%)",
       "remarkTemplate": "Açıklama Şablonu",
       "remarkTemplateDesc": "Ayarlandığında, her abonelik bağlantısının açıklama modelinin yerini alır — değişken belirteçleriyle kendi formatınızı yazın (eklemek için düğmeyi kullanın). Yukarıdaki modeli kullanmak için boş bırakın.",
+      "remarkModel": "Açıklama Modeli ve Ayırma Karakteri",
+      "sampleRemark": "Örnek Açıklama",
+      "subShowInfo": "Kullanım Bilgisini Göster",
+      "subShowInfoDesc": "Kalan trafiği ve süreyi istemci uygulamalarında görüntüler.",
+      "subEmailInRemark": "Ada E-posta Ekle",
+      "subEmailInRemarkDesc": "Abonelik profil adına kullanıcının e-postasını dahil eder.",
       "validation": {
         "pathLeadingSlash": "Yol / ile başlamalıdır"
       },
@@ -1615,7 +1664,8 @@
         "acceptProxyProtocol": "Proxy Protocol Kabul Et",
         "proxyProtocol": "Proxy Protocol",
         "tcpUserTimeoutMs": "TCP User Timeout (ms)",
-        "tcpKeepAliveIdleS": "TCP keep-alive idle (s)"
+        "tcpKeepAliveIdleS": "TCP keep-alive idle (s)",
+        "workers": "Workers"
       },
       "outbound": {
         "addOutbound": "Giden Bağlantı Ekle",
@@ -1628,6 +1678,8 @@
         "tag": "Etiket",
         "tagDesc": "Benzersiz Etiket",
         "address": "Adres",
+        "egress": "Egress",
+        "egressHint": "Run an HTTP test to show egress IP and country.",
         "reverse": "Ters",
         "domain": "Alan Adı",
         "type": "Tür",
@@ -1646,7 +1698,8 @@
         "testSuccess": "Test başarılı",
         "testFailed": "Test başarısız",
         "testError": "Giden bağlantı test edilemedi",
-        "testModeTooltip": "TCP: hızlı sadece arama (dial-only) testi. HTTP: Xray üzerinden tam istek.",
+        "modeRealDelay": "Gerçek gecikme",
+        "testModeTooltip": "TCP: hızlı sadece arama (dial-only) testi. HTTP: Xray üzerinden tam istek. Gerçek gecikme: bağlantı kurulumu dahil toplam süre.",
         "testAll": "Tümünü Test Et",
         "httpStatus": "HTTP durumu",
         "breakdownConnect": "Proxy bağlantısı",
@@ -1760,6 +1813,7 @@
         "tagPlaceholder": "benzersiz dengeleyici etiketi",
         "selector": "Seçici",
         "fallback": "Fallback",
+        "cycleTooltip": "Döngü: {path} → ({start} adresine geri dön)",
         "expected": "Beklenen",
         "expectedPlaceholder": "optimal düğüm sayısı",
         "maxRtt": "Maks. RTT",
@@ -1769,7 +1823,12 @@
         "balancerDesc": "Dengeleyici Etiketi (balancerTag) ve Giden Bağlantı Etiketi (outboundTag) aynı anda kullanılamaz. Aynı anda kullanıldığında yalnızca giden bağlantı etiketi geçerli olur.",
         "costMatch": "Etiket deseni",
         "costValue": "Ağırlık",
-        "costRegexp": "Düzenli ifade eşleşmesi"
+        "costRegexp": "Düzenli ifade eşleşmesi",
+        "balancerDeleteInUse": "Bu dengeleyici silinemez — şu dengeleyicilerin yedeği olarak kullanılmaktadır: {names}",
+        "balancerFallbackCycle": "Bu dengeleyiciyi yedek olarak ayarlayamazsınız — döngüsel bağımlılık oluşturur.",
+        "balancerFallbackInfo": "Trafik şu yoldan yönlendirilecektir: Dengeleyici → Loopback → Sunucu → Hedef dengeleyici → Bağlantı çıkışı. Bu, sunucu üzerinden ek bir atlama ekler ve hafif gecikmelere neden olabilir.",
+        "fallbackBalancerHint": "Yedek olarak başka bir dengeleyici seçin",
+        "reservedPrefix": " _bl_ ön eki dahili dengeleyici loopback nesneleri için ayrılmıştır"
       },
       "wireguard": {
         "secretKey": "Gizli Anahtar",
@@ -1863,14 +1922,17 @@
         "dnsPresetFamily": "Aile",
         "clearAll": "Tümünü Sil",
         "clearAllTitle": "Tüm DNS sunucularını sil?",
-        "clearAllConfirm": "Bu işlem tüm DNS sunucularını listeden kaldırır. Geri alınamaz."
+        "clearAllConfirm": "Bu işlem tüm DNS sunucularını listeden kaldırır. Geri alınamaz.",
+        "dnsLeakWarning": "DNS; localhost, düz UDP/TCP, yerel mod DoH/DoQ, fallback sorguları veya EDNS client IP üzerinden sızabilir. Gizlilik önemliyse yönlendirilmiş DoH, hosts sabitlemeleri ve kapalı fallback kullanın."
       },
       "fakedns": {
         "add": "Sahte DNS Ekle",
         "edit": "Sahte DNS'i Düzenle",
         "ipPool": "IP Havuzu Alt Ağı",
         "poolSize": "Havuz Boyutu"
-      }
+      },
+      "defaultOutbound": "Varsayılan giden",
+      "defaultOutboundDesc": "Yönlendirme kuralıyla eşleşmeyen trafik bu gideni kullanır (listedeki ilk giden)."
     },
     "hosts": {
       "addHost": "Host Ekle",
@@ -1899,7 +1961,7 @@
       "fields": {
         "remark": "Açıklama",
         "serverDescription": "Tanım",
-        "inbound": "Gelen Bağlantı",
+        "inbound": "Gelen Bağlantılar",
         "address": "Adres",
         "port": "Port",
         "endpoint": "Uç Nokta",
@@ -1926,7 +1988,8 @@
         "tags": "Etiketler",
         "nodeGuids": "Düğümler",
         "excludeFromSubTypes": "Formatlardan hariç tut",
-        "verifyPeerCertByName": "Peer sertifikasını ada göre doğrula"
+        "verifyPeerCertByName": "Peer sertifikasını ada göre doğrula",
+        "inheritAddress": "Adresi devralır"
       },
       "hints": {
         "address": "Gelen bağlantının kendi adresini devralmak için boş bırakın.",
@@ -1976,7 +2039,8 @@
         "descRESET_DAYS": "Trafik sıfırlama periyodu (gün)",
         "descPROTOCOL": "Gelen bağlantı protokolü (VLESS, VMess, Trojan, …)",
         "descTRANSPORT": "Taşıma ağı (tcp, ws, grpc, …)",
-        "descSECURITY": "Taşıma güvenliği (TLS, REALITY, NONE)"
+        "descSECURITY": "Taşıma güvenliği (TLS, REALITY, NONE)",
+        "descFACTOR": "Inbound usage factor, for example 3x"
       },
       "toasts": {
         "list": "Host'lar yüklenemedi",
@@ -2027,10 +2091,14 @@
       "startDesc": "Ana menüyü göster",
       "helpDesc": "Bot yardımı",
       "statusDesc": "Bot durumunu kontrol et",
-      "idDesc": "Telegram Kimliğinizi gösterir"
+      "idDesc": "Telegram Kimliğinizi gösterir",
+      "usageDesc": "İstemci kullanımını göster: /usage e-posta",
+      "inboundDesc": "Gelenleri ara: /inbound ad (yönetici)",
+      "restartDesc": "Xray çekirdeğini yeniden başlat (yönetici)",
+      "clearallDesc": "Tüm istemcilerin trafiğini sıfırla (yönetici)"
     },
     "messages": {
-      "cpuThreshold": "CPU Yükü ({{ .Percent }}%), {{ .Threshold }}% eşiğini aşıyor",
+      "cpuThreshold": "🔴 CPU Yükü ({{ .Percent }}%), {{ .Threshold }}% eşiğini aşıyor",
       "selectUserFailed": "❌ Kullanıcı seçiminde hata!",
       "userSaved": "✅ Telegram Kullanıcısı kaydedildi.",
       "loginSuccess": "✅ Panele başarıyla giriş yapıldı.\r\n",
@@ -2039,7 +2107,7 @@
       "report": "🕰 Planlanmış Raporlar: {{ .RunTime }}\r\n",
       "datetime": "⏰ Tarih ve Saat: {{ .DateTime }}\r\n",
       "hostname": "💻 Host: {{ .Hostname }}\r\n",
-      "version": "🚀 Daltoon-UI Sürümü: {{ .Version }}\r\n",
+      "version": "🚀 HEIMDALL Sürümü: {{ .Version }}\r\n",
       "xrayVersion": "📡 Xray Sürümü: {{ .XrayVersion }}\r\n",
       "ipv6": "🌐 IPv6: {{ .IPv6 }}\r\n",
       "ipv4": "🌐 IPv4: {{ .IPv4 }}\r\n",
@@ -2139,7 +2207,6 @@
       "confirmNumber": "✅ Onayla: {{ .Num }}",
       "confirmNumberAdd": "✅ Ekleme onayı: {{ .Num }}",
       "limitTraffic": "🚧 Trafik Sınırı",
-      "getBanLogs": "Yasak Günlüklerini Al",
       "allClients": "Tüm Kullanıcılar",
       "addClient": "Kullanıcı Ekle",
       "submitDisable": "Devre Dışı Olarak Gönder ☑️",
@@ -2208,5 +2275,8 @@
     "statusFailed": "BAŞARISIZ",
     "statusDown": "ÇEVRİMDIŞI",
     "statusUp": "ÇEVRİMİÇİ"
+  },
+  "bulk": {
+    "targets": "Targets"
   }
 }

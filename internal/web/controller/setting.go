@@ -2,9 +2,12 @@ package controller
 
 import (
 	"errors"
+	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
 	"github.com/mdaltoon10/D-UI/v3/internal/logger"
 	"github.com/mdaltoon10/D-UI/v3/internal/util/crypto"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/entity"
@@ -58,18 +61,34 @@ func NewSettingController(g *gin.RouterGroup) *SettingController {
 func (a *SettingController) initRouter(g *gin.RouterGroup) {
 	g = g.Group("/setting")
 
-	g.POST("/all", a.getAllSetting)
-	g.POST("/defaultSettings", a.getDefaultSettings)
-	g.POST("/update", a.updateSetting)
+	g.POST("/all", requirePanelPermission("settings", "view"), a.getAllSetting)
+	g.POST("/defaultSettings", requireAnyPanelPermission(
+		panelPermissionRequirement{Section: "settings", Permission: "viewGeneral"},
+		// Clients and Inbounds pages need these computed defaults for list/form UX
+		// even when the operator has no access to Panel Settings itself.
+		panelPermissionRequirement{Section: "users", Permission: "view"},
+		panelPermissionRequirement{Section: "users", Permission: "create"},
+		panelPermissionRequirement{Section: "users", Permission: "update"},
+		panelPermissionRequirement{Section: "inbounds", Permission: "view"},
+		panelPermissionRequirement{Section: "inbounds", Permission: "viewSimple"},
+		panelPermissionRequirement{Section: "inbounds", Permission: "create"},
+		panelPermissionRequirement{Section: "inbounds", Permission: "update"},
+	), a.getDefaultSettings)
+	g.POST("/update", requirePanelPermission("settings", "update"), a.updateSetting)
+	// Updating the current admin's own username/password is protected by the old password check in updateUser.
 	g.POST("/updateUser", a.updateUser)
-	g.POST("/restartPanel", a.restartPanel)
-	g.GET("/getDefaultJsonConfig", a.getDefaultXrayConfig)
-	g.GET("/apiTokens", a.listApiTokens)
-	g.POST("/apiTokens/create", a.createApiToken)
-	g.POST("/apiTokens/delete/:id", a.deleteApiToken)
-	g.POST("/apiTokens/setEnabled/:id", a.setApiTokenEnabled)
-	g.POST("/testSmtp", a.testSmtp)
-	g.POST("/testTgBot", a.testTgBot)
+	g.POST("/restartPanel", requirePanelPermission("settings", "update"), a.restartPanel)
+	g.GET("/getDefaultJsonConfig", requirePanelPermission("settings", "viewGeneral"), a.getDefaultXrayConfig)
+	// API token lifecycle is an owner-only browser operation. Bearer and mTLS
+	// callers are rejected by requireOwnerAdminMiddleware even when they are
+	// trusted service principals.
+	g.GET("/apiTokens", requireOwnerAdminMiddleware(), a.listApiTokens)
+	g.GET("/apiTokens/subjects", requireOwnerAdminMiddleware(), a.listApiTokenSubjects)
+	g.POST("/apiTokens/create", requireOwnerAdminMiddleware(), a.createApiToken)
+	g.POST("/apiTokens/delete/:id", requireOwnerAdminMiddleware(), a.deleteApiToken)
+	g.POST("/apiTokens/setEnabled/:id", requireOwnerAdminMiddleware(), a.setApiTokenEnabled)
+	g.POST("/testSmtp", requirePanelPermission("settings", "update"), a.testSmtp)
+	g.POST("/testTgBot", requirePanelPermission("settings", "update"), a.testTgBot)
 }
 
 // getAllSetting retrieves all current settings as the browser-safe view:
@@ -192,7 +211,11 @@ func (a *SettingController) getDefaultXrayConfig(c *gin.Context) {
 }
 
 type apiTokenCreateForm struct {
-	Name string `json:"name" form:"name"`
+	Name           string   `json:"name" form:"name"`
+	Kind           string   `json:"kind" form:"kind"`
+	SubjectAdminId int      `json:"subjectAdminId" form:"subjectAdminId"`
+	Scopes         []string `json:"scopes" form:"scopes"`
+	ExpiresAt      int64    `json:"expiresAt" form:"expiresAt"`
 }
 
 type apiTokenEnabledForm struct {
@@ -208,13 +231,41 @@ func (a *SettingController) listApiTokens(c *gin.Context) {
 	jsonObj(c, rows, nil)
 }
 
+func (a *SettingController) listApiTokenSubjects(c *gin.Context) {
+	rows, err := a.apiTokenService.ListDelegatedSubjects()
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.getSettings"), err)
+		return
+	}
+	jsonObj(c, rows, nil)
+}
+
 func (a *SettingController) createApiToken(c *gin.Context) {
 	form := &apiTokenCreateForm{}
 	if err := c.ShouldBind(form); err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
 		return
 	}
-	row, err := a.apiTokenService.Create(form.Name)
+	owner := session.GetLoginUser(c)
+	if owner == nil {
+		pureJsonMsg(c, http.StatusUnauthorized, false, "login required")
+		return
+	}
+	// An omitted kind preserves the historical owner-created service-token
+	// request shape ({"name":"..."}) used for remote-panel integrations.
+	// The delegated-token UI always sends kind=delegated explicitly.
+	kind := strings.ToLower(strings.TrimSpace(form.Kind))
+	if kind == "" {
+		kind = model.ApiTokenKindService
+	}
+	row, err := a.apiTokenService.CreateWithOptions(panel.ApiTokenCreateOptions{
+		Name:             form.Name,
+		Kind:             kind,
+		SubjectAdminId:   form.SubjectAdminId,
+		CreatedByAdminId: owner.Id,
+		Scopes:           form.Scopes,
+		ExpiresAt:        form.ExpiresAt,
+	})
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
 		return

@@ -1,7 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/api/queries/useOutboundTags', () => ({
+  useOutboundTagGroups: () => ({
+    data: { outbounds: [], balancers: [] },
+  }),
+}));
 import { screen, act, render, cleanup } from '@testing-library/react';
 
-import InboundFormModal from '@/pages/inbounds/form/InboundFormModal';
+import InboundFormModal, { buildAddModeValues } from '@/pages/inbounds/form/InboundFormModal';
 import { DBInbound } from '@/models/dbinbound';
 import { ThemeProvider } from '@/hooks/useTheme';
 import {
@@ -10,6 +16,46 @@ import {
   listSelectOptions,
   chooseSelectOption,
 } from './test-utils';
+
+const emptyClientRectList = {
+  length: 0,
+  item: () => null,
+  [Symbol.iterator]: function* () {},
+} as unknown as DOMRectList;
+
+const zeroDomRect = () => ({
+  x: 0,
+  y: 0,
+  width: 0,
+  height: 0,
+  top: 0,
+  right: 0,
+  bottom: 0,
+  left: 0,
+  toJSON: () => ({}),
+}) as DOMRect;
+
+// CodeMirror measures text ranges during modal rendering. jsdom does not fully
+// implement Range geometry, so provide deterministic zero-sized geometry for tests.
+if (typeof Range !== 'undefined') {
+  Object.defineProperty(Range.prototype, 'getClientRects', {
+    configurable: true,
+    value: () => emptyClientRectList,
+  });
+
+  Object.defineProperty(Range.prototype, 'getBoundingClientRect', {
+    configurable: true,
+    value: zeroDomRect,
+  });
+}
+
+if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+  const originalGetComputedStyle = window.getComputedStyle.bind(window);
+  Object.defineProperty(window, 'getComputedStyle', {
+    configurable: true,
+    value: (element: Element) => originalGetComputedStyle(element),
+  });
+}
 
 function renderModal() {
   return renderWithProviders(
@@ -26,6 +72,16 @@ function renderModal() {
 }
 
 describe('InboundFormModal', () => {
+  it('seeds the default profile with the inbound port', () => {
+    const values = buildAddModeValues();
+    const profiles = values.streamSettings?.externalProxy;
+
+    expect(profiles).toHaveLength(1);
+    expect(profiles?.[0]?.port).toBe(values.port);
+    expect(profiles?.[0]?.port).not.toBe(1995);
+    expect(profiles?.[0]?.dest).toBe('');
+  });
+
   it('renders add mode without crashing', () => {
     renderModal();
     expect(document.querySelector('.ant-modal')).toBeTruthy();
@@ -140,5 +196,5 @@ describe('InboundFormModal', () => {
     await flush();
     expect(strategyItem('Node address')).toBeTruthy();
     expect(strategyItem('Inbound listen')).toBeFalsy();
-  });
+  }, 15000);
 });

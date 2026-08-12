@@ -1,94 +1,92 @@
 package job
 
 import (
-	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/mdaltoon10/D-UI/v3/internal/logger"
 	"github.com/mdaltoon10/D-UI/v3/internal/xray"
 )
 
-// ClearLogsJob clears old log files to prevent disk space issues.
+const defaultMaxXrayLogBytes int64 = 64 << 20
+
+var maxXrayLogBytes = defaultMaxXrayLogBytes
+
+// ClearLogsJob clears configured Xray logs during the daily cleanup.
 type ClearLogsJob struct{}
 
-// NewClearLogsJob creates a new log cleanup job instance.
+// PruneXrayLogsJob caps configured Xray logs during normal operation.
+type PruneXrayLogsJob struct{}
+
+// NewClearLogsJob creates a new daily log cleanup job.
 func NewClearLogsJob() *ClearLogsJob {
 	return new(ClearLogsJob)
 }
 
-// ensureFileExists creates the necessary directories and file if they don't exist
-func ensureFileExists(path string) error {
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o644)
-	if err != nil {
-		return err
-	}
-	file.Close()
-	return nil
+// NewPruneXrayLogsJob creates a new periodic Xray log pruning job.
+func NewPruneXrayLogsJob() *PruneXrayLogsJob {
+	return new(PruneXrayLogsJob)
 }
 
-// Here Run is an interface method of the Job interface
+// Run clears configured Xray access and error logs during daily cleanup.
+//
+// Heimdall's native client-IP enforcement does not consume legacy IP-limit
+// or banned-IP log files, so those files are neither created nor rotated.
 func (j *ClearLogsJob) Run() {
-	logFiles := []string{xray.GetIPLimitLogPath(), xray.GetIPLimitBannedLogPath()}
-	logFilesPrev := []string{xray.GetIPLimitBannedPrevLogPath()}
-
-	// Ensure all log files and their paths exist
-	for _, path := range append(logFiles, logFilesPrev...) {
-		if err := ensureFileExists(path); err != nil {
-			logger.Warning("Failed to ensure log file exists:", path, "-", err)
-		}
-	}
-
-	// Clear log files and copy to previous logs
-	for i := range len(logFiles) {
-		if i > 0 {
-			// Copy to previous logs
-			logFilePrev, err := os.OpenFile(logFilesPrev[i-1], os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
-			if err != nil {
-				logger.Warning("Failed to open previous log file for writing:", logFilesPrev[i-1], "-", err)
-				continue
-			}
-
-			logFile, err := os.OpenFile(logFiles[i], os.O_RDONLY, 0o644)
-			if err != nil {
-				logger.Warning("Failed to open current log file for reading:", logFiles[i], "-", err)
-				logFilePrev.Close()
-				continue
-			}
-
-			_, err = io.Copy(logFilePrev, logFile)
-			if err != nil {
-				logger.Warning("Failed to copy log file:", logFiles[i], "to", logFilesPrev[i-1], "-", err)
-			}
-
-			logFile.Close()
-			logFilePrev.Close()
-		}
-
-		err := os.Truncate(logFiles[i], 0)
-		if err != nil {
-			logger.Warning("Failed to truncate log file:", logFiles[i], "-", err)
-		}
-	}
-
-	wipeAccessLog()
+	wipeXrayLogs()
 }
 
-// wipeAccessLog truncates the user-configured Xray access log so it can't grow
-// unbounded. The IP-limit job no longer reads or rotates it, so this daily wipe
-// is the only thing that caps it. A disabled ("none") or unset access log is
-// left alone, and a missing file is fine — there's nothing to wipe.
-func wipeAccessLog() {
-	accessLogPath, err := xray.GetAccessLogPath()
-	if err != nil || accessLogPath == "none" || accessLogPath == "" {
+// Run truncates an access or error log only after it exceeds the configured
+// limit. This prevents an active log from growing without bound between daily
+// cleanup runs.
+func (j *PruneXrayLogsJob) Run() {
+	truncateXrayLog(xray.GetAccessLogPath, maxXrayLogBytes)
+	truncateXrayLog(xray.GetErrorLogPath, maxXrayLogBytes)
+}
+
+func wipeXrayLogs() {
+	truncateXrayLog(xray.GetAccessLogPath, 0)
+	truncateXrayLog(xray.GetErrorLogPath, 0)
+}
+
+func truncateXrayLog(
+	pathFn func() (string, error),
+	maxBytes int64,
+) {
+	logPath, err := pathFn()
+	if err != nil || disabledXrayLogPath(logPath) {
 		return
 	}
-	if err := os.Truncate(accessLogPath, 0); err != nil && !os.IsNotExist(err) {
-		logger.Warning("Failed to truncate access log:", accessLogPath, "-", err)
+
+	if maxBytes > 0 {
+		info, statErr := os.Stat(logPath)
+		if statErr != nil {
+			if !os.IsNotExist(statErr) {
+				logger.Warning(
+					"Failed to stat Xray log:",
+					logPath,
+					"-",
+					statErr,
+				)
+			}
+			return
+		}
+
+		if info.Size() <= maxBytes {
+			return
+		}
 	}
+
+	if truncateErr := os.Truncate(logPath, 0); truncateErr != nil &&
+		!os.IsNotExist(truncateErr) {
+		logger.Warning(
+			"Failed to truncate Xray log:",
+			logPath,
+			"-",
+			truncateErr,
+		)
+	}
+}
+
+func disabledXrayLogPath(path string) bool {
+	return path == "" || path == "none"
 }

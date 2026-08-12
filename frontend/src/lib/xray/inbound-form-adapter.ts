@@ -2,6 +2,7 @@ import type { InboundFormValues, ShareAddrStrategy, TrafficReset } from '@/schem
 import type { InboundSettings } from '@/schemas/protocols/inbound';
 import {
   HysteriaClientSchema,
+  MtprotoClientSchema,
   ShadowsocksClientSchema,
   TrojanClientSchema,
   VlessClientSchema,
@@ -13,6 +14,7 @@ import type { Sniffing } from '@/schemas/primitives';
 import type { z } from 'zod';
 import { normalizeStreamSettingsForWire } from '@/lib/xray/stream-wire-normalize';
 import { canEnableSniffing } from '@/lib/xray/protocol-capabilities';
+import { supportsSubscriptionProfiles } from '@/lib/xray/subscription-profile';
 import { XHttpStreamSettingsSchema, XHttpXmuxSchema } from '@/schemas/protocols/stream/xhttp';
 
 const XMUX_DEFAULTS = XHttpXmuxSchema.parse({});
@@ -35,6 +37,7 @@ export interface RawInboundRow {
   up?: number;
   down?: number;
   total?: number;
+  usageMultiplier?: number;
   remark?: string;
   enable?: boolean;
   expiryTime?: number;
@@ -54,6 +57,7 @@ export interface WireInboundPayload {
   up: number;
   down: number;
   total: number;
+  usageMultiplier: number;
   remark: string;
   enable: boolean;
   expiryTime: number;
@@ -106,6 +110,12 @@ function coerceShareAddrStrategy(v: unknown): ShareAddrStrategy {
     : 'node';
 }
 
+function coerceUsageMultiplier(v: unknown): number {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(10, Math.max(1, Math.round(n * 100) / 100));
+}
+
 // Network values that map to a required `${network}Settings` key in
 // NetworkSettingsSchema. Older saved inbounds may be missing the per-
 // network sub-object (the legacy panel sometimes emitted streamSettings
@@ -123,6 +133,10 @@ const NETWORK_SETTINGS_KEY: Record<string, string> = {
 };
 
 function healStreamNetworkKey(stream: Record<string, unknown>): void {
+  if (typeof stream.method === 'string' && stream.method !== '') {
+    stream.network = stream.method;
+  }
+  delete stream.method;
   const network = typeof stream.network === 'string' ? stream.network : '';
   const key = NETWORK_SETTINGS_KEY[network];
   if (!key) return;
@@ -188,6 +202,7 @@ export function rawInboundToFormValues(row: RawInboundRow): InboundFormValues {
     up: row.up ?? 0,
     down: row.down ?? 0,
     total: row.total ?? 0,
+    usageMultiplier: coerceUsageMultiplier(row.usageMultiplier),
     trafficReset: coerceTrafficReset(row.trafficReset),
     lastTrafficResetTime: row.lastTrafficResetTime ?? 0,
     nodeId: row.nodeId ?? null,
@@ -238,6 +253,7 @@ function clientSchemaForProtocol(protocol: string): z.ZodType | null {
     case 'shadowsocks': return ShadowsocksClientSchema;
     case 'hysteria': return HysteriaClientSchema;
     case 'wireguard': return WireguardClientSchema;
+    case 'mtproto': return MtprotoClientSchema;
     default: return null;
   }
 }
@@ -320,12 +336,19 @@ export function formValuesToWirePayload(values: InboundFormValues): WireInboundP
   if (streamPruned) {
     streamPruned = normalizeStreamSettingsForWire(streamPruned, { side: 'inbound' });
     stripTlsCertUseFile(streamPruned);
+
+    // Defense at the wire boundary: hidden or stale form state must never
+    // reach the backend for protocols without Multi Profile support.
+    if (!supportsSubscriptionProfiles(values.protocol)) {
+      delete streamPruned.externalProxy;
+    }
   }
   dropLegacyOptionalEmpties(settingsPruned, streamPruned);
   const payload: WireInboundPayload = {
     up: values.up,
     down: values.down,
     total: values.total,
+    usageMultiplier: values.usageMultiplier,
     remark: values.remark,
     enable: values.enable,
     expiryTime: values.expiryTime,

@@ -1,4 +1,5 @@
 {
+  "get": "取得",
   "username": "使用者名稱",
   "password": "密碼",
   "login": "登入",
@@ -155,7 +156,7 @@
       "xraySwitchClick": "選擇你要切換到的版本",
       "xraySwitchClickDesk": "請謹慎選擇，因為較舊版本可能與當前配置不相容",
       "updatePanel": "更新面板",
-      "panelUpdateDesc": "這將把 Daltoon-UI 更新到最新版本並重新啟動面板服務。",
+      "panelUpdateDesc": "這將把 HEIMDALL 更新到最新版本並重新啟動面板服務。",
       "currentPanelVersion": "目前面板版本",
       "latestPanelVersion": "最新面板版本",
       "panelUpToDate": "面板已是最新",
@@ -228,11 +229,11 @@
       "xraySwitchVersionDialogDesc": "這將會把Xray版本變更為#version#。",
       "xraySwitchVersionPopover": "Xray 更新成功",
       "panelUpdateDialog": "您確定要更新面板嗎？",
-      "panelUpdateDialogDesc": "這將把 Daltoon-UI 更新到 #version# 並重新啟動面板服務。",
+      "panelUpdateDialogDesc": "這將把 HEIMDALL 更新到 #version# 並重新啟動面板服務。",
       "panelUpdateCheckPopover": "面板更新檢查失敗",
       "panelUpdateStartedPopover": "面板更新已開始",
       "panelUpdateFailedTitle": "面板更新失敗",
-      "panelUpdateFailedDesc": "更新未成功完成。請檢查伺服器日誌，或在命令列執行「d-ui update」。",
+      "panelUpdateFailedDesc": "更新未成功完成。請檢查伺服器日誌，或在命令列執行「x-ui update」。",
       "panelUpdateUnknownTitle": "無法確認更新是否已完成",
       "panelUpdateUnknownDesc": "面板未能及時回報結果。請重新整理以檢查目前版本，或檢查伺服器日誌。",
       "geofileUpdateDialog": "您確定要更新地理檔案嗎？",
@@ -261,40 +262,19 @@
       "backup": "備份",
       "backupTitle": "備份和恢復",
       "exportDatabase": "備份",
-      "exportDatabaseDesc": "點擊下載包含當前資料庫備份的 .db 文件到您的設備。",
+      "exportDatabaseDesc": "點擊下載包含當前資料庫備份的 .db 文件到您的設備。同一檔案也可以還原到執行 PostgreSQL 的面板中。",
       "importDatabase": "恢復",
-      "importDatabaseDesc": "點擊選擇並上傳設備中的 .db 文件以從備份恢復資料庫。",
+      "importDatabaseDesc": "點擊選擇並上傳設備中的 .db 備份或遷移匯出檔（.dump）以還原資料庫。",
       "importDatabaseSuccess": "資料庫匯入成功",
       "importDatabaseError": "匯入資料庫時發生錯誤",
       "readDatabaseError": "讀取資料庫時發生錯誤",
       "getDatabaseError": "檢索資料庫時發生錯誤",
       "getConfigError": "檢索設定檔時發生錯誤",
-      "backupPostgresNote": "此面板執行於 PostgreSQL 上。「備份」會下載一個 pg_dump 封存檔（.dump），「還原」會透過 pg_restore 重新載入。伺服器需要安裝 PostgreSQL 用戶端工具（pg_dump 與 pg_restore）。",
+      "backupPostgresNote": "此面板執行於 PostgreSQL 上。「備份」會下載一個 pg_dump 封存檔（.dump），「還原」會透過 pg_restore 重新載入。「還原」也接受 SQLite 資料庫（.db）或 SQLite 遷移匯出檔，並將其資料匯入 PostgreSQL。伺服器需要安裝 PostgreSQL 用戶端工具（pg_dump 與 pg_restore）。",
       "exportDatabasePgDesc": "點擊將目前資料庫的 PostgreSQL 傾印（.dump）下載到您的裝置。",
-      "importDatabasePgDesc": "點擊選擇並上傳 .dump 檔案以還原您的 PostgreSQL 資料庫。此操作將取代所有目前的資料。",
+      "importDatabasePgDesc": "點擊選擇並上傳 PostgreSQL 備份（.dump）、SQLite 資料庫（.db）或 SQLite 遷移匯出檔以還原您的資料庫。此操作將取代所有目前的資料。",
       "migrationDownload": "下載遷移檔案",
-      "migrationDownloadDesc": "點擊下載目前 SQLite 資料庫的可攜式 .dump（SQL 文字）匯出檔。",
-      "migrationDownloadPgDesc": "點擊下載由 PostgreSQL 資料建立的 .db SQLite 資料庫，可用於在 SQLite 上執行本面板。",
-      "openSockets": "open sockets",
-      "throughputSub": "2m window",
-      "avgWindow": "Avg (2m)",
-      "avg": "AVG",
-      "peak": "PEAK",
-      "free": "FREE",
-      "uptime": "Uptime",
-      "panel": "Panel",
-      "healthCritical": "High utilization: {list}",
-      "healthWarm": "Elevated utilization: {list}",
-      "restartXrayConfirm": "Are you sure you want to restart Xray service?",
-      "stopXrayConfirm": "Are you sure you want to stop Xray service?",
-      "restartingXray": "Restarting Xray...",
-      "stoppingXray": "Stopping Xray...",
-      "refreshStats": "Refresh Stats",
-      "refreshed": "Status refreshed",
-      "restartingXrayNotice": "Xray service is restarting. Connection may briefly pause.",
-      "stopXrayNotice": "Xray service is stopping.",
-      "restartedSuccess": "Xray restarted successfully.",
-      "stoppedSuccess": "Xray stopped successfully."
+      "migrationDownloadPgDesc": "點擊下載由 PostgreSQL 資料建立的 .db SQLite 資料庫，可用於在 SQLite 上執行本面板。"
     },
     "inbounds": {
       "title": "入站",
@@ -542,6 +522,13 @@
         "mtgRouteOutbound": "出站",
         "mtgRouteOutboundHint": "選填。強制 Telegram 流量經由此出站（或負載平衡器）送出。留空則由您的路由規則決定。",
         "mtgRouteOutboundPlaceholder": "使用路由規則",
+        "mtprotoFakeTlsDomainHint": "產生新用戶端金鑰時使用的預設 FakeTLS 網域。每個用戶端可使用各自的網域。",
+        "mtgThrottleMaxConnections": "最大連線數",
+        "mtgThrottleMaxConnectionsHint": "以公平分配限制所有使用者的並行連線數。0 表示不限制。",
+        "mtgAdTagInvalid": "廣告標籤必須為 32 位十六進位字元。",
+        "mtgPublicIpv4": "公網 IPv4",
+        "mtgPublicIpv6": "公網 IPv6",
+        "mtgPublicIpHint": "本伺服器可存取的公網位址，供廣告標籤的中間代理使用。留空則由 mtg 自動偵測。",
         "visionTestseed": "Vision testseed",
         "version": "版本",
         "udpIdleTimeout": "UDP 閒置逾時 (s)",
@@ -707,7 +694,8 @@
           "node": "節點地址",
           "listen": "入站監聽地址",
           "custom": "自訂"
-        }
+        },
+        "generateRandomPin": "產生隨機雜湊"
       },
       "info": {
         "mode": "模式",
@@ -743,7 +731,9 @@
           "responseHeader": "響應頭"
         }
       },
-      "sniffingDestOverride": "目標覆寫"
+      "sniffingDestOverride": "目標覆寫",
+      "usageMultiplier": "倍率",
+      "usageMultiplierHelp": "客戶端流量計費倍率"
     },
     "clients": {
       "tabBasics": "基本",
@@ -788,7 +778,7 @@
       "renew": "自動續期",
       "renewDesc": "到期後自動續期。(0 = 停用) (單位: 天)",
       "renewDays": "自動續期 (天)",
-      "searchPlaceholder": "搜尋電子郵件、備註、sub ID、UUID、密碼、auth…",
+      "searchPlaceholder": "搜尋電子郵件、備註、sub ID、UUID、密碼、auth、Telegram ID…",
       "filterTitle": "篩選客戶端",
       "clearAllFilters": "清除全部",
       "filters": {
@@ -815,10 +805,9 @@
       "addClients": "新增客戶端",
       "limitIp": "IP 限制",
       "limitIpDesc": "最大同時連線 IP 數。0 = 不限制。",
-      "limitIpFail2banMissing": "未安裝 Fail2ban，無法實施 IP 限制。請從 d-ui 命令列選單安裝 Fail2ban 以啟用此選項。",
-      "limitIpFail2banWindows": "Windows 上不支援 Fail2ban，無法實施 IP 限制。",
       "limitIpDisabled": "此伺服器已停用 IP 限制功能。",
       "password": "密碼",
+      "passwordDesc": "僅 Trojan 與 Shadowsocks 用戶端使用；VLESS、VMess、Hysteria 和 WireGuard 會忽略此項。",
       "subId": "訂閱 ID",
       "online": "上線",
       "email": "電子郵件",
@@ -829,6 +818,7 @@
       "groupPlaceholder": "如 customer-a",
       "comment": "備註",
       "traffic": "流量",
+      "speed": "速度",
       "offline": "離線",
       "addClient": "新增客戶端",
       "qrCode": "QR 碼",
@@ -918,6 +908,7 @@
       "delOrphansConfirmContent": "移除所有未關聯任何入站的客戶端，連同其流量紀錄一併刪除。此操作無法復原。",
       "auth": "認證",
       "hysteriaAuth": "Hysteria 認證",
+      "hysteriaAuthDesc": "僅 Hysteria 用戶端使用的憑證。Trojan 與 Shadowsocks 請改用上方的「密碼」欄位。",
       "uuid": "UUID",
       "flow": "Flow",
       "vmessSecurity": "VMess 加密",
@@ -926,6 +917,10 @@
       "wireguardPreSharedKey": "WireGuard 預共用金鑰",
       "wireguardAllowedIPs": "WireGuard 允許的 IP",
       "wireguardAllowedIPsHint": "留空則自動分配；多個條目用逗號分隔",
+      "mtprotoSecret": "MTProto 金鑰",
+      "mtprotoSecretHint": "該用戶端的 FakeTLS 金鑰。重新產生即可更換。",
+      "mtprotoAdTag": "廣告標籤（贊助頻道）",
+      "mtprotoAdTagHint": "選填的 32 位十六進位標籤，從 Telegram 代理註冊處取得。設定後，該用戶端會透過 Telegram 中間代理路由，贊助頻道會顯示在其聊天清單頂端。",
       "reverseTag": "反向標籤",
       "reverseTagPlaceholder": "選用 Reverse tag",
       "telegramId": "Telegram 使用者 ID",
@@ -951,7 +946,11 @@
         "delOrphans": "已刪除 {count} 個未關聯的客戶端",
         "imported": "已匯入 {count} 個客戶端",
         "importedMixed": "已匯入 {ok} 個，跳過 {failed} 個"
-      }
+      },
+      "uploadMbps": "Upload Limit (Mbps)",
+      "uploadMbpsDesc": "Aggregate upload speed across all connections. 0 = unlimited.",
+      "downloadMbps": "Download Limit (Mbps)",
+      "downloadMbpsDesc": "Aggregate download speed across all connections. 0 = unlimited."
     },
     "groups": {
       "title": "群組",
@@ -1207,7 +1206,7 @@
       "subAnnounce": "公告",
       "subAnnounceDesc": "VPN 用戶端中顯示的公告文字",
       "subThemeDir": "訂閱主題目錄",
-      "subThemeDirDesc": "包含自訂訂閱頁面範本 (index.html/sub.html) 的資料夾的絕對路徑（例如 /etc/d-ui/sub_templates/my-theme/）。留空則使用預設頁面。",
+      "subThemeDirDesc": "包含自訂訂閱頁面範本 (index.html/sub.html) 的資料夾的絕對路徑（例如 /etc/3x-ui/sub_templates/my-theme/）。留空則使用預設頁面。",
       "subThemeDirDocs": "範本指南 ↗",
       "subEnableRouting": "啟用路由",
       "subEnableRoutingDesc": "在 VPN 用戶端中啟用路由的全域設定。（僅限 Happ）",
@@ -1421,6 +1420,12 @@
       "eventMemoryHigh": "記憶體使用率高 (%)",
       "remarkTemplate": "備註範本",
       "remarkTemplateDesc": "設定後，這將取代每個訂閱連結的備註模型——使用變數標記撰寫您自己的格式（使用按鈕來插入）。留空則使用上方的模型。",
+      "remarkModel": "備註模型和分隔符",
+      "sampleRemark": "備註示例",
+      "subShowInfo": "顯示使用資訊",
+      "subShowInfoDesc": "客戶端應用中將顯示剩餘流量和日期資訊",
+      "subEmailInRemark": "在名稱中包含郵箱",
+      "subEmailInRemarkDesc": "在訂閱配置名稱中包含客戶端郵箱。",
       "validation": {
         "pathLeadingSlash": "路徑必須以 / 開頭"
       },
@@ -1615,7 +1620,8 @@
         "acceptProxyProtocol": "接受 proxy protocol",
         "proxyProtocol": "Proxy protocol",
         "tcpUserTimeoutMs": "TCP user timeout (ms)",
-        "tcpKeepAliveIdleS": "TCP keep-alive idle (s)"
+        "tcpKeepAliveIdleS": "TCP keep-alive idle (s)",
+        "workers": "Workers"
       },
       "outbound": {
         "addOutbound": "新增出站",
@@ -1628,6 +1634,8 @@
         "tag": "標籤",
         "tagDesc": "唯一標籤",
         "address": "地址",
+        "egress": "Egress",
+        "egressHint": "Run an HTTP test to show egress IP and country.",
         "reverse": "反向",
         "domain": "網域",
         "type": "類型",
@@ -1646,7 +1654,8 @@
         "testSuccess": "測試成功",
         "testFailed": "測試失敗",
         "testError": "測試出站失敗",
-        "testModeTooltip": "TCP: 快速 dial-only 探測。HTTP: 透過 xray 的完整請求。",
+        "modeRealDelay": "真實延遲",
+        "testModeTooltip": "TCP: 快速 dial-only 探測。HTTP: 透過 xray 的完整請求。真實延遲: 含建立連線的總耗時。",
         "testAll": "全部測試",
         "httpStatus": "HTTP 狀態",
         "breakdownConnect": "代理連線",
@@ -1760,6 +1769,7 @@
         "tagPlaceholder": "唯一均衡器標籤",
         "selector": "選擇器",
         "fallback": "Fallback",
+        "cycleTooltip": "循環: {path} → (回到 {start})",
         "expected": "期望",
         "expectedPlaceholder": "最佳節點數",
         "maxRtt": "最大 RTT",
@@ -1769,7 +1779,12 @@
         "balancerDesc": "無法同時使用 balancerTag 和 outboundTag。如果同時使用，則只有 outboundTag 會生效。",
         "costMatch": "標籤比對模式",
         "costValue": "權重",
-        "costRegexp": "正規表示式比對"
+        "costRegexp": "正規表示式比對",
+        "balancerDeleteInUse": "無法刪除此負載平衡器 — 它被用作以下負載平衡器的備用：{names}",
+        "balancerFallbackCycle": "無法將此負載平衡器設定為備用 — 這會建立循環依賴。",
+        "balancerFallbackInfo": "流量將透過以下路徑路由：負載平衡器 → Loopback → 伺服器 → 目標負載平衡器 → 出站連線。這會增加一個經過伺服器的額外跳轉，可能會引入輕微延遲。",
+        "fallbackBalancerHint": "選擇另一個負載平衡器作為備用",
+        "reservedPrefix": "_bl_ 前綴保留給內部負載均衡器迴圈物件"
       },
       "wireguard": {
         "secretKey": "金鑰",
@@ -1863,14 +1878,17 @@
         "dnsPresetFamily": "家庭",
         "clearAll": "全部刪除",
         "clearAllTitle": "刪除所有 DNS 伺服器？",
-        "clearAllConfirm": "此操作將從清單中刪除所有 DNS 伺服器，無法復原。"
+        "clearAllConfirm": "此操作將從清單中刪除所有 DNS 伺服器，無法復原。",
+        "dnsLeakWarning": "DNS 可能透過 localhost、明文 UDP/TCP、本機模式 DoH/DoQ、回退查詢或 EDNS client IP 洩漏。重視隱私時請使用經路由的 DoH、在 hosts 固定解析器，並停用回退。"
       },
       "fakedns": {
         "add": "新增假 DNS",
         "edit": "編輯假 DNS",
         "ipPool": "IP 池子網",
         "poolSize": "池大小"
-      }
+      },
+      "defaultOutbound": "預設出站",
+      "defaultOutboundDesc": "未符合任何路由規則的流量走此出站（清單中的第一個出站）。"
     },
     "hosts": {
       "addHost": "新增 Host",
@@ -1926,7 +1944,8 @@
         "shuffleHost": "隨機排序 Host",
         "tags": "標籤",
         "nodeGuids": "節點",
-        "excludeFromSubTypes": "從格式中排除"
+        "excludeFromSubTypes": "從格式中排除",
+        "inheritAddress": "繼承地址"
       },
       "hints": {
         "address": "留空以繼承入站本身的地址。",
@@ -1976,7 +1995,8 @@
         "descRESET_DAYS": "流量重置週期（天）",
         "descPROTOCOL": "入站協定（VLESS、VMess、Trojan…）",
         "descTRANSPORT": "傳輸網路（tcp、ws、grpc…）",
-        "descSECURITY": "傳輸安全（TLS、REALITY、NONE）"
+        "descSECURITY": "傳輸安全（TLS、REALITY、NONE）",
+        "descFACTOR": "Inbound usage factor, for example 3x"
       },
       "toasts": {
         "list": "載入 Host 失敗",
@@ -2027,10 +2047,14 @@
       "startDesc": "顯示主選單",
       "helpDesc": "機器人幫助",
       "statusDesc": "檢查機器人狀態",
-      "idDesc": "顯示您的 Telegram ID"
+      "idDesc": "顯示您的 Telegram ID",
+      "usageDesc": "查看客戶端用量：/usage 郵箱",
+      "inboundDesc": "搜尋入站：/inbound 備註（管理員）",
+      "restartDesc": "重啟 Xray 核心（管理員）",
+      "clearallDesc": "重置所有客戶端流量（管理員）"
     },
     "messages": {
-      "cpuThreshold": "CPU 使用率為 {{ .Percent }}%，超過閾值 {{ .Threshold }}%",
+      "cpuThreshold": "🔴 CPU 使用率為 {{ .Percent }}%，超過閾值 {{ .Threshold }}%",
       "selectUserFailed": "❌ 使用者選擇錯誤！",
       "userSaved": "✅ 電報使用者已儲存。",
       "loginSuccess": "✅ 成功登入到面板。\r\n",
@@ -2039,7 +2063,7 @@
       "report": "🕰 定時報告：{{ .RunTime }}\r\n",
       "datetime": "⏰ 日期時間：{{ .DateTime }}\r\n",
       "hostname": "💻 主機: {{ .Hostname }}\r\n",
-      "version": "🚀 Daltoon-UI 版本：{{ .Version }}\r\n",
+      "version": "🚀 X-UI 版本：{{ .Version }}\r\n",
       "xrayVersion": "📡 Xray 版本: {{ .XrayVersion }}\r\n",
       "ipv6": "🌐 IPv6: {{ .IPv6 }}\r\n",
       "ipv4": "🌐 IPv4: {{ .IPv4 }}\r\n",
@@ -2139,7 +2163,6 @@
       "confirmNumber": "✅ 確認: {{ .Num }}",
       "confirmNumberAdd": "✅ 確認新增：{{ .Num }}",
       "limitTraffic": "🚧 流量限制",
-      "getBanLogs": "禁止日誌",
       "allClients": "所有客戶",
       "addClient": "新增客戶",
       "submitDisable": "以停用方式送出 ☑️",
@@ -2208,5 +2231,8 @@
     "statusFailed": "失敗",
     "statusDown": "中斷",
     "statusUp": "恢復"
+  },
+  "bulk": {
+    "targets": "Targets"
   }
 }

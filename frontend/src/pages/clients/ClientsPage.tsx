@@ -30,7 +30,6 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   DeleteOutlined,
-  FundOutlined,
   DisconnectOutlined,
   DownloadOutlined,
   EditOutlined,
@@ -58,12 +57,14 @@ import { formatInboundLabel } from '@/lib/inbounds/label';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useClients } from '@/hooks/useClients';
+import { useAdmin } from '@/pg-ui/hooks/use-admin';
+import { hasPermission } from '@/pg-ui/utils/rbac';
 import { useNodesQuery } from '@/api/queries/useNodesQuery';
 import { useDatepicker } from '@/hooks/useDatepicker';
 import type { ClientRecord, InboundOption, ExternalLink, ExternalLinkInput } from '@/hooks/useClients';
 import ClientTrafficCell from '@/components/clients/ClientTrafficCell';
-import AppSidebar from '@/layouts/AppSidebar';
-import { IntlUtil, SizeFormatter } from '@/utils';
+import ClientSpeedTag, { isActiveSpeed } from '@/components/clients/ClientSpeedTag';
+import { HttpUtil, IntlUtil, SizeFormatter } from '@/utils';
 import { setMessageInstance } from '@/utils/messageBus';
 import { LazyMount } from '@/components/utility';
 const ClientFormModal = lazy(() => import('./ClientFormModal'));
@@ -73,7 +74,6 @@ const ClientBulkAddModal = lazy(() => import('./ClientBulkAddModal'));
 const ClientBulkAdjustModal = lazy(() => import('./ClientBulkAdjustModal'));
 const FilterDrawer = lazy(() => import('./FilterDrawer'));
 const SubLinksModal = lazy(() => import('./SubLinksModal'));
-const ClientActivityModal = lazy(() => import('./ClientActivityModal'));
 const BulkAddToGroupModal = lazy(() => import('./BulkAddToGroupModal'));
 const BulkAttachInboundsModal = lazy(() => import('./BulkAttachInboundsModal'));
 const BulkDetachInboundsModal = lazy(() => import('./BulkDetachInboundsModal'));
@@ -161,6 +161,7 @@ function readFilterState(): PersistedFilterState {
         inboundIds: Array.isArray(fromRaw.inboundIds) ? fromRaw.inboundIds : [],
         nodeIds: Array.isArray(fromRaw.nodeIds) ? fromRaw.nodeIds : [],
         groups: Array.isArray(fromRaw.groups) ? fromRaw.groups : [],
+        owner: typeof fromRaw.owner === 'string' ? fromRaw.owner : '',
       },
       sort: typeof raw.sort === 'string' ? raw.sort : '',
     };
@@ -188,25 +189,46 @@ const SORT_OPTIONS: { value: string; column: string; order: 'ascend' | 'descend'
 
 const DEFAULT_SORT = SORT_OPTIONS[0];
 
+function boolFeatureValue(value: unknown): boolean {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    return ['true', 'yes', '1', 'on', 'enabled', 'all'].includes(normalized)
+  }
+  if (typeof value === 'number') return value !== 0
+  return false
+}
+
+function adminFeatureEnabled(admin: unknown, key: string, fallback = true): boolean {
+  if (!admin || typeof admin !== 'object') return fallback
+  const features = (admin as { features?: unknown }).features
+  if (!features || typeof features !== 'object') return fallback
+  const value = (features as Record<string, unknown>)[key]
+  return value == null ? fallback : boolFeatureValue(value)
+}
+
+
 function sortValueFor(column: string | null, order: 'ascend' | 'descend' | null): string {
   if (!column || !order) return DEFAULT_SORT.value;
   return `${column}:${order}`;
 }
 
 export default function ClientsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { isDark, isUltra, antdThemeConfig } = useTheme();
   const { datepicker } = useDatepicker();
   const { isMobile } = useMediaQuery();
   const [modal, modalContextHolder] = Modal.useModal();
   const [messageApi, messageContextHolder] = message.useMessage();
-
-  const isReseller = useMemo(() => {
-    return (typeof window !== 'undefined' && typeof window.X_UI_BASE_PATH !== 'undefined')
-      ? !!localStorage.getItem('daltoon_current_admin')
-      : false;
-  }, []);
-
+  const { admin: currentAdmin } = useAdmin();
+  const canUseResetStrategy = adminFeatureEnabled(currentAdmin, 'can_use_reset_strategy', true);
+  const canFilterClientOwners = Boolean(
+    currentAdmin?.role?.ownerRole ||
+      currentAdmin?.role?.is_owner ||
+      currentAdmin?.role?.owner_role ||
+      hasPermission(currentAdmin, 'users', 'admin_filter'),
+  );
+  const [ownerAdmins, setOwnerAdmins] = useState<Array<{ id: number; username: string }>>([]);
   useEffect(() => { setMessageInstance(messageApi); }, [messageApi]);
 
   const {
@@ -218,13 +240,52 @@ export default function ClientsPage() {
     tgBotEnable, expireDiff, trafficDiff, pageSize,
     create, update, remove, bulkDelete, bulkAdjust, bulkEnable, bulkDisable, bulkAddToGroup, bulkRemoveFromGroup, attach, setExternalLinks, bulkAttach, detach, bulkDetach,
     resetTraffic, resetAllTraffics, delDepleted, delOrphans, exportClients, importClients, setEnable,
-    applyTrafficEvent, applyClientStatsEvent,
+    clientSpeed,
+    applyTrafficEvent, applyPresenceEvent, applyClientStatsEvent,
     refresh,
     hydrate,
   } = useClients();
 
+  useEffect(() => {
+    if (!canFilterClientOwners) {
+      setOwnerAdmins([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadOwnerAdmins() {
+      try {
+        const msg = await HttpUtil.get('/panel/api/admins/list', undefined, { silent: true }) as { success?: boolean; obj?: unknown };
+        if (cancelled) return;
+
+        const rows = Array.isArray(msg?.obj) ? msg.obj : [];
+        const admins = rows
+          .map((row) => {
+            const r = row && typeof row === 'object' ? row as Record<string, unknown> : {};
+            const id = Number(r.id || 0);
+            const username = typeof r.username === 'string' ? r.username : String(r.username || '');
+            return { id, username };
+          })
+          .filter((row) => row.id > 0)
+          .sort((a, b) => a.username.localeCompare(b.username));
+
+        setOwnerAdmins(admins);
+      } catch {
+        if (!cancelled) setOwnerAdmins([]);
+      }
+    }
+
+    void loadOwnerAdmins();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canFilterClientOwners]);
+
   useWebSocket({
     traffic: applyTrafficEvent,
+    presence: applyPresenceEvent,
     client_stats: applyClientStatsEvent,
   });
 
@@ -242,8 +303,6 @@ export default function ClientsPage() {
   const [infoClient, setInfoClient] = useState<ClientRecord | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
   const [qrClient, setQrClient] = useState<ClientRecord | null>(null);
-  const [activityOpen, setActivityOpen] = useState(false);
-  const [activityClient, setActivityClient] = useState<ClientRecord | null>(null);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [bulkAdjustOpen, setBulkAdjustOpen] = useState(false);
   const [subLinksOpen, setSubLinksOpen] = useState(false);
@@ -276,6 +335,12 @@ export default function ClientsPage() {
   // debouncedSearch lags behind the input so we don't spam the server on every
   // keystroke; the search box still feels instant locally.
   const [debouncedSearch, setDebouncedSearch] = useState(searchKey);
+
+  useEffect(() => {
+    if (!canFilterClientOwners && filters.owner) {
+      setFilters((prev) => prev.owner ? { ...prev, owner: '' } : prev);
+    }
+  }, [canFilterClientOwners, filters.owner]);
 
   useEffect(() => {
     localStorage.setItem(FILTER_STATE_KEY, JSON.stringify({ searchKey, filters, sort: sortValueFor(sortColumn, sortOrder) }));
@@ -325,10 +390,11 @@ export default function ClientsPage() {
       hasTgId: filters.hasTgId || undefined,
       hasComment: filters.hasComment || undefined,
       group: filters.groups.join(',') || undefined,
+      owner: canFilterClientOwners ? (filters.owner === 'all' ? undefined : filters.owner || 'me') : undefined,
       sort: sortColumn || undefined,
       order: sortOrder || undefined,
     });
-  }, [setQuery, currentPage, tablePageSize, debouncedSearch, filters, effectiveInboundCsv, sortColumn, sortOrder]);
+  }, [setQuery, currentPage, tablePageSize, debouncedSearch, filters, effectiveInboundCsv, sortColumn, sortOrder, canFilterClientOwners]);
 
   const activeCount = activeFilterCount(filters);
 
@@ -353,6 +419,36 @@ export default function ClientsPage() {
     for (const g of filters.groups) values.add(g);
     return [...values].sort((a, b) => a.localeCompare(b));
   }, [allGroups, filters.groups]);
+
+  const ownerOptions = useMemo(() => {
+    if (!canFilterClientOwners) return [];
+
+    const currentAdminID = Number(currentAdmin?.id || 0);
+    const seen = new Set<string>();
+    const options: Array<{ value: string; label: string }> = [];
+
+    const add = (value: string, label: string) => {
+      if (seen.has(value)) return;
+      seen.add(value);
+      options.push({ value, label });
+    };
+
+    add('all', 'All');
+
+
+    for (const admin of ownerAdmins) {
+      if (currentAdminID > 0 && admin.id === currentAdminID) continue;
+      add(String(admin.id), admin.username || `#${admin.id}`);
+    }
+
+    return options;
+  }, [canFilterClientOwners, currentAdmin?.id, ownerAdmins]);
+
+  const ownerLabelByValue = useMemo(() => {
+    const labels = new Map<string, string>();
+    for (const option of ownerOptions) labels.set(option.value, option.label);
+    return labels;
+  }, [ownerOptions]);
 
   const isOnline = useCallback((email: string) => !!email && onlineSet.has(email), [onlineSet]);
 
@@ -514,10 +610,18 @@ export default function ClientsPage() {
     setInfoOpen(true);
   }
 
-  function onShowActivity(row: ClientRecord) {
-    setActivityClient(row);
-    setActivityOpen(true);
-  }
+  const onClientCreated = useCallback(async (email: string) => {
+    const full = await hydrate(email);
+    if (!full?.client) {
+      messageApi.warning(t('pages.clients.toasts.configLoadFailed', {
+        defaultValue: 'Client created, but its configuration could not be loaded automatically.',
+      }));
+      return;
+    }
+    setInfoClient({ ...full.client, inboundIds: full.inboundIds });
+    setInfoOpen(true);
+  }, [hydrate, messageApi, t]);
+
   async function onShowQr(row: ClientRecord) {
     const full = await hydrate(row.email);
     setQrClient(full ? { ...row, ...full.client, inboundIds: full.inboundIds } : row);
@@ -721,32 +825,262 @@ export default function ClientsPage() {
       | { isEdit: false; email: string; externalLinks: ExternalLinkInput[] }
       | { isEdit: true; email: string; attach: number[]; detach: number[]; externalLinks: ExternalLinkInput[] },
   ) => {
+    const showSaveError = <T extends { msg?: string } | undefined | null>(response: T): T => {
+      const raw = response?.msg?.trim() || '';
+      const something = t('somethingWentWrong', { defaultValue: 'Something went wrong' });
+
+      const stripSomethingWentWrong = (value: string) => {
+        let output = value.trim();
+        for (const prefix of [something, 'Something went wrong']) {
+          if (prefix && output.toLowerCase().startsWith(prefix.toLowerCase())) {
+            output = output.slice(prefix.length).replace(/^[\s:：-]+/, '').trim();
+          }
+        }
+        return output;
+      };
+
+      const cleaned = stripSomethingWentWrong(raw);
+      const limitMarkers = [
+        'سقف ساخت کلاینت',
+        'حجم ترافیک',
+        'حجم Unlimited',
+        'حداقل حجم',
+        'حداکثر حجم',
+        'مدت اعتبار',
+        'مدت Unlimited',
+        'حداقل مدت',
+        'حداکثر مدت',
+        'admin role',
+        'client data limit',
+        'client expiry',
+        'max users',
+        'download limit',
+        'upload limit',
+        'download speed',
+        'upload speed',
+        'minimum download',
+        'maximum download',
+        'minimum upload',
+        'maximum upload',
+        'mbps',
+        'محدودیت دانلود',
+        'محدودیت آپلود',
+        'سرعت دانلود',
+        'سرعت آپلود',
+      ];
+
+      const isLimitMessage =
+        cleaned.length > 0 &&
+        limitMarkers.some((marker) => cleaned.toLowerCase().includes(marker.toLowerCase()));
+
+const getLimitMessage = (message: string) => {
+        const language = (i18n.language || '').toLowerCase();
+        const isFa = language.startsWith('fa');
+        const lower = message.toLowerCase();
+
+        const normalizeDigits = (value: string) =>
+          value
+            .replace(/[۰-۹]/g, (char) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(char)))
+            .replace(/[٠-٩]/g, (char) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(char)));
+
+        const numbersForUnit = (value: string, units: string[]) => {
+          const unitPattern = units.join('|');
+          return Array.from(
+            value.matchAll(new RegExp(`([0-9۰-۹٠-٩]+(?:[.,][0-9۰-۹٠-٩]+)?)\\s*(?:${unitPattern})`, 'gi')),
+          ).map((match) => normalizeDigits(match[1]));
+        };
+
+        const allNumbers = Array.from(message.matchAll(/[0-9۰-۹٠-٩]+(?:[.,][0-9۰-۹٠-٩]+)?/g)).map((match) =>
+          normalizeDigits(match[0]),
+        );
+
+        const hasAny = (...markers: string[]) => markers.some((marker) => lower.includes(marker.toLowerCase()));
+
+        const speedMbpsMatch = message.match(/([0-9۰-۹٠-٩]+(?:[.,][0-9۰-۹٠-٩]+)?)\s*mbps/i);
+        const speedValue = speedMbpsMatch ? normalizeDigits(speedMbpsMatch[1]) : undefined;
+        const isDownloadSpeed = hasAny('download', 'دانلود');
+        const isUploadSpeed = hasAny('upload', 'آپلود');
+        const isUnlimitedSpeed = hasAny('unlimited', 'نامحدود');
+        const isMinimumSpeed = hasAny('minimum', 'min', 'حداقل');
+        const isMaximumSpeed = hasAny('maximum', 'max', 'حداکثر');
+
+        if (isDownloadSpeed && isUnlimitedSpeed) {
+          return isFa ? 'سرعت دانلود Unlimited برای این حساب مجاز نیست' : 'Unlimited download speed is not allowed for this account';
+        }
+
+        if (isUploadSpeed && isUnlimitedSpeed) {
+          return isFa ? 'سرعت آپلود Unlimited برای این حساب مجاز نیست' : 'Unlimited upload speed is not allowed for this account';
+        }
+
+        if (isDownloadSpeed && isMinimumSpeed && speedValue) {
+          return isFa ? `حداقل محدودیت دانلود ${speedValue} Mbps است` : `Minimum download limit is ${speedValue} Mbps`;
+        }
+
+        if (isDownloadSpeed && isMaximumSpeed && speedValue) {
+          return isFa ? `حداکثر محدودیت دانلود ${speedValue} Mbps است` : `Maximum download limit is ${speedValue} Mbps`;
+        }
+
+        if (isUploadSpeed && isMinimumSpeed && speedValue) {
+          return isFa ? `حداقل محدودیت آپلود ${speedValue} Mbps است` : `Minimum upload limit is ${speedValue} Mbps`;
+        }
+
+        if (isUploadSpeed && isMaximumSpeed && speedValue) {
+          return isFa ? `حداکثر محدودیت آپلود ${speedValue} Mbps است` : `Maximum upload limit is ${speedValue} Mbps`;
+        }
+
+
+        const dataValues = numbersForUnit(message, ['گیگابایت', 'gb', 'gib']);
+        const dayValues = numbersForUnit(message, ['روز', 'day', 'days']);
+
+        const dataText = (value?: string) => (value ? `${value} ${isFa ? 'گیگابایت' : 'GB'}` : '');
+        const dayText = (value?: string) => (value ? `${value} ${isFa ? 'روز' : Number(value) === 1 ? 'day' : 'days'}` : '');
+
+        const isMaxUsers = hasAny('سقف ساخت کلاینت', 'سقف کلاینت', 'max users', 'maximum clients');
+        const isDataUnlimited =
+          hasAny('حجم unlimited', 'client data limit must be finite') ||
+          (hasAny('unlimited') && hasAny('حجم', 'data', 'traffic'));
+        const isExpiryUnlimited =
+          hasAny('مدت unlimited', 'client expiry must be finite') ||
+          (hasAny('unlimited') && hasAny('مدت', 'expiry', 'duration'));
+
+        const isDataMin =
+          hasAny('حداقل حجم') || (hasAny('client data limit') && hasAny('minimum', 'below'));
+        const isDataMax =
+          hasAny('حداکثر حجم') || (hasAny('client data limit') && hasAny('maximum', 'above'));
+        const isExpiryMin =
+          hasAny('حداقل مدت') || (hasAny('client expiry') && hasAny('minimum', 'below'));
+        const isExpiryMax =
+          hasAny('حداکثر مدت') || (hasAny('client expiry') && hasAny('maximum', 'above'));
+
+        if (isMaxUsers) {
+          const maxClients = allNumbers[0];
+          return maxClients
+            ? isFa
+              ? `شما حداکثر می‌توانید ${maxClients} کلاینت بسازید`
+              : `You can create up to ${maxClients} clients`
+            : isFa
+              ? 'سقف ساخت کلاینت شما پر شده است'
+              : 'Your client limit has been reached';
+        }
+
+        if (isDataUnlimited) {
+          if (dataValues.length >= 2) {
+            return isFa
+              ? `حجم Unlimited برای این حساب مجاز نیست. بازه مجاز: ${dataText(dataValues[0])} تا ${dataText(dataValues[1])}`
+              : `Unlimited data is not allowed for this account. Allowed range: ${dataText(dataValues[0])} to ${dataText(dataValues[1])}`;
+          }
+          if (dataValues.length === 1 && hasAny('حداقل', 'minimum', 'min')) {
+            return isFa
+              ? `حجم Unlimited برای این حساب مجاز نیست. حداقل حجم مجاز: ${dataText(dataValues[0])}`
+              : `Unlimited data is not allowed for this account. Minimum allowed: ${dataText(dataValues[0])}`;
+          }
+          if (dataValues.length === 1 && hasAny('حداکثر', 'maximum', 'max')) {
+            return isFa
+              ? `حجم Unlimited برای این حساب مجاز نیست. حداکثر حجم مجاز: ${dataText(dataValues[0])}`
+              : `Unlimited data is not allowed for this account. Maximum allowed: ${dataText(dataValues[0])}`;
+          }
+          return isFa ? 'حجم Unlimited برای این حساب مجاز نیست' : 'Unlimited data is not allowed for this account';
+        }
+
+        if (isExpiryUnlimited) {
+          if (dayValues.length >= 2) {
+            return isFa
+              ? `مدت Unlimited برای این حساب مجاز نیست. بازه مجاز: ${dayText(dayValues[0])} تا ${dayText(dayValues[1])}`
+              : `Unlimited duration is not allowed for this account. Allowed range: ${dayText(dayValues[0])} to ${dayText(dayValues[1])}`;
+          }
+          if (dayValues.length === 1 && hasAny('حداقل', 'minimum', 'min')) {
+            return isFa
+              ? `مدت Unlimited برای این حساب مجاز نیست. حداقل مدت مجاز: ${dayText(dayValues[0])}`
+              : `Unlimited duration is not allowed for this account. Minimum allowed: ${dayText(dayValues[0])}`;
+          }
+          if (dayValues.length === 1 && hasAny('حداکثر', 'maximum', 'max')) {
+            return isFa
+              ? `مدت Unlimited برای این حساب مجاز نیست. حداکثر مدت مجاز: ${dayText(dayValues[0])}`
+              : `Unlimited duration is not allowed for this account. Maximum allowed: ${dayText(dayValues[0])}`;
+          }
+          return isFa ? 'مدت Unlimited برای این حساب مجاز نیست' : 'Unlimited duration is not allowed for this account';
+        }
+
+        if (isDataMin) {
+          return dataValues[0]
+            ? isFa
+              ? `حداقل حجم مجاز برای هر کلاینت ${dataText(dataValues[0])} است`
+              : `Minimum data per client is ${dataText(dataValues[0])}`
+            : isFa
+              ? 'حداقل حجم مجاز رعایت نشده است'
+              : 'Minimum data per client was not met';
+        }
+
+        if (isDataMax) {
+          return dataValues[0]
+            ? isFa
+              ? `حداکثر حجم مجاز برای هر کلاینت ${dataText(dataValues[0])} است`
+              : `Maximum data per client is ${dataText(dataValues[0])}`
+            : isFa
+              ? 'حداکثر حجم مجاز رعایت نشده است'
+              : 'Maximum data per client was exceeded';
+        }
+
+        if (isExpiryMin) {
+          return dayValues[0]
+            ? isFa
+              ? `حداقل مدت مجاز برای هر کلاینت ${dayText(dayValues[0])} است`
+              : `Minimum duration per client is ${dayText(dayValues[0])}`
+            : isFa
+              ? 'حداقل مدت مجاز رعایت نشده است'
+              : 'Minimum duration per client was not met';
+        }
+
+        if (isExpiryMax) {
+          return dayValues[0]
+            ? isFa
+              ? `حداکثر مدت مجاز برای هر کلاینت ${dayText(dayValues[0])} است`
+              : `Maximum duration per client is ${dayText(dayValues[0])}`
+            : isFa
+              ? 'حداکثر مدت مجاز رعایت نشده است'
+              : 'Maximum duration per client was exceeded';
+        }
+
+        return message;
+      };
+
+      messageApi.error(isLimitMessage ? getLimitMessage(cleaned) : raw || something);
+      return response;
+    };
+
     if (!meta.isEdit) {
       const createMsg = await create(payload);
-      if (!createMsg?.success) return createMsg;
+      if (!createMsg?.success) return showSaveError(createMsg);
       if (meta.email && meta.externalLinks.length > 0) {
         const r = await setExternalLinks(meta.email, meta.externalLinks);
-        if (!r?.success) return r;
+        if (!r?.success) return showSaveError(r);
       }
+      messageApi.success(t('pages.clients.toasts.created', { defaultValue: 'Client created' }));
       return createMsg;
     }
     const updateMsg = await update(meta.email, payload);
-    if (!updateMsg?.success) return updateMsg;
-    const rawEmail = (payload as { email?: unknown }).email;
-    const emailKey = typeof rawEmail === 'string' && rawEmail.trim() ? rawEmail.trim() : meta.email;
+    if (!updateMsg?.success) return showSaveError(updateMsg);
+
+    const updatedEmail =
+      typeof (payload as Record<string, unknown>).email === 'string' &&
+      ((payload as Record<string, unknown>).email as string).trim()
+        ? ((payload as Record<string, unknown>).email as string).trim()
+        : meta.email;
+
     if (Array.isArray(meta.attach) && meta.attach.length > 0) {
-      const r = await attach(emailKey, meta.attach);
-      if (!r?.success) return r;
+      const r = await attach(updatedEmail, meta.attach);
+      if (!r?.success) return showSaveError(r);
     }
     if (Array.isArray(meta.detach) && meta.detach.length > 0) {
-      const r = await detach(emailKey, meta.detach);
-      if (!r?.success) return r;
+      const r = await detach(updatedEmail, meta.detach);
+      if (!r?.success) return showSaveError(r);
     }
     // Always replace the client's external links (an empty set clears them).
-    const r = await setExternalLinks(emailKey, meta.externalLinks);
-    if (!r?.success) return r;
+    const r = await setExternalLinks(updatedEmail, meta.externalLinks);
+    if (!r?.success) return showSaveError(r);
+    messageApi.success(t('pages.clients.toasts.updated', { defaultValue: 'Client updated' }));
     return updateMsg;
-  }, [create, update, attach, detach, setExternalLinks]);
+  }, [create, update, attach, detach, setExternalLinks, messageApi, t, i18n.language]);
 
   const pageClass = useMemo(() => {
     const classes = ['clients-page'];
@@ -770,15 +1104,21 @@ export default function ClientsPage() {
           <Tooltip title={t('pages.clients.qrCode')}>
             <Button size="small" type="text" style={{ fontSize: 16 }} icon={<QrcodeOutlined />} aria-label={t('pages.clients.qrCode')} onClick={() => onShowQr(record)} />
           </Tooltip>
-          <Tooltip title="Activity Monitoring">
-            <Button size="small" type="text" style={{ fontSize: 16 }} icon={<FundOutlined />} aria-label="Activity Monitoring" onClick={() => onShowActivity(record)} />
-          </Tooltip>
           <Tooltip title={t('pages.clients.clientInfo')}>
             <Button size="small" type="text" style={{ fontSize: 16 }} icon={<InfoCircleOutlined />} aria-label={t('pages.clients.clientInfo')} onClick={() => onShowInfo(record)} />
           </Tooltip>
-          <Tooltip title={t('pages.inbounds.resetTraffic')}>
-            <Button size="small" type="text" style={{ fontSize: 16 }} icon={<RetweetOutlined />} aria-label={t('pages.inbounds.resetTraffic')} onClick={() => onResetTraffic(record)} />
-          </Tooltip>
+          {canUseResetStrategy && (
+            <Tooltip title={t('pages.inbounds.resetTraffic')}>
+              <Button
+                size="small"
+                type="text"
+                style={{ fontSize: 16 }}
+                icon={<RetweetOutlined />}
+                aria-label={t('pages.inbounds.resetTraffic')}
+                onClick={() => onResetTraffic(record)}
+              />
+            </Tooltip>
+          )}
           <Tooltip title={t('edit')}>
             <Button size="small" type="text" style={{ fontSize: 16 }} icon={<EditOutlined />} aria-label={t('edit')} onClick={() => onEdit(record)} />
           </Tooltip>
@@ -866,7 +1206,6 @@ export default function ClientsPage() {
       title: t('pages.clients.attachedInbounds'),
       key: 'inboundIds',
       width: 170,
-      hidden: isReseller,
       render: (_v, record) => {
         const ids = record.inboundIds || [];
         if (ids.length === 0) return <span style={{ color: 'rgba(0,0,0,0.45)' }}>—</span>;
@@ -918,10 +1257,19 @@ export default function ClientsPage() {
           total={record.totalGB}
           enabled={record.enable}
           trafficDiff={trafficDiff}
-          speedUp={isOnline(record.email) ? record.traffic?.speedUp : 0}
-          speedDown={isOnline(record.email) ? record.traffic?.speedDown : 0}
         />
       ),
+    },
+    {
+      title: t('pages.clients.speed'),
+      key: 'speed',
+      width: 110,
+      align: 'center',
+      render: (_v, record) => {
+        const speed = clientSpeed[record.email];
+        if (!isActiveSpeed(speed)) return <Tag color="default">—</Tag>;
+        return <ClientSpeedTag speed={speed} />;
+      },
     },
     {
       title: t('pages.clients.remaining'),
@@ -940,7 +1288,7 @@ export default function ClientsPage() {
       ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, togglingEmail, clientBucket, isOnline, inboundsById, filters, allGroups, datepicker, trafficDiff]);
+  ], [t, togglingEmail, clientBucket, isOnline, inboundsById, filters, allGroups, datepicker, trafficDiff, clientSpeed]);
 
   const tablePagination = {
     current: currentPage,
@@ -989,7 +1337,6 @@ export default function ClientsPage() {
       {messageContextHolder}
       {modalContextHolder}
       <Layout className={pageClass}>
-        <AppSidebar />
 
         <Layout className="content-shell">
           <Layout.Content id="content-layout" className="content-area">
@@ -1180,6 +1527,21 @@ export default function ClientsPage() {
                               {!isMobile && t('more')}
                             </Button>
                           </Dropdown>
+            <Popover
+              title="Traffic details"
+              content={(
+                <Space direction="vertical" size={2}>
+                  <div>Upload: {SizeFormatter.sizeFormat(summary.trafficUp || 0)}</div>
+                  <div>Download: {SizeFormatter.sizeFormat(summary.trafficDown || 0)}</div>
+                  <div>Admin quota: {summary.trafficTotal > 0 ? SizeFormatter.sizeFormat(summary.trafficTotal) : '∞'}</div>
+                  <div>Remaining: {summary.trafficTotal > 0 ? SizeFormatter.sizeFormat(summary.trafficRemaining || 0) : '∞'}</div>
+                </Space>
+              )}
+            >
+              <Button icon={<RetweetOutlined />}>
+                Used Traffic: {SizeFormatter.sizeFormat(summary.trafficUsed || 0)}
+              </Button>
+            </Popover>
                           {selectedRowKeys.length > 0 && (
                             <Button
                               danger
@@ -1285,6 +1647,11 @@ export default function ClientsPage() {
                               {t('pages.clients.group')}: {g}
                             </Tag>
                           ))}
+                          {canFilterClientOwners && filters.owner && filters.owner !== 'all' && filters.owner !== 'me' && (
+                            <Tag closable color="cyan" onClose={() => clearOneFilter('owner')}>
+                              Admin: {ownerLabelByValue.get(filters.owner) ?? filters.owner}
+                            </Tag>
+                          )}
                           {(filters.expiryFrom || filters.expiryTo) && (
                             <Tag closable color="purple" onClose={() => clearOneFilter('expiryFrom')}>
                               {t('pages.clients.expiryTime')}: {filters.expiryFrom ? IntlUtil.formatDate(filters.expiryFrom, datepicker) : '…'}
@@ -1392,9 +1759,6 @@ export default function ClientsPage() {
                                     {bucket === 'depleted' && <Tag color="red" className="status-tag">{t('depleted')}</Tag>}
                                     {bucket === 'expiring' && <Tag color="orange" className="status-tag">{t('depletingSoon')}</Tag>}
                                     <div className="card-actions">
-          <Tooltip title="Activity Monitoring">
-            <Button size="small" type="text" style={{ fontSize: 16 }} icon={<FundOutlined />} aria-label="Activity Monitoring" onClick={() => onShowActivity(record)} />
-          </Tooltip>
                                       <Tooltip title={t('pages.clients.clientInfo')}>
                                         <InfoCircleOutlined
                                           className="row-action-trigger"
@@ -1421,11 +1785,11 @@ export default function ClientsPage() {
                                               label: <><QrcodeOutlined /> {t('pages.clients.qrCode')}</>,
                                               onClick: () => onShowQr(row),
                                             },
-                                            {
+                                            ...(canUseResetStrategy ? [{
                                               key: 'reset',
                                               label: <><RetweetOutlined /> {t('pages.inbounds.resetTraffic')}</>,
                                               onClick: () => onResetTraffic(row),
-                                            },
+                                            }] : []),
                                             {
                                               key: 'edit',
                                               label: <><EditOutlined /> {t('edit')}</>,
@@ -1451,9 +1815,16 @@ export default function ClientsPage() {
                                     total={row.totalGB}
                                     enabled={row.enable}
                                     trafficDiff={trafficDiff}
-                                    speedUp={isOnline(row.email) ? row.traffic?.speedUp : 0}
-                                    speedDown={isOnline(row.email) ? row.traffic?.speedDown : 0}
                                   />
+                                  {(() => {
+                                    const speed = clientSpeed[row.email];
+                                    if (!isActiveSpeed(speed)) return null;
+                                    return (
+                                      <div className="client-card-speed">
+                                        <ClientSpeedTag speed={speed} />
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               );
                             })}
@@ -1469,11 +1840,6 @@ export default function ClientsPage() {
         </Layout>
 
         <LazyMount when={formOpen}>
-          <ClientActivityModal
-            open={activityOpen}
-            client={activityClient}
-            onClose={() => setActivityOpen(false)}
-          />
           <ClientFormModal
             open={formOpen}
             mode={formMode}
@@ -1484,7 +1850,8 @@ export default function ClientsPage() {
             tgBotEnable={tgBotEnable}
             groups={allGroups}
             save={onSave}
-            resetTraffic={resetTraffic}
+            resetTraffic={canUseResetStrategy ? resetTraffic : undefined}
+            onCreated={onClientCreated}
             onOpenChange={setFormOpen}
           />
         </LazyMount>
@@ -1598,6 +1965,7 @@ export default function ClientsPage() {
             protocols={protocolOptions}
             groups={groupOptions}
             nodes={nodes}
+            ownerOptions={ownerOptions}
           />
         </LazyMount>
         <LazyMount when={textOpen}>

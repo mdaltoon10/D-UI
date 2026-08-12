@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Alert,
   Button,
   Card,
   Col,
@@ -61,6 +62,7 @@ const links: string[] = Array.isArray(subData.links) ? subData.links : [];
 const linkEmails: string[] = Array.isArray(subData.emails) ? subData.emails : [];
 const subEmail = [...new Set(linkEmails.filter(Boolean))].join(', ');
 const datepicker = subData.datepicker || 'gregorian';
+const announce = subData.announce || '';
 
 const isUnlimited = totalByte <= 0 && expireMs === 0;
 const isActive = (() => {
@@ -283,6 +285,9 @@ export default function SubPage() {
           <Row justify="center">
             <Col xs={24} sm={22} md={18} lg={14} xl={12}>
               <Card hoverable className="subscription-card" title={cardTitle} extra={cardExtra}>
+                {announce && (
+                  <Alert type="info" showIcon message={announce} style={{ marginBottom: 16 }} />
+                )}
                 <Descriptions
                   bordered
                   column={1}
@@ -300,10 +305,6 @@ export default function SubPage() {
                   remainedLabel={remained}
                   expireMs={expireMs}
                   isActive={isActive}
-                  upLimitMbps={Number(subData.upLimitMbps || 40)}
-                  downLimitMbps={Number(subData.downLimitMbps || 80)}
-                  ipLimit={Number(subData.ipLimit || 5)}
-                  iranDirect={subData.iranDirect !== false}
                 />
 
                 {(subUrl || subJsonUrl || subClashUrl) && (

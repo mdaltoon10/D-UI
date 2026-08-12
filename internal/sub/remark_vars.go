@@ -143,6 +143,23 @@ func expandSegment(seg string, ctx remarkContext) (string, bool) {
 	return out, hasUnlimited && !hasOtherValue
 }
 
+func formatRemarkFactor(ctx remarkContext) string {
+	v := 1.0
+	if ctx.inbound != nil && ctx.inbound.UsageMultiplier > 0 {
+		v = ctx.inbound.UsageMultiplier
+	}
+	if v < 1 {
+		v = 1
+	}
+	if v > 10 {
+		v = 10
+	}
+	if v == float64(int64(v)) {
+		return fmt.Sprintf("%dx", int64(v))
+	}
+	return fmt.Sprintf("%.2fx", v)
+}
+
 func remarkVarValue(token string, ctx remarkContext) string {
 	c := ctx.client
 	st := ctx.stats
@@ -172,6 +189,8 @@ func remarkVarValue(token string, ctx remarkContext) string {
 		return c.Comment
 	case "STATUS":
 		return clientStatus(st)
+	case "FACTOR":
+		return formatRemarkFactor(ctx)
 	case "DAYS_LEFT":
 		return daysLeftLabel(st.ExpiryTime)
 	case "EXPIRE_DATE":
@@ -477,6 +496,7 @@ var connectionTokens = map[string]bool{
 	"PROTOCOL":  true,
 	"TRANSPORT": true,
 	"SECURITY":  true,
+	"FACTOR":    true,
 }
 
 var displayRemoveTokens = mergeTokenSets(usageInfoTokens, connectionTokens)

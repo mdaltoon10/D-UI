@@ -105,7 +105,7 @@ export default function XrayLogModal({ open, onClose }: XrayLogModalProps) {
 
   function download() {
     if (!Array.isArray(logs) || logs.length === 0) {
-      FileManager.downloadTextFile('', 'd-ui.log');
+      FileManager.downloadTextFile('', 'x-ui.log');
       return;
     }
     const lines = logs.map((l) => {
@@ -119,7 +119,7 @@ export default function XrayLogModal({ open, onClose }: XrayLogModalProps) {
         return JSON.stringify(l);
       }
     }).join('\n');
-    FileManager.downloadTextFile(lines, 'd-ui.log');
+    FileManager.downloadTextFile(lines, 'x-ui.log');
   }
 
   return (

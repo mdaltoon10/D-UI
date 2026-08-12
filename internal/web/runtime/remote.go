@@ -21,6 +21,7 @@ import (
 	"github.com/mdaltoon10/D-UI/v3/internal/logger"
 	"github.com/mdaltoon10/D-UI/v3/internal/util/netsafe"
 	"github.com/mdaltoon10/D-UI/v3/internal/util/wirecodec"
+	"github.com/mdaltoon10/D-UI/v3/internal/web/entity"
 	"github.com/mdaltoon10/D-UI/v3/internal/xray"
 )
 
@@ -68,6 +69,12 @@ type envelope struct {
 	Obj     json.RawMessage `json:"obj"`
 }
 
+// remoteAPIError is a node-panel envelope failure (HTTP 200, success=false),
+// distinct from transport/HTTP-status errors so callers can trust its message.
+type remoteAPIError struct{ msg string }
+
+func (e *remoteAPIError) Error() string { return "remote: " + e.msg }
+
 type Remote struct {
 	node *model.Node
 
@@ -77,10 +84,11 @@ type Remote struct {
 	// pushed, keyed by panel-side tag, so reconcile can skip re-sending an
 	// unchanged inbound. Guarded by mu; dropped with the Remote on node config change.
 	pushedFP map[string]string
-	// supportsZstd is learned from the node's X-DUI-Node-Caps response header; once
-	// seen, config pushes to this node are zstd-compressed. Old nodes never set
-	// it, so they keep receiving plain bodies (mixed-version safe).
-	supportsZstd bool
+	// Capabilities are learned from the node's X-3x-Node-Caps response header
+	// and initialized from the last successful heartbeat. Old nodes keep both
+	// false, preserving plain transport and rejecting unsupported runtime topology.
+	supportsZstd            bool
+	supportsRuntimeProfiles bool
 
 	// Per-node client honoring the TLS verify mode, built once and reused; a
 	// node config change drops the cached Remote so the next one rebuilds it.
@@ -100,10 +108,12 @@ type RemoteInboundOption struct {
 
 func NewRemote(n *model.Node, r NodeEgressResolver) *Remote {
 	return &Remote{
-		node:           n,
-		remoteIDByTag:  make(map[string]int),
-		pushedFP:       make(map[string]string),
-		egressResolver: r,
+		node:                    n,
+		remoteIDByTag:           make(map[string]int),
+		pushedFP:                make(map[string]string),
+		supportsZstd:            wirecodec.HasCapability(n.Capabilities, wirecodec.CapZstd),
+		supportsRuntimeProfiles: wirecodec.HasCapability(n.Capabilities, wirecodec.CapRuntimeProfilesV1),
+		egressResolver:          r,
 	}
 }
 
@@ -115,15 +125,20 @@ func (r *Remote) nodeSupportsZstd() bool {
 	return r.supportsZstd
 }
 
-// recordCaps learns the node's capabilities from a response header so later
-// pushes can use the negotiated envelope.
+// recordCaps learns the node's exact capabilities from a response header so
+// later pushes can use only features the currently running node advertises.
 func (r *Remote) recordCaps(h http.Header) {
-	if !strings.Contains(h.Get(wirecodec.CapsHeader), wirecodec.CapZstd) {
-		return
-	}
+	raw := h.Get(wirecodec.CapsHeader)
 	r.mu.Lock()
-	r.supportsZstd = true
+	r.supportsZstd = wirecodec.HasCapability(raw, wirecodec.CapZstd)
+	r.supportsRuntimeProfiles = wirecodec.HasCapability(raw, wirecodec.CapRuntimeProfilesV1)
 	r.mu.Unlock()
+}
+
+func (r *Remote) nodeSupportsRuntimeProfiles() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.supportsRuntimeProfiles
 }
 
 // httpClient lazily builds and caches the per-node client honoring the TLS
@@ -275,7 +290,7 @@ func (r *Remote) do(ctx context.Context, method, path string, body any) (*envelo
 		return nil, fmt.Errorf("decode envelope: %w", err)
 	}
 	if !env.Success {
-		return &env, fmt.Errorf("remote: %s", env.Msg)
+		return &env, &remoteAPIError{msg: env.Msg}
 	}
 	return &env, nil
 }
@@ -340,6 +355,7 @@ func (r *Remote) cacheDel(tag string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.remoteIDByTag, tag)
+	delete(r.pushedFP, tag)
 }
 
 func (r *Remote) ListRemoteTags(ctx context.Context) ([]string, error) {
@@ -392,7 +408,53 @@ func (r *Remote) refreshRemoteIDs(ctx context.Context) error {
 	return nil
 }
 
+func inboundCarriesRuntimeProfiles(streamSettings string) bool {
+	if strings.TrimSpace(streamSettings) == "" {
+		return false
+	}
+	var stream map[string]any
+	if json.Unmarshal([]byte(streamSettings), &stream) != nil {
+		return false
+	}
+	entries, _ := stream["externalProxy"].([]any)
+	for _, raw := range entries {
+		profile, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		if enabled, exists := profile["enabled"]; exists {
+			value, ok := enabled.(bool)
+			if !ok || !value {
+				continue
+			}
+		}
+		if runtimeMetadata, exists := profile["runtime"]; exists && runtimeMetadata != nil {
+			if _, ok := runtimeMetadata.(map[string]any); ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (r *Remote) requireRuntimeProfileCapability(ib *model.Inbound) error {
+	if ib == nil || !inboundCarriesRuntimeProfiles(ib.StreamSettings) {
+		return nil
+	}
+	if r.nodeSupportsRuntimeProfiles() {
+		return nil
+	}
+	return fmt.Errorf(
+		"node %s does not advertise the %q capability",
+		r.node.Name,
+		wirecodec.CapRuntimeProfilesV1,
+	)
+}
+
 func (r *Remote) AddInbound(ctx context.Context, ib *model.Inbound) error {
+	if err := r.requireRuntimeProfileCapability(ib); err != nil {
+		return err
+	}
 	payload := wireInbound(ib, r.node.Id)
 	env, err := r.do(ctx, http.MethodPost, "panel/api/inbounds/add", payload)
 	if err != nil {
@@ -407,6 +469,7 @@ func (r *Remote) AddInbound(ctx context.Context, ib *model.Inbound) error {
 			r.cacheSet(created.Tag, created.Id)
 		}
 	}
+	r.recordPushedInbound(ib)
 	return nil
 }
 
@@ -424,6 +487,9 @@ func (r *Remote) DelInbound(ctx context.Context, ib *model.Inbound) error {
 }
 
 func (r *Remote) UpdateInbound(ctx context.Context, oldIb, newIb *model.Inbound) error {
+	if err := r.requireRuntimeProfileCapability(newIb); err != nil {
+		return err
+	}
 	id, err := r.resolveRemoteID(ctx, oldIb.Tag)
 	if err != nil {
 		return r.AddInbound(ctx, newIb)
@@ -436,6 +502,7 @@ func (r *Remote) UpdateInbound(ctx context.Context, oldIb, newIb *model.Inbound)
 		r.cacheDel(oldIb.Tag)
 	}
 	r.cacheSet(newIb.Tag, id)
+	r.recordPushedInbound(newIb)
 	return nil
 }
 
@@ -457,10 +524,38 @@ func (r *Remote) ReconcileInbound(ctx context.Context, ib *model.Inbound, exists
 	if err := r.UpdateInbound(ctx, ib, ib); err != nil {
 		return false, err
 	}
+	return true, nil
+}
+
+// recordPushedInbound stamps the fingerprint after a full-payload push — the
+// only operation that proves the node holds the entire wire payload.
+func (r *Remote) recordPushedInbound(ib *model.Inbound) {
+	fp := wireFingerprint(wireInbound(ib, r.node.Id))
 	r.mu.Lock()
 	r.pushedFP[ib.Tag] = fp
 	r.mu.Unlock()
-	return true, nil
+}
+
+// RecordAdoptedInbound stamps the fingerprint when the master adopts the
+// node's own settings serialization into its DB — direct knowledge of the
+// exact payload the node holds.
+func (r *Remote) RecordAdoptedInbound(ib *model.Inbound) {
+	r.recordPushedInbound(ib)
+}
+
+// AdvancePushedInbound moves the reconcile-skip fingerprint from an inbound's
+// pre-edit payload to its post-edit payload once every per-client push for the
+// edit succeeded. It advances only when the recorded fingerprint proves the
+// node held the exact pre-edit state; otherwise the stale fingerprint stays and
+// the next reconcile re-sends the full inbound.
+func (r *Remote) AdvancePushedInbound(prevIb, ib *model.Inbound) {
+	prevFP := wireFingerprint(wireInbound(prevIb, r.node.Id))
+	nextFP := wireFingerprint(wireInbound(ib, r.node.Id))
+	r.mu.Lock()
+	if r.pushedFP[ib.Tag] == prevFP {
+		r.pushedFP[ib.Tag] = nextFP
+	}
+	r.mu.Unlock()
 }
 
 // wireFingerprint hashes a wire payload so an unchanged inbound is cheap to detect.
@@ -509,10 +604,76 @@ func (r *Remote) DeleteUser(ctx context.Context, ib *model.Inbound, email string
 	if err == nil {
 		return nil
 	}
-	if strings.Contains(strings.ToLower(err.Error()), "not found") {
+	var apiErr *remoteAPIError
+	if errors.As(err, &apiErr) && strings.Contains(strings.ToLower(apiErr.msg), "not found") {
 		return nil
 	}
 	return err
+}
+
+func (r *Remote) DeleteClient(ctx context.Context, email string) error {
+	return r.DeleteClientRecord(ctx, email, false)
+}
+
+// DeleteClientRecord removes the canonical client record from a node. This is not
+// the same as DeleteUser, which only detaches the client from one inbound and
+// deliberately keeps an orphan ClientRecord for later reattachment.
+func (r *Remote) DeleteClientRecord(ctx context.Context, email string, keepTraffic bool) error {
+	if email == "" {
+		return nil
+	}
+	path := "panel/api/clients/del/" + url.PathEscape(email)
+	if keepTraffic {
+		path += "?keepTraffic=1"
+	}
+	_, err := r.do(ctx, http.MethodPost, path, nil)
+	if err == nil {
+		return nil
+	}
+	var apiErr *remoteAPIError
+	if errors.As(err, &apiErr) && strings.Contains(strings.ToLower(apiErr.msg), "not found") {
+		return nil
+	}
+	return err
+}
+
+// DeleteClientRecords is the bulk form of DeleteClientRecord. A node may legitimately
+// report an already-missing email as skipped; all other per-email failures are
+// surfaced so the central delete remains fail-closed.
+func (r *Remote) DeleteClientRecords(ctx context.Context, emails []string, keepTraffic bool) error {
+	if len(emails) == 0 {
+		return nil
+	}
+	if len(emails) == 1 {
+		return r.DeleteClientRecord(ctx, emails[0], keepTraffic)
+	}
+	body := map[string]any{
+		"emails":      emails,
+		"keepTraffic": keepTraffic,
+	}
+	env, err := r.do(ctx, http.MethodPost, "panel/api/clients/bulkDel", body)
+	if err != nil {
+		return err
+	}
+	if env == nil || len(env.Obj) == 0 || string(env.Obj) == "null" {
+		return nil
+	}
+	var result struct {
+		Skipped []struct {
+			Email  string `json:"email"`
+			Reason string `json:"reason"`
+		} `json:"skipped"`
+	}
+	if err := json.Unmarshal(env.Obj, &result); err != nil {
+		return fmt.Errorf("decode remote bulk client delete: %w", err)
+	}
+	for _, skipped := range result.Skipped {
+		if strings.Contains(strings.ToLower(skipped.Reason), "not found") {
+			continue
+		}
+		return fmt.Errorf("remote client %q was not deleted: %s", skipped.Email, skipped.Reason)
+	}
+	return nil
 }
 
 func (r *Remote) UpdateUser(ctx context.Context, ib *model.Inbound, oldEmail string, payload model.Client) error {
@@ -615,6 +776,25 @@ type TrafficSnapshot struct {
 	// the per-GUID endpoint — OnlineEmails is the fallback then.
 	OnlineTree    map[string][]string
 	LastOnlineMap map[string]int64
+	// HostGroups carries the node's per-inbound host overrides (TLS/SNI/
+	// fingerprint), fetched only when the snapshot holds a not-yet-adopted tag.
+	HostGroups []*entity.HostGroup
+}
+
+// FetchHostGroups pulls the node's host overrides so a freshly adopted inbound
+// keeps its subscription TLS/SNI/fingerprint settings on the master.
+func (r *Remote) FetchHostGroups(ctx context.Context) ([]*entity.HostGroup, error) {
+	env, err := r.do(ctx, http.MethodGet, "panel/api/hosts/list", nil)
+	if err != nil {
+		return nil, err
+	}
+	var groups []*entity.HostGroup
+	if len(env.Obj) > 0 {
+		if err := json.Unmarshal(env.Obj, &groups); err != nil {
+			return nil, fmt.Errorf("decode host groups: %w", err)
+		}
+	}
+	return groups, nil
 }
 
 func (r *Remote) FetchTrafficSnapshot(ctx context.Context) (*TrafficSnapshot, error) {
@@ -670,6 +850,11 @@ func (r *Remote) PushGlobalClientTraffics(ctx context.Context, masterGuid string
 func wireInbound(ib *model.Inbound, remoteNodeID int) url.Values {
 	v := url.Values{}
 	v.Set("total", strconv.FormatInt(ib.Total, 10))
+	usageMultiplier := ib.UsageMultiplier
+	if usageMultiplier <= 0 {
+		usageMultiplier = 1
+	}
+	v.Set("usageMultiplier", strconv.FormatFloat(usageMultiplier, 'f', -1, 64))
 	v.Set("remark", ib.Remark)
 	v.Set("subSortIndex", strconv.Itoa(ib.SubSortIndex))
 	v.Set("enable", strconv.FormatBool(ib.Enable))
@@ -699,16 +884,10 @@ func wireInbound(ib *model.Inbound, remoteNodeID int) url.Values {
 	return v
 }
 
-// sanitizeStreamSettingsForRemote strips file-based TLS certificate paths
-// from the StreamSettings before sending to a remote node, but ONLY when
-// inline certificate content (certificate / key) is also present in the same
-// entry.  In that case the file paths are redundant and stripping them avoids
-// confusion when the central panel's local paths don't exist on the remote.
-//
-// When a certificate entry contains ONLY file paths (no inline content) the
-// paths are left untouched: the user explicitly entered paths that exist on
-// the remote node's filesystem, and removing them would leave Xray with TLS
-// configured but no certificate, causing Xray to crash on the remote node.
+// sanitizeStreamSettingsForRemote strips redundant file-backed TLS paths
+// before sending a logical inbound to a node. Parent TLS and every automatic
+// runtime profile are handled. Path-only certificates are preserved because
+// those paths may intentionally exist only on the remote node.
 func sanitizeStreamSettingsForRemote(streamSettings string) string {
 	if streamSettings == "" {
 		return streamSettings
@@ -719,34 +898,19 @@ func sanitizeStreamSettingsForRemote(streamSettings string) string {
 		return streamSettings
 	}
 
-	tlsSettings, ok := stream["tlsSettings"].(map[string]any)
-	if !ok {
-		return streamSettings
-	}
+	changed := stripRedundantTLSFilePaths(stream["tlsSettings"])
 
-	certificates, ok := tlsSettings["certificates"].([]any)
-	if !ok {
-		return streamSettings
-	}
-
-	changed := false
-	for _, cert := range certificates {
-		c, ok := cert.(map[string]any)
+	entries, _ := stream["externalProxy"].([]any)
+	for _, raw := range entries {
+		profile, ok := raw.(map[string]any)
 		if !ok {
 			continue
 		}
-		// Only strip file paths when inline content is present so that the
-		// remote Xray still has a valid certificate to use.
-		hasCertFile := c["certificateFile"] != nil && c["certificateFile"] != ""
-		hasKeyFile := c["keyFile"] != nil && c["keyFile"] != ""
-		hasCertInline := isNonEmptySlice(c["certificate"])
-		hasKeyInline := isNonEmptySlice(c["key"])
-		if hasCertFile && hasCertInline {
-			delete(c, "certificateFile")
-			changed = true
+		runtimeMetadata, _ := profile["runtime"].(map[string]any)
+		if runtimeMetadata == nil {
+			continue
 		}
-		if hasKeyFile && hasKeyInline {
-			delete(c, "keyFile")
+		if stripRedundantTLSFilePaths(runtimeMetadata["tlsSettings"]) {
 			changed = true
 		}
 	}
@@ -759,6 +923,38 @@ func sanitizeStreamSettingsForRemote(streamSettings string) string {
 		return streamSettings
 	}
 	return string(out)
+}
+
+func stripRedundantTLSFilePaths(raw any) bool {
+	tlsSettings, ok := raw.(map[string]any)
+	if !ok {
+		return false
+	}
+	certificates, ok := tlsSettings["certificates"].([]any)
+	if !ok {
+		return false
+	}
+
+	changed := false
+	for _, cert := range certificates {
+		certificate, ok := cert.(map[string]any)
+		if !ok {
+			continue
+		}
+		hasCertFile := certificate["certificateFile"] != nil && certificate["certificateFile"] != ""
+		hasKeyFile := certificate["keyFile"] != nil && certificate["keyFile"] != ""
+		hasCertInline := isNonEmptySlice(certificate["certificate"])
+		hasKeyInline := isNonEmptySlice(certificate["key"])
+		if hasCertFile && hasCertInline {
+			delete(certificate, "certificateFile")
+			changed = true
+		}
+		if hasKeyFile && hasKeyInline {
+			delete(certificate, "keyFile")
+			changed = true
+		}
+	}
+	return changed
 }
 
 // isNonEmptySlice reports whether v is a non-nil, non-empty JSON array value.
@@ -802,4 +998,20 @@ func (r *Remote) FetchClientIpsByGuid(ctx context.Context) (map[string]map[strin
 		}
 	}
 	return out, nil
+}
+
+// StrictIPLimitParentConfig is the minimal bootstrap payload a parent sends to
+// a direct child so the child's local lease agent can synchronously relay Strict-B
+// decisions back up the hierarchy.
+type StrictIPLimitParentConfig struct {
+	URL              string `json:"url"`
+	Token            string `json:"token"`
+	ParentGuid       string `json:"parentGuid"`
+	TLSVerifyMode    string `json:"tlsVerifyMode,omitempty"`
+	PinnedCertSha256 string `json:"pinnedCertSha256,omitempty"`
+}
+
+func (r *Remote) ConfigureStrictIPLimitParent(ctx context.Context, cfg StrictIPLimitParentConfig) error {
+	_, err := r.do(ctx, http.MethodPost, "panel/api/server/strictIPLimitParent", cfg)
+	return err
 }

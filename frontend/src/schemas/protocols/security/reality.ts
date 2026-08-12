@@ -9,6 +9,7 @@ export const RealityClientSettingsSchema = z.object({
   publicKey: z.string().default(''),
   fingerprint: UtlsFingerprintSchema.default('chrome'),
   serverName: z.string().default(''),
+  shortId: z.string().default(''),
   spiderX: z.string().default('/'),
   mldsa65Verify: z.string().default(''),
 });
@@ -72,6 +73,7 @@ export const RealityStreamSettingsSchema = z.preprocess(
       publicKey: '',
       fingerprint: 'chrome',
       serverName: '',
+      shortId: '',
       spiderX: '/',
       mldsa65Verify: '',
     }),

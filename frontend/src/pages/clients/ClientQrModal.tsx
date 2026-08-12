@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Collapse, Modal, Spin, Tag } from 'antd';
-import { HttpUtil } from '@/utils';
+import { CopyOutlined } from '@ant-design/icons';
+import { Alert, Button, Collapse, Modal, Spin, Tag, message } from 'antd';
+import { ClipboardManager, HttpUtil } from '@/utils';
 import { isPostQuantumLink } from '@/lib/xray/inbound-link';
 import { LinkTags, linkMetaText, parseLinkParts } from '@/lib/xray/link-label';
 import { QrPanel } from '@/pages/inbounds/qr';
@@ -26,6 +27,7 @@ interface ClientQrModalProps {
 
 interface ApiMsg<T = unknown> {
   success?: boolean;
+  msg?: string;
   obj?: T;
 }
 
@@ -39,8 +41,10 @@ export default function ClientQrModal({
   onOpenChange,
 }: ClientQrModalProps) {
   const { t } = useTranslation();
+  const [messageApi, messageContextHolder] = message.useMessage();
   const [links, setLinks] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [linksError, setLinksError] = useState('');
 
   const subLink = useMemo(() => {
     if (!client?.subId || !subSettings?.enable || !subSettings?.subURI) return '';
@@ -60,30 +64,64 @@ export default function ClientQrModal({
   }, [client, wgInbound, subSettings?.publicHost]);
 
   const hasAnything = !!subLink || !!subJsonLink || !!wgConfigText || links.length > 0;
+  const hasPostQuantumLinks = useMemo(() => links.some(isPostQuantumLink), [links]);
 
   useEffect(() => {
     if (!open || !client?.subId) {
       setLinks([]);
+      setLoading(false);
+      setLinksError('');
       return;
     }
+
     let cancelled = false;
+    setLinks([]);
     setLoading(true);
+    setLinksError('');
+
     (async () => {
       try {
         const msg = await HttpUtil.get(
           `/panel/api/clients/subLinks/${encodeURIComponent(client.subId!)}`,
+          undefined,
+          { silent: true },
         ) as ApiMsg<string[]>;
-        if (!cancelled) {
-          setLinks(msg?.success && Array.isArray(msg.obj) ? msg.obj : []);
+        if (cancelled) return;
+
+        if (!msg?.success) {
+          setLinksError(msg?.msg?.trim() || t('pages.clients.configLoadError', {
+            defaultValue: 'Failed to load client configurations.',
+          }));
+          return;
         }
+        if (!Array.isArray(msg.obj)) {
+          setLinksError(t('pages.clients.configInvalidResponse', {
+            defaultValue: 'The server returned an invalid configuration response.',
+          }));
+          return;
+        }
+        setLinks(msg.obj);
+      } catch (error) {
+        if (cancelled) return;
+        setLinksError(error instanceof Error && error.message
+          ? error.message
+          : t('pages.clients.configLoadError', {
+              defaultValue: 'Failed to load client configurations.',
+            }));
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
+
     return () => { cancelled = true; };
-  }, [open, client?.subId]);
+  }, [open, client?.subId, t]);
 
   const [activeKey, setActiveKey] = useState<string[]>([]);
+
+  const copyConfig = useCallback(async (value: string) => {
+    const copied = await ClipboardManager.copyText(value);
+    if (copied) messageApi.success(t('copied'));
+  }, [messageApi, t]);
 
   const items = useMemo(() => {
     const out: { key: string; label: React.ReactNode; children: React.ReactNode }[] = [];
@@ -110,15 +148,46 @@ export default function ClientQrModal({
           {meta && <span style={{ opacity: 0.6, fontSize: 12 }}>({meta})</span>}
         </span>
       ) : `${t('pages.clients.link')} ${idx + 1}`;
+      const canQr = !isPostQuantumLink(link);
       out.push({
         key: `l${idx}`,
         label,
         children: (
-          <QrPanel
-            value={link}
-            remark={parts?.remark || `${client?.email || ''} #${idx + 1}`}
-            showQr={!isPostQuantumLink(link)}
-          />
+          <>
+            <QrPanel
+              value={link}
+              remark={parts?.remark || `${client?.email || ''} #${idx + 1}`}
+              showQr={canQr}
+            />
+            {!canQr && (
+              <>
+                <Button
+                  type="primary"
+                  block
+                  icon={<CopyOutlined />}
+                  onClick={() => copyConfig(link)}
+                  style={{ marginTop: 12 }}
+                >
+                  {t('pages.clients.copyConfig', { defaultValue: 'Copy config' })}
+                </Button>
+                <Alert
+                type="info"
+                showIcon
+                title={t('pages.clients.postQuantumQrUnavailable', {
+                  defaultValue: 'Direct QR is unavailable for post-quantum configs',
+                })}
+                description={subLink
+                  ? t('pages.clients.postQuantumQrUseSubscription', {
+                      defaultValue: 'These configs contain a large post-quantum parameter. Copy the config directly, or scan the subscription QR above.',
+                    })
+                  : t('pages.clients.postQuantumQrCopy', {
+                      defaultValue: 'These configs contain a large post-quantum parameter. Copy the config directly instead.',
+                    })}
+                  style={{ marginTop: 12 }}
+                />
+              </>
+            )}
+          </>
         ),
       });
     });
@@ -136,7 +205,7 @@ export default function ClientQrModal({
       });
     }
     return out;
-  }, [subLink, subJsonLink, wgConfigText, links, client?.email, t]);
+  }, [subLink, subJsonLink, wgConfigText, links, client?.email, copyConfig, t]);
 
   useEffect(() => {
     if (!open) {
@@ -155,12 +224,50 @@ export default function ClientQrModal({
       centered
       onCancel={() => onOpenChange(false)}
     >
+      {messageContextHolder}
       <Spin spinning={loading}>
-        {!client?.subId && !loading && (
-          <div style={{ padding: 24, textAlign: 'center', opacity: 0.6 }}>{t('pages.clients.noSubId')}</div>
+        {linksError && (
+          <Alert
+            type="error"
+            showIcon
+            title={t('pages.clients.configLoadErrorTitle', {
+              defaultValue: 'Configuration loading failed',
+            })}
+            description={linksError}
+            style={{ marginBottom: 12 }}
+          />
         )}
-        {client?.subId && !hasAnything && !loading && (
-          <div style={{ padding: 24, textAlign: 'center', opacity: 0.6 }}>{t('pages.clients.noLinks')}</div>
+        {!client?.subId && !loading && (
+          <Alert
+            type="warning"
+            showIcon
+            title={t('pages.clients.noSubId', { defaultValue: 'This client has no subscription ID.' })}
+          />
+        )}
+        {client?.subId && !hasAnything && !loading && !linksError && (
+          <Alert
+            type="info"
+            showIcon
+            title={t('pages.clients.noGeneratedConfigs', {
+              defaultValue: 'No client configurations were generated.',
+            })}
+            description={t('pages.clients.noGeneratedConfigsHint', {
+              defaultValue: 'Check that the client is attached to at least one enabled and supported inbound.',
+            })}
+          />
+        )}
+        {hasPostQuantumLinks && subLink && (
+          <Alert
+            type="info"
+            showIcon
+            title={t('pages.clients.postQuantumQrSubscriptionAvailable', {
+              defaultValue: 'Use the subscription QR for post-quantum configs',
+            })}
+            description={t('pages.clients.postQuantumQrUseSubscription', {
+              defaultValue: 'These configs contain a large post-quantum parameter. Copy the config directly, or scan the subscription QR above.',
+            })}
+            style={{ marginBottom: 12 }}
+          />
         )}
         {hasAnything && (
           <Collapse

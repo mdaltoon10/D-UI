@@ -60,7 +60,7 @@ func (a *XraySettingController) initRouter(g *gin.RouterGroup) {
 	g.POST("/outbound-subs/:id/move", a.moveOutboundSub)
 	g.POST("/outbound-subs/:id", a.updateOutboundSub)
 	g.DELETE("/outbound-subs/:id", a.deleteOutboundSub)
-	g.POST("/outbound-subs/:id/del", a.deleteOutboundSub) // axios-friendly alias
+	g.POST("/outbound-subs/:id/del", a.deleteOutboundSub) // POST alias for clients that can't send DELETE
 	g.POST("/outbound-subs/parse", a.parseOutboundSubURL) // preview without saving
 }
 
@@ -97,6 +97,9 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 	if err != nil {
 		clientReverseTags = "[]"
 	}
+
+	xraySetting = service.FilterVisibleOutboundsInXraySetting(xraySetting)
+	xraySetting = service.FilterVisibleBalancersAndRoutingInXraySetting(xraySetting)
 	outboundTestUrl, _ := a.SettingService.GetXrayOutboundTestUrl()
 	if outboundTestUrl == "" {
 		outboundTestUrl = "https://www.google.com/generate_204"
@@ -113,10 +116,16 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 	// - let users pick them in balancers and routing rules
 	// These are not part of the editable template; they are injected at runtime.
 	if subObs, err := a.OutboundSubscriptionService.AllActiveOutbounds(); err == nil && len(subObs) > 0 {
-		xrayResponse["subscriptionOutbounds"] = subObs
+		subObs = service.FilterVisibleOutboundObjects(subObs)
+		if len(subObs) > 0 {
+			xrayResponse["subscriptionOutbounds"] = subObs
+		}
 	}
 	if subTags, err := a.OutboundSubscriptionService.AllActiveOutboundTags(); err == nil && len(subTags) > 0 {
-		xrayResponse["subscriptionOutboundTags"] = subTags
+		subTags = service.FilterVisibleOutboundTags(subTags)
+		if len(subTags) > 0 {
+			xrayResponse["subscriptionOutboundTags"] = subTags
+		}
 	}
 	result, err := json.Marshal(xrayResponse)
 	if err != nil {
@@ -131,6 +140,18 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 // outbounds or routing rules changed, with a process restart otherwise.
 func (a *XraySettingController) updateSetting(c *gin.Context) {
 	xraySetting := c.PostForm("xraySetting")
+
+	if currentSetting, err := a.SettingService.GetXrayConfigTemplate(); err == nil {
+		currentSetting = service.UnwrapXrayTemplateConfig(currentSetting)
+
+		if mergedSetting, mergeErr := service.MergeHiddenOutboundsIntoXraySetting(xraySetting, currentSetting); mergeErr == nil {
+			xraySetting = mergedSetting
+		}
+
+		if mergedSetting, mergeErr := service.MergeHiddenBalancersAndRoutingIntoXraySetting(xraySetting, currentSetting); mergeErr == nil {
+			xraySetting = mergedSetting
+		}
+	}
 	if err := a.XraySettingService.SaveXraySetting(xraySetting); err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
 		return
@@ -248,6 +269,11 @@ func (a *XraySettingController) getOutboundsTraffic(c *gin.Context) {
 // resetOutboundsTraffic resets the traffic statistics for the specified outbound tag.
 func (a *XraySettingController) resetOutboundsTraffic(c *gin.Context) {
 	tag := c.PostForm("tag")
+
+	if service.IsHiddenOutboundTag(tag) {
+		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.resetOutboundTrafficError"), common.NewError("outbound not found"))
+		return
+	}
 	err := a.OutboundService.ResetOutboundTraffic(tag)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.resetOutboundTrafficError"), err)
@@ -258,8 +284,8 @@ func (a *XraySettingController) resetOutboundsTraffic(c *gin.Context) {
 
 // testOutbound tests an outbound configuration and returns the delay/response time.
 // Optional form "allOutbounds": JSON array of all outbounds; used to resolve sockopt.dialerProxy dependencies.
-// Optional form "mode": "tcp" for a fast dial-only probe (parallel-safe),
-// anything else (default) for a full HTTP probe through a temp xray instance.
+// Optional form "mode": "tcp" for a fast dial-only probe, "real" for the cold
+// full-request delay, anything else (default) for a full HTTP probe through a temp xray instance.
 func (a *XraySettingController) testOutbound(c *gin.Context) {
 	outboundJSON := c.PostForm("outbound")
 	allOutboundsJSON := c.PostForm("allOutbounds")
@@ -267,6 +293,11 @@ func (a *XraySettingController) testOutbound(c *gin.Context) {
 
 	if outboundJSON == "" {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), common.NewError("outbound parameter is required"))
+		return
+	}
+
+	if service.IsHiddenOutboundJSON(outboundJSON) {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), common.NewError("outbound not found"))
 		return
 	}
 
@@ -291,8 +322,8 @@ func (a *XraySettingController) testOutbound(c *gin.Context) {
 // temp xray instance and returns an array of results in input order.
 // Form "outbounds": JSON array of outbound configs (required).
 // Optional form "allOutbounds": JSON array of all outbounds; used to resolve sockopt.dialerProxy dependencies.
-// Optional form "mode": "tcp" for fast dial-only probes, anything else
-// (default) for real HTTP requests routed through each outbound.
+// Optional form "mode": "tcp" for fast dial-only probes, "real" for the cold
+// full-request delay, anything else (default) for real HTTP requests routed through each outbound.
 func (a *XraySettingController) testOutbounds(c *gin.Context) {
 	outboundsJSON := c.PostForm("outbounds")
 	allOutboundsJSON := c.PostForm("allOutbounds")
@@ -300,6 +331,11 @@ func (a *XraySettingController) testOutbounds(c *gin.Context) {
 
 	if outboundsJSON == "" {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), common.NewError("outbounds parameter is required"))
+		return
+	}
+
+	if service.ContainsHiddenOutboundJSONList(outboundsJSON) {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), common.NewError("outbound not found"))
 		return
 	}
 
@@ -330,6 +366,7 @@ func (a *XraySettingController) balancerStatus(c *gin.Context) {
 			tags = append(tags, tag)
 		}
 	}
+	tags = service.FilterVisibleBalancerTags(tags)
 	statuses, err := a.XrayService.GetBalancersStatus(tags)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
@@ -351,6 +388,10 @@ func (a *XraySettingController) balancerOverride(c *gin.Context) {
 		return
 	}
 	target := c.PostForm("target")
+	if service.IsHiddenBalancerTag(tag) || (target != "" && service.IsHiddenOutboundTag(target)) {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), common.NewError("balancer not found"))
+		return
+	}
 	if err := a.XrayService.OverrideBalancer(tag, target); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
@@ -379,6 +420,10 @@ func (a *XraySettingController) routeTest(c *gin.Context) {
 		Protocol:   c.PostForm("protocol"),
 		Email:      c.PostForm("email"),
 	}
+	if service.IsHiddenInboundTag(req.InboundTag) || service.IsHiddenClientEmail(req.Email) {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), common.NewError("route not found"))
+		return
+	}
 	if req.Domain == "" && req.IP == "" {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), common.NewError("domain or ip is required"))
 		return
@@ -386,6 +431,10 @@ func (a *XraySettingController) routeTest(c *gin.Context) {
 	result, err := a.XrayService.TestRoute(req)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
+	if service.IsHiddenRouteResult(result) {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), common.NewError("route not found"))
 		return
 	}
 	jsonObj(c, result, nil)

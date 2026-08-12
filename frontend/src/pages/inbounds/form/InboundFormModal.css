@@ -60,3 +60,82 @@
     padding-inline: 10px;
   }
 }
+
+/* SECX UI POLISH: inbound form viewport-aware modal */
+.inbound-form-modal {
+  top: 24px !important;
+  max-width: calc(100vw - 32px);
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+.inbound-form-modal .ant-modal-content {
+  max-height: calc(100dvh - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.inbound-form-modal .ant-modal-header {
+  flex: 0 0 auto;
+}
+
+.inbound-form-modal .ant-modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+.inbound-form-modal .ant-modal-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  background: var(--ant-color-bg-elevated);
+  border-top: 1px solid var(--ant-color-border-secondary);
+  padding-top: 12px;
+}
+
+.inbound-form-modal .ant-tabs,
+.inbound-form-modal .ant-tabs-content-holder,
+.inbound-form-modal .ant-tabs-content,
+.inbound-form-modal .ant-tabs-tabpane {
+  min-width: 0;
+}
+
+.inbound-form-modal .ant-form-item,
+.inbound-form-modal .ant-form-item-control,
+.inbound-form-modal .ant-form-item-control-input,
+.inbound-form-modal .ant-form-item-control-input-content {
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .inbound-form-modal {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px);
+    top: 12px !important;
+    margin: 0 auto;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .inbound-form-modal .ant-modal-content {
+    max-height: calc(100dvh - 24px);
+  }
+
+  .inbound-form-modal .ant-modal-body {
+    padding: 14px;
+  }
+
+  .inbound-form-modal .ant-modal-footer {
+    justify-content: stretch;
+  }
+
+  .inbound-form-modal .ant-modal-footer .ant-btn {
+    flex: 1 1 auto;
+  }
+}

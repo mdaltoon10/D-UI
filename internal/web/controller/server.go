@@ -63,11 +63,9 @@ func (a *ServerController) initRouter(g *gin.RouterGroup) {
 	g.GET("/getNewmlkem768", a.getNewmlkem768)
 	g.GET("/getNewVlessEnc", a.getNewVlessEnc)
 	g.GET("/clientIps", a.getClientIps)
-	g.GET("/fail2banStatus", a.getFail2banStatus)
 
 	g.POST("/stopXrayService", a.stopXrayService)
 	g.POST("/restartXrayService", a.restartXrayService)
-	g.POST("/installXray/:version", a.installXray)
 	g.POST("/updatePanel", a.updatePanel)
 	g.POST("/setUpdateChannel", a.setUpdateChannel)
 	g.POST("/updateGeofile", a.updateGeofile)
@@ -81,6 +79,17 @@ func (a *ServerController) initRouter(g *gin.RouterGroup) {
 	g.POST("/scanRealityTarget", a.scanRealityTarget)
 	g.POST("/scanRealityTargets", a.scanRealityTargets)
 	g.POST("/clientIps", a.setClientIps)
+	g.POST("/strictIPLimitParent", a.setStrictIPLimitParent)
+}
+
+func (a *ServerController) setStrictIPLimitParent(c *gin.Context) {
+	var req service.StrictIPLimitParentConfig
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonMsg(c, "invalid strict ip-limit parent configuration", err)
+		return
+	}
+	err := (&service.StrictIPLimitService{}).SetParentConfig(req)
+	jsonMsg(c, "strict ip-limit parent configured", err)
 }
 
 // startTask registers the @2s ticker that refreshes server status, samples
@@ -106,10 +115,6 @@ func (a *ServerController) startTask() {
 
 // status returns the current server status information.
 func (a *ServerController) status(c *gin.Context) { jsonObj(c, a.serverService.LastStatus(), nil) }
-
-func (a *ServerController) getFail2banStatus(c *gin.Context) {
-	jsonObj(c, a.serverService.GetFail2banStatus(), nil)
-}
 
 func parseHistoryBucket(c *gin.Context) (int, bool) {
 	bucket, err := strconv.Atoi(c.Param("bucket"))
@@ -201,11 +206,15 @@ func (a *ServerController) getPanelUpdateInfo(c *gin.Context) {
 	jsonObj(c, info, nil)
 }
 
-// installXray installs or updates Xray to the specified version.
+// installXray is intentionally disabled in Heimdall.
+// Heimdall ships a pinned, verified core build; this endpoint must not install
+// vanilla Xray releases from XTLS/Xray-core.
 func (a *ServerController) installXray(c *gin.Context) {
-	version := c.Param("version")
-	err := a.serverService.UpdateXray(version)
-	jsonMsg(c, I18nWeb(c, "pages.index.xraySwitchVersionPopover"), err)
+	jsonMsg(
+		c,
+		I18nWeb(c, "pages.index.xraySwitchVersionPopover"),
+		fmt.Errorf("Xray core updates are disabled in Heimdall; use the pinned Heimdall core release workflow"),
+	)
 }
 
 // updatePanel starts a panel self-update. With no "dev" form value it follows

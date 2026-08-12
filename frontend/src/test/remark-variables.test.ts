@@ -28,3 +28,8 @@ describe('remark variables', () => {
     }
   });
 });
+
+
+it('previews the FACTOR remark variable', () => {
+  expect(previewRemark('{{FACTOR}}')).toBe('3x');
+});

@@ -48,6 +48,11 @@ type NodeTrafficSyncJob struct {
 	// noGuidIpEndpoint tracks nodes (by id) whose client-IP attribution endpoint
 	// returned 404, so an old-build node is noted once instead of every cycle.
 	noGuidIpEndpoint sync.Map
+	// Activity state/cursors are per direct node. Cursors advance only after
+	// idempotent rows have been committed locally.
+	activitySyncMu         sync.Mutex
+	activityCursors        map[int]model.ClientActivitySyncCursors
+	noActivitySyncEndpoint sync.Map
 	// prevInboundTotals holds the previous poll's cumulative up/down (and the time
 	// the counter last changed) per node inbound tag, so the next poll can derive
 	// a per-inbound speed delta — node inbounds have no local Xray poll. Touched
@@ -75,7 +80,9 @@ func (a *atomicBool) takeAndReset() bool {
 }
 
 func NewNodeTrafficSyncJob() *NodeTrafficSyncJob {
-	return &NodeTrafficSyncJob{}
+	return &NodeTrafficSyncJob{
+		activityCursors: make(map[int]model.ClientActivitySyncCursors),
+	}
 }
 
 func (j *NodeTrafficSyncJob) Run() {
@@ -131,15 +138,31 @@ func (j *NodeTrafficSyncJob) Run() {
 	}
 	wg.Wait()
 
-	_, clientsDisabled, err := j.inboundService.AddTraffic(nil, nil)
+	repairNeeded, clientsDisabled, err := j.inboundService.AddTraffic(nil, nil)
 	if err != nil {
 		logger.Warning("node traffic sync: depletion check failed:", err)
+
+		if repairNeeded {
+			if repairErr := j.xrayService.RestartXray(true); repairErr != nil {
+				logger.Warning(
+					"node traffic sync: repair xray after rolled-back disable transaction failed:",
+					repairErr,
+				)
+				j.xrayService.SetToNeedRestart()
+			}
+		}
 	}
 	if clientsDisabled {
 		if restartOnDisable, settingErr := j.settingService.GetRestartXrayOnClientDisable(); settingErr == nil && restartOnDisable {
-			if err := j.xrayService.RestartXray(true); err != nil {
-				logger.Warning("node traffic sync: restart xray after disabling clients failed:", err)
-				j.xrayService.SetToNeedRestart()
+			// A remote-only depletion is a cheap no-op for the local core. If the
+			// same client also belongs to a local inbound, this immediately aligns
+			// the stored Process snapshot through hot apply. Concurrent calls are
+			// serialized by XrayService.
+			if err := j.xrayService.ReconcileXray(); err != nil {
+				logger.Warning(
+					"node traffic sync: reconcile xray after disabling clients failed:",
+					err,
+				)
 			}
 		} else if settingErr != nil {
 			logger.Warning("node traffic sync: get RestartXrayOnClientDisable failed:", settingErr)
@@ -149,10 +172,17 @@ func (j *NodeTrafficSyncJob) Run() {
 
 	j.maybePushGlobals(mgr, nodes)
 
-	// Prune stale local-online entries (no local active emails or inbound tags
-	// to add here — only the local xray poll feeds those) so a stopped local
-	// xray's clients and inbounds still age out between traffic polls.
-	j.inboundService.RefreshLocalOnlineClients(nil, nil)
+	// Prune stale grace-based local sources without touching exact Xray users.
+	// This also ages out auxiliary sidecars if their own poll temporarily fails.
+	beforePresence := j.inboundService.GetOnlineClients()
+	presenceChanged := j.inboundService.PruneLocalPresence()
+	broadcastPresenceTransition(
+		beforePresence,
+		presenceChanged,
+		j.inboundService.GetOnlineClients,
+		websocket.HasClients,
+		websocket.BroadcastPresence,
+	)
 
 	// Derive per-node-inbound speed every tick (keeps the baseline fresh even
 	// with no dashboard open); only broadcast it when someone is watching.
@@ -368,14 +398,22 @@ func (j *NodeTrafficSyncJob) syncOne(mgr *runtime.Manager, n *model.Node, doIpSy
 		reconcileErr := j.inboundService.ReconcileNode(reconcileCtx, rt, n)
 		reconcileCancel()
 		if reconcileErr != nil {
-			logger.Warningf("node traffic sync: reconcile for %s failed: %v", n.Name, reconcileErr)
-			return nil
+			// The dirty flag stays set so reconcile retries next tick, but traffic
+			// accounting must keep flowing: one rejected inbound used to starve the
+			// whole node's traffic/online sync forever (#5685).
+			logger.Warningf("node traffic sync: reconcile for %s failed, continuing with traffic pull: %v", n.Name, reconcileErr)
+		} else {
+			if clearErr := j.nodeService.ClearNodeDirty(n.Id, n.ConfigDirtyAt); clearErr != nil {
+				logger.Warningf("node traffic sync: clear dirty for %s failed: %v", n.Name, clearErr)
+			}
+			j.structural.set()
 		}
-		if clearErr := j.nodeService.ClearNodeDirty(n.Id, n.ConfigDirtyAt); clearErr != nil {
-			logger.Warningf("node traffic sync: clear dirty for %s failed: %v", n.Name, clearErr)
-		}
-		j.structural.set()
 	}
+
+	// Activity replication is independent from ordinary traffic accounting.
+	// A missing endpoint means the node is an older build; traffic sync still
+	// continues and the state is retried after that node is upgraded.
+	j.syncClientActivity(n, rt)
 
 	ctx, cancel := context.WithTimeout(context.Background(), nodeTrafficSyncRequestTimeout)
 	defer cancel()
@@ -388,6 +426,20 @@ func (j *NodeTrafficSyncJob) syncOne(mgr *runtime.Manager, n *model.Node, doIpSy
 	}
 	service.FilterNodeSnapshot(n, snap)
 	_, _, dirty, _, _ := j.nodeService.NodeSyncState(n.Id)
+	if !dirty {
+		if pending, checkErr := j.inboundService.SnapshotHasUnadoptedInbounds(n.Id, snap); checkErr != nil {
+			logger.Warningf("node traffic sync: unadopted-inbound check for %s failed: %v", n.Name, checkErr)
+		} else if pending {
+			hostCtx, hostCancel := context.WithTimeout(context.Background(), nodeTrafficSyncRequestTimeout)
+			groups, hgErr := rt.FetchHostGroups(hostCtx)
+			hostCancel()
+			if hgErr != nil {
+				logger.Debugf("node traffic sync: fetch host groups from %s failed: %v", n.Name, hgErr)
+			} else {
+				snap.HostGroups = groups
+			}
+		}
+	}
 	changed, err := j.inboundService.SetRemoteTraffic(n.Id, snap, dirty)
 	if err != nil {
 		logger.Warningf("node traffic sync: merge for %s failed: %v", n.Name, err)
@@ -395,6 +447,11 @@ func (j *NodeTrafficSyncJob) syncOne(mgr *runtime.Manager, n *model.Node, doIpSy
 	}
 	if changed {
 		j.structural.set()
+	}
+	if !dirty && n.InboundsAdoptedAt == 0 {
+		if markErr := j.nodeService.MarkNodeInboundsAdopted(n.Id); markErr != nil {
+			logger.Warningf("node traffic sync: mark inbounds adopted for %s failed: %v", n.Name, markErr)
+		}
 	}
 
 	active := make([]string, 0, len(snap.OnlineEmails))

@@ -1,4 +1,5 @@
 {
+  "get": "Ambil",
   "username": "Nama Pengguna",
   "password": "Kata Sandi",
   "login": "Masuk",
@@ -155,7 +156,7 @@
       "xraySwitchClick": "Pilih versi yang ingin Anda pindah.",
       "xraySwitchClickDesk": "Pilih dengan hati-hati, karena versi yang lebih lama mungkin tidak kompatibel dengan konfigurasi saat ini.",
       "updatePanel": "Perbarui Panel",
-      "panelUpdateDesc": "Ini akan memperbarui Daltoon-UI ke rilis terbaru dan me-restart layanan panel.",
+      "panelUpdateDesc": "Ini akan memperbarui HEIMDALL ke rilis terbaru dan me-restart layanan panel.",
       "currentPanelVersion": "Versi panel saat ini",
       "latestPanelVersion": "Versi panel terbaru",
       "panelUpToDate": "Panel sudah terbaru",
@@ -228,11 +229,11 @@
       "xraySwitchVersionDialogDesc": "Ini akan mengubah versi Xray ke #version#.",
       "xraySwitchVersionPopover": "Xray berhasil diperbarui",
       "panelUpdateDialog": "Apakah Anda benar-benar ingin memperbarui panel?",
-      "panelUpdateDialogDesc": "Ini akan memperbarui Daltoon-UI ke #version# dan me-restart layanan panel.",
+      "panelUpdateDialogDesc": "Ini akan memperbarui HEIMDALL ke #version# dan me-restart layanan panel.",
       "panelUpdateCheckPopover": "Pemeriksaan pembaruan panel gagal",
       "panelUpdateStartedPopover": "Pembaruan panel dimulai",
       "panelUpdateFailedTitle": "Pembaruan panel gagal",
-      "panelUpdateFailedDesc": "Pembaruan tidak selesai dengan sukses. Periksa log server, atau jalankan 'd-ui update' dari baris perintah.",
+      "panelUpdateFailedDesc": "Pembaruan tidak selesai dengan sukses. Periksa log server, atau jalankan 'x-ui update' dari baris perintah.",
       "panelUpdateUnknownTitle": "Tidak dapat memastikan pembaruan selesai",
       "panelUpdateUnknownDesc": "Panel tidak melaporkan hasil tepat waktu. Muat ulang untuk memeriksa versi saat ini, atau periksa log server.",
       "geofileUpdateDialog": "Apakah Anda yakin ingin memperbarui geofile?",
@@ -261,40 +262,19 @@
       "backup": "Cadangan",
       "backupTitle": "Cadangan & Pulihkan",
       "exportDatabase": "Cadangkan",
-      "exportDatabaseDesc": "Klik untuk mengunduh file .db yang berisi cadangan dari database Anda saat ini ke perangkat Anda.",
+      "exportDatabaseDesc": "Klik untuk mengunduh file .db yang berisi cadangan dari database Anda saat ini ke perangkat Anda. Berkas yang sama juga dapat dipulihkan ke panel yang berjalan di PostgreSQL.",
       "importDatabase": "Pulihkan",
-      "importDatabaseDesc": "Klik untuk memilih dan mengunggah file .db dari perangkat Anda untuk memulihkan database dari cadangan.",
+      "importDatabaseDesc": "Klik untuk memilih dan mengunggah cadangan .db atau dump migrasi (.dump) dari perangkat Anda untuk memulihkan database.",
       "importDatabaseSuccess": "Database berhasil diimpor",
       "importDatabaseError": "Terjadi kesalahan saat mengimpor database",
       "readDatabaseError": "Terjadi kesalahan saat membaca database",
       "getDatabaseError": "Terjadi kesalahan saat mengambil database",
       "getConfigError": "Terjadi kesalahan saat mengambil file konfigurasi",
-      "backupPostgresNote": "Panel ini berjalan di PostgreSQL. «Cadangkan» mengunduh arsip pg_dump (.dump) dan «Pulihkan» memuatnya kembali dengan pg_restore. Server memerlukan alat klien PostgreSQL (pg_dump dan pg_restore) terpasang.",
+      "backupPostgresNote": "Panel ini berjalan di PostgreSQL. «Cadangkan» mengunduh arsip pg_dump (.dump) dan «Pulihkan» memuatnya kembali dengan pg_restore. «Pulihkan» juga menerima basis data SQLite (.db) atau dump migrasi SQLite dan mengimpor datanya ke PostgreSQL. Server memerlukan alat klien PostgreSQL (pg_dump dan pg_restore) terpasang.",
       "exportDatabasePgDesc": "Klik untuk mengunduh dump PostgreSQL (.dump) dari basis data Anda saat ini ke perangkat Anda.",
-      "importDatabasePgDesc": "Klik untuk memilih dan mengunggah berkas .dump guna memulihkan basis data PostgreSQL Anda. Ini menggantikan semua data saat ini.",
+      "importDatabasePgDesc": "Klik untuk memilih dan mengunggah cadangan PostgreSQL (.dump), basis data SQLite (.db), atau dump migrasi SQLite guna memulihkan basis data Anda. Ini menggantikan semua data saat ini.",
       "migrationDownload": "Unduh migrasi",
-      "migrationDownloadDesc": "Klik untuk mengunduh ekspor .dump (teks SQL) portabel dari basis data SQLite Anda.",
-      "migrationDownloadPgDesc": "Klik untuk mengunduh basis data SQLite .db yang dibuat dari data PostgreSQL Anda, siap menjalankan panel ini di SQLite.",
-      "openSockets": "open sockets",
-      "throughputSub": "2m window",
-      "avgWindow": "Avg (2m)",
-      "avg": "AVG",
-      "peak": "PEAK",
-      "free": "FREE",
-      "uptime": "Uptime",
-      "panel": "Panel",
-      "healthCritical": "High utilization: {list}",
-      "healthWarm": "Elevated utilization: {list}",
-      "restartXrayConfirm": "Are you sure you want to restart Xray service?",
-      "stopXrayConfirm": "Are you sure you want to stop Xray service?",
-      "restartingXray": "Restarting Xray...",
-      "stoppingXray": "Stopping Xray...",
-      "refreshStats": "Refresh Stats",
-      "refreshed": "Status refreshed",
-      "restartingXrayNotice": "Xray service is restarting. Connection may briefly pause.",
-      "stopXrayNotice": "Xray service is stopping.",
-      "restartedSuccess": "Xray restarted successfully.",
-      "stoppedSuccess": "Xray stopped successfully."
+      "migrationDownloadPgDesc": "Klik untuk mengunduh basis data SQLite .db yang dibuat dari data PostgreSQL Anda, siap menjalankan panel ini di SQLite."
     },
     "inbounds": {
       "title": "Inbound",
@@ -542,6 +522,13 @@
         "mtgRouteOutbound": "Outbound",
         "mtgRouteOutboundHint": "Opsional. Paksa lalu lintas Telegram keluar melalui outbound (atau balancer) ini. Biarkan kosong agar aturan routing yang menentukan.",
         "mtgRouteOutboundPlaceholder": "Gunakan aturan routing",
+        "mtprotoFakeTlsDomainHint": "Domain FakeTLS default untuk membuat secret klien baru. Setiap klien bisa memakai domainnya sendiri.",
+        "mtgThrottleMaxConnections": "Koneksi maksimum",
+        "mtgThrottleMaxConnectionsHint": "Batasi koneksi bersamaan semua pengguna dengan pembagian adil. 0 menonaktifkan.",
+        "mtgAdTagInvalid": "Ad-tag harus tepat 32 karakter heksadesimal.",
+        "mtgPublicIpv4": "IPv4 Publik",
+        "mtgPublicIpv6": "IPv6 Publik",
+        "mtgPublicIpHint": "Alamat publik server ini yang dapat dijangkau, digunakan oleh proxy perantara ad-tag. Biarkan kosong agar mtg mendeteksinya secara otomatis.",
         "visionTestseed": "Vision testseed",
         "version": "Versi",
         "udpIdleTimeout": "UDP idle timeout (d)",
@@ -707,7 +694,8 @@
         "bytesPerSec": "Byte per detik",
         "bytesPerSecTip": "Batas kecepatan (byte/detik) yang diterapkan pada lalu lintas fallback setelah ambang batas, agar probe tidak dapat memakai server Anda sebagai bandwidth gratis menuju target. 0 = tanpa batas (menonaktifkan arah ini).",
         "burstBytesPerSec": "Byte per detik burst",
-        "burstBytesPerSecTip": "Kelonggaran untuk burst singkat di atas laju tetap (ukuran token-bucket). Jika lebih kecil dari Byte per detik, nilainya dinaikkan agar sama."
+        "burstBytesPerSecTip": "Kelonggaran untuk burst singkat di atas laju tetap (ukuran token-bucket). Jika lebih kecil dari Byte per detik, nilainya dinaikkan agar sama.",
+        "generateRandomPin": "Hasilkan hash acak"
       },
       "info": {
         "mode": "Mode",
@@ -743,7 +731,9 @@
           "responseHeader": "Header Respons"
         }
       },
-      "sniffingDestOverride": "Penggantian tujuan"
+      "sniffingDestOverride": "Penggantian tujuan",
+      "usageMultiplier": "Faktor",
+      "usageMultiplierHelp": "Faktor perhitungan trafik klien"
     },
     "clients": {
       "tabBasics": "Dasar",
@@ -788,7 +778,7 @@
       "renew": "Perpanjangan otomatis",
       "renewDesc": "Perpanjangan otomatis setelah kedaluwarsa. (0 = nonaktif) (satuan: hari)",
       "renewDays": "Perpanjangan otomatis (hari)",
-      "searchPlaceholder": "Cari email, komentar, sub ID, UUID, kata sandi, auth…",
+      "searchPlaceholder": "Cari email, komentar, sub ID, UUID, kata sandi, auth, Telegram ID…",
       "filterTitle": "Filter klien",
       "clearAllFilters": "Hapus semua",
       "filters": {
@@ -815,10 +805,9 @@
       "addClients": "Tambah klien",
       "limitIp": "Batas IP",
       "limitIpDesc": "Jumlah maksimum IP bersamaan. 0 = tidak terbatas.",
-      "limitIpFail2banMissing": "Fail2ban tidak terpasang, sehingga batas IP tidak dapat diterapkan. Pasang Fail2ban dari menu bash d-ui untuk mengaktifkan opsi ini.",
-      "limitIpFail2banWindows": "Fail2ban tidak tersedia di Windows, sehingga batas IP tidak dapat diterapkan.",
       "limitIpDisabled": "Fitur batas IP dinonaktifkan di server ini.",
       "password": "Kata sandi",
+      "passwordDesc": "Hanya digunakan oleh klien Trojan dan Shadowsocks; diabaikan untuk VLESS, VMess, Hysteria, dan WireGuard.",
       "subId": "ID Langganan",
       "online": "Online",
       "email": "Email",
@@ -829,6 +818,7 @@
       "groupPlaceholder": "mis. customer-a",
       "comment": "Komentar",
       "traffic": "Lalu lintas",
+      "speed": "Kecepatan",
       "offline": "Offline",
       "addClient": "Tambah klien",
       "qrCode": "Kode QR",
@@ -918,6 +908,7 @@
       "delOrphansConfirmContent": "Menghapus setiap klien yang tidak terhubung ke inbound mana pun, beserta catatan lalu lintasnya. Tidak dapat dibatalkan.",
       "auth": "Auth",
       "hysteriaAuth": "Hysteria Auth",
+      "hysteriaAuthDesc": "Kredensial yang hanya digunakan oleh klien Hysteria. Trojan dan Shadowsocks menggunakan kolom \"Kata sandi\" sebagai gantinya.",
       "uuid": "UUID",
       "flow": "Flow",
       "vmessSecurity": "Keamanan VMess",
@@ -926,6 +917,10 @@
       "wireguardPreSharedKey": "Kunci Pra-Berbagi WireGuard",
       "wireguardAllowedIPs": "IP yang Diizinkan WireGuard",
       "wireguardAllowedIPsHint": "Biarkan kosong untuk penetapan otomatis; pisahkan entri dengan koma",
+      "mtprotoSecret": "Secret MTProto",
+      "mtprotoSecretHint": "Secret FakeTLS klien. Buat ulang untuk menggantinya.",
+      "mtprotoAdTag": "Ad-tag (kanal bersponsor)",
+      "mtprotoAdTagHint": "Tag heksadesimal 32 karakter opsional dari pendaftaran proxy Telegram. Jika diatur, klien ini dirutekan melalui proxy perantara Telegram dan kanal bersponsor muncul di bagian atas daftar obrolannya.",
       "reverseTag": "Reverse tag",
       "reverseTagPlaceholder": "Reverse tag opsional",
       "telegramId": "ID pengguna Telegram",
@@ -951,7 +946,11 @@
         "delOrphans": "{count} klien tanpa inbound dihapus",
         "imported": "{count} klien diimpor",
         "importedMixed": "{ok} diimpor, {failed} dilewati"
-      }
+      },
+      "uploadMbps": "Upload Limit (Mbps)",
+      "uploadMbpsDesc": "Aggregate upload speed across all connections. 0 = unlimited.",
+      "downloadMbps": "Download Limit (Mbps)",
+      "downloadMbpsDesc": "Aggregate download speed across all connections. 0 = unlimited."
     },
     "groups": {
       "title": "Grup",
@@ -1207,7 +1206,7 @@
       "subAnnounce": "Pengumuman",
       "subAnnounceDesc": "Teks pengumuman yang ditampilkan di klien VPN",
       "subThemeDir": "Direktori Tema Langganan",
-      "subThemeDirDesc": "Path absolut ke folder yang berisi template kustom (index.html/sub.html) untuk halaman langganan (mis. /etc/d-ui/sub_templates/my-theme/). Biarkan kosong untuk menggunakan halaman default.",
+      "subThemeDirDesc": "Path absolut ke folder yang berisi template kustom (index.html/sub.html) untuk halaman langganan (mis. /etc/3x-ui/sub_templates/my-theme/). Biarkan kosong untuk menggunakan halaman default.",
       "subThemeDirDocs": "Panduan templat ↗",
       "subEnableRouting": "Aktifkan perutean",
       "subEnableRoutingDesc": "Pengaturan global untuk mengaktifkan perutean (routing) di klien VPN. (Hanya untuk Happ)",
@@ -1421,6 +1420,12 @@
       "eventMemoryHigh": "Penggunaan memori tinggi (%)",
       "remarkTemplate": "Templat Catatan",
       "remarkTemplateDesc": "Jika diatur, ini menggantikan model catatan untuk setiap tautan langganan — tulis format Anda sendiri dengan token variabel (gunakan tombol untuk menyisipkannya). Biarkan kosong untuk memakai model di atas.",
+      "remarkModel": "Model Catatan & Karakter Pemisah",
+      "sampleRemark": "Contoh Catatan",
+      "subShowInfo": "Tampilkan Info Penggunaan",
+      "subShowInfoDesc": "Sisa traffic dan tanggal akan ditampilkan di aplikasi klien.",
+      "subEmailInRemark": "Sertakan Email dalam Nama",
+      "subEmailInRemarkDesc": "Sertakan email klien dalam nama profil langganan.",
       "validation": {
         "pathLeadingSlash": "Path harus diawali dengan /"
       },
@@ -1615,7 +1620,8 @@
         "acceptProxyProtocol": "Terima proxy protocol",
         "proxyProtocol": "Proxy protocol",
         "tcpUserTimeoutMs": "TCP user timeout (ms)",
-        "tcpKeepAliveIdleS": "TCP keep-alive idle (d)"
+        "tcpKeepAliveIdleS": "TCP keep-alive idle (d)",
+        "workers": "Workers"
       },
       "outbound": {
         "addOutbound": "Tambahkan Keluar",
@@ -1628,6 +1634,8 @@
         "tag": "Tag",
         "tagDesc": "Tag Unik",
         "address": "Alamat",
+        "egress": "Egress",
+        "egressHint": "Run an HTTP test to show egress IP and country.",
         "reverse": "Revers",
         "domain": "Domain",
         "type": "Tipe",
@@ -1646,7 +1654,8 @@
         "testSuccess": "Tes berhasil",
         "testFailed": "Tes gagal",
         "testError": "Gagal menguji outbound",
-        "testModeTooltip": "TCP: probe dial-only cepat. HTTP: permintaan penuh via xray.",
+        "modeRealDelay": "Delay nyata",
+        "testModeTooltip": "TCP: probe dial-only cepat. HTTP: permintaan penuh via xray. Delay nyata: total waktu termasuk pembentukan koneksi.",
         "testAll": "Tes semua",
         "httpStatus": "Status HTTP",
         "breakdownConnect": "Koneksi proxy",
@@ -1760,6 +1769,7 @@
         "tagPlaceholder": "tag balancer unik",
         "selector": "Selector",
         "fallback": "Fallback",
+        "cycleTooltip": "Siklus: {path} → (kembali ke {start})",
         "expected": "Diharapkan",
         "expectedPlaceholder": "jumlah node optimal",
         "maxRtt": "Maks. RTT",
@@ -1769,7 +1779,12 @@
         "balancerDesc": "BalancerTag dan outboundTag tidak dapat digunakan secara bersamaan. Jika digunakan secara bersamaan, hanya outboundTag yang akan berfungsi.",
         "costMatch": "Pola tag",
         "costValue": "Bobot",
-        "costRegexp": "Pencocokan ekspresi reguler"
+        "costRegexp": "Pencocokan ekspresi reguler",
+        "balancerDeleteInUse": "Tidak dapat menghapus load balancer ini — digunakan sebagai fallback untuk: {names}",
+        "balancerFallbackCycle": "Tidak dapat mengatur load balancer ini sebagai fallback — akan menciptakan dependensi siklik.",
+        "balancerFallbackInfo": "Lalu lintas akan di-routing melalui: Load Balancer → Loopback → Server → Load Balancer tujuan → Koneksi keluar. Ini menambahkan hop tambahan melalui server, yang dapat menyebabkan sedikit penundaan.",
+        "fallbackBalancerHint": "Pilih load balancer lain sebagai fallback",
+        "reservedPrefix": "Awalan _bl_ dicadangkan untuk objek loopback internal load balancer"
       },
       "wireguard": {
         "secretKey": "Kunci Rahasia",
@@ -1863,14 +1878,17 @@
         "dnsPresetFamily": "Keluarga",
         "clearAll": "Hapus Semua",
         "clearAllTitle": "Hapus semua server DNS?",
-        "clearAllConfirm": "Ini akan menghapus semua server DNS dari daftar. Tidak dapat dibatalkan."
+        "clearAllConfirm": "Ini akan menghapus semua server DNS dari daftar. Tidak dapat dibatalkan.",
+        "dnsLeakWarning": "DNS dapat bocor lewat localhost, UDP/TCP polos, DoH/DoQ mode lokal, kueri fallback, atau EDNS client IP. Gunakan DoH yang dirutekan, pin resolver di hosts, dan nonaktifkan fallback saat privasi penting."
       },
       "fakedns": {
         "add": "Tambahkan DNS Palsu",
         "edit": "Edit DNS Palsu",
         "ipPool": "Subnet Kumpulan IP",
         "poolSize": "Ukuran Kolam"
-      }
+      },
+      "defaultOutbound": "Outbound default",
+      "defaultOutboundDesc": "Lalu lintas tanpa aturan routing memakai outbound ini (yang pertama dalam daftar)."
     },
     "hosts": {
       "addHost": "Tambah Host",
@@ -1926,7 +1944,8 @@
         "tags": "Tag",
         "nodeGuids": "Node",
         "excludeFromSubTypes": "Kecualikan dari format",
-        "verifyPeerCertByName": "Verifikasi sertifikat peer berdasarkan nama"
+        "verifyPeerCertByName": "Verifikasi sertifikat peer berdasarkan nama",
+        "inheritAddress": "Warisi alamat"
       },
       "hints": {
         "address": "Biarkan kosong untuk mewarisi alamat inbound itu sendiri.",
@@ -1976,7 +1995,8 @@
         "descRESET_DAYS": "Periode reset trafik dalam hari",
         "descPROTOCOL": "Protokol inbound (VLESS, VMess, Trojan, …)",
         "descTRANSPORT": "Jaringan transport (tcp, ws, grpc, …)",
-        "descSECURITY": "Keamanan transport (TLS, REALITY, NONE)"
+        "descSECURITY": "Keamanan transport (TLS, REALITY, NONE)",
+        "descFACTOR": "Inbound usage factor, for example 3x"
       },
       "toasts": {
         "list": "Gagal memuat host",
@@ -2027,10 +2047,14 @@
       "startDesc": "Tampilkan menu utama",
       "helpDesc": "Bantuan bot",
       "statusDesc": "Periksa status bot",
-      "idDesc": "Tampilkan ID Telegram Anda"
+      "idDesc": "Tampilkan ID Telegram Anda",
+      "usageDesc": "Lihat pemakaian klien: /usage email",
+      "inboundDesc": "Cari inbound: /inbound nama (admin)",
+      "restartDesc": "Mulai ulang inti Xray (admin)",
+      "clearallDesc": "Reset trafik semua klien (admin)"
     },
     "messages": {
-      "cpuThreshold": "Beban CPU {{ .Percent }}% melebihi batas {{ .Threshold }}%",
+      "cpuThreshold": "🔴 Beban CPU {{ .Percent }}% melebihi batas {{ .Threshold }}%",
       "selectUserFailed": "❌ Kesalahan dalam pemilihan pengguna!",
       "userSaved": "✅ Pengguna Telegram tersimpan.",
       "loginSuccess": "✅ Berhasil masuk ke panel.\r\n",
@@ -2039,7 +2063,7 @@
       "report": "🕰 Laporan Terjadwal: {{ .RunTime }}\r\n",
       "datetime": "⏰ Tanggal & Waktu: {{ .DateTime }}\r\n",
       "hostname": "💻 Host: {{ .Hostname }}\r\n",
-      "version": "🚀 Versi Daltoon-UI: {{ .Version }}\r\n",
+      "version": "🚀 Versi HEIMDALL: {{ .Version }}\r\n",
       "xrayVersion": "📡 Versi Xray: {{ .XrayVersion }}\r\n",
       "ipv6": "🌐 IPv6: {{ .IPv6 }}\r\n",
       "ipv4": "🌐 IPv4: {{ .IPv4 }}\r\n",
@@ -2139,7 +2163,6 @@
       "confirmNumber": "✅ Konfirmasi: {{ .Num }}",
       "confirmNumberAdd": "✅ Konfirmasi menambahkan: {{ .Num }}",
       "limitTraffic": "🚧 Batas Lalu Lintas",
-      "getBanLogs": "Dapatkan Log Pemblokiran",
       "allClients": "Semua Klien",
       "addClient": "Tambah Klien",
       "submitDisable": "Kirim Sebagai Nonaktif ☑️",
@@ -2208,5 +2231,8 @@
     "statusFailed": "GAGAL",
     "statusDown": "MATI",
     "statusUp": "AKTIF"
+  },
+  "bulk": {
+    "targets": "Targets"
   }
 }

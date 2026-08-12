@@ -1,4 +1,4 @@
-// Package config provides configuration management utilities for the d-ui panel,
+// Package config provides configuration management utilities for the 3x-ui panel,
 // including version information, logging levels, database paths, and environment variable handling.
 package config
 
@@ -41,7 +41,7 @@ const (
 	Error   LogLevel = "error"
 )
 
-// GetBaseVersion returns the raw embedded release version of the d-ui panel
+// GetBaseVersion returns the raw embedded release version of the 3x-ui panel
 // (e.g. "3.4.0"). This is the panel's own version, not the Xray version. For the
 // version a panel advertises/displays (which adds a "dev+<sha>" label on dev
 // builds), use GetPanelVersion.
@@ -49,7 +49,7 @@ func GetBaseVersion() string {
 	return strings.TrimSpace(version)
 }
 
-// GetName returns the name of the d-ui application.
+// GetName returns the name of the 3x-ui application.
 func GetName() string {
 	return strings.TrimSpace(name)
 }
@@ -92,43 +92,43 @@ func GetLogLevel() LogLevel {
 	if IsDebug() {
 		return Debug
 	}
-	logLevel := os.Getenv("DUI_LOG_LEVEL")
+	logLevel := os.Getenv("XUI_LOG_LEVEL")
 	if logLevel == "" {
 		return Info
 	}
 	return LogLevel(logLevel)
 }
 
-// IsDebug returns true if debug mode is enabled via the DUI_DEBUG environment variable.
+// IsDebug returns true if debug mode is enabled via the XUI_DEBUG environment variable.
 func IsDebug() bool {
-	return os.Getenv("DUI_DEBUG") == "true"
+	return os.Getenv("XUI_DEBUG") == "true"
 }
 
-// IsSkipHSTS returns true if skipping HSTS mode is enabled via the DUI_SKIP_HSTS environment variable.
+// IsSkipHSTS returns true if skipping HSTS mode is enabled via the XUI_SKIP_HSTS environment variable.
 func IsSkipHSTS() bool {
-	return os.Getenv("DUI_SKIP_HSTS") == "true"
+	return os.Getenv("XUI_SKIP_HSTS") == "true"
 }
 
 func GetPortOverride() (port int, configured bool, err error) {
-	value, ok := os.LookupEnv("DUI_PORT")
+	value, ok := os.LookupEnv("XUI_PORT")
 	if !ok || strings.TrimSpace(value) == "" {
 		return 0, false, nil
 	}
 
 	port, err = strconv.Atoi(strings.TrimSpace(value))
 	if err != nil {
-		return 0, true, fmt.Errorf("parse DUI_PORT: %w", err)
+		return 0, true, fmt.Errorf("parse XUI_PORT: %w", err)
 	}
 	if port < 1 || port > 65535 {
-		return 0, true, fmt.Errorf("DUI_PORT must be between 1 and 65535")
+		return 0, true, fmt.Errorf("XUI_PORT must be between 1 and 65535")
 	}
 
 	return port, true, nil
 }
 
-// GetBinFolderPath returns the path to the binary folder, defaulting to "bin" if not set via DUI_BIN_FOLDER.
+// GetBinFolderPath returns the path to the binary folder, defaulting to "bin" if not set via XUI_BIN_FOLDER.
 func GetBinFolderPath() string {
-	binFolderPath := os.Getenv("DUI_BIN_FOLDER")
+	binFolderPath := os.Getenv("XUI_BIN_FOLDER")
 	if binFolderPath == "" {
 		binFolderPath = "bin"
 	}
@@ -154,14 +154,14 @@ func getBaseDir() string {
 
 // GetDBFolderPath returns the path to the database folder based on environment variables or platform defaults.
 func GetDBFolderPath() string {
-	dbFolderPath := os.Getenv("DUI_DB_FOLDER")
+	dbFolderPath := os.Getenv("XUI_DB_FOLDER")
 	if dbFolderPath != "" {
 		return dbFolderPath
 	}
 	if runtime.GOOS == "windows" {
 		return getBaseDir()
 	}
-	return "/etc/d-ui"
+	return "/etc/x-ui"
 }
 
 // GetDBPath returns the full path to the database file.
@@ -171,7 +171,7 @@ func GetDBPath() string {
 
 // GetUpdateStatusFilePath returns the path to the panel self-update status
 // file update.sh writes on completion. It lives beside the database, outside
-// DUI_MAIN_FOLDER, so it survives an update regardless of what happens to
+// XUI_MAIN_FOLDER, so it survives an update regardless of what happens to
 // that folder.
 func GetUpdateStatusFilePath() string {
 	return filepath.Join(GetDBFolderPath(), "update-status.json")
@@ -179,7 +179,7 @@ func GetUpdateStatusFilePath() string {
 
 // GetDBKind returns the configured database backend: "sqlite" (default) or "postgres".
 func GetDBKind() string {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("DUI_DB_TYPE")))
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("XUI_DB_TYPE")))
 	switch v {
 	case "postgres", "postgresql", "pg":
 		return "postgres"
@@ -188,9 +188,9 @@ func GetDBKind() string {
 	}
 }
 
-// GetDBDSN returns the PostgreSQL DSN from DUI_DB_DSN. Empty for sqlite.
+// GetDBDSN returns the PostgreSQL DSN from XUI_DB_DSN. Empty for sqlite.
 func GetDBDSN() string {
-	return strings.TrimSpace(os.Getenv("DUI_DB_DSN"))
+	return strings.TrimSpace(os.Getenv("XUI_DB_DSN"))
 }
 
 // GetEnvFilePaths returns the candidate service environment file paths (the file
@@ -200,15 +200,15 @@ func GetEnvFilePaths() []string {
 		return nil
 	}
 	return []string{
-		"/etc/default/d-ui",
-		"/etc/conf.d/d-ui",
-		"/etc/sysconfig/d-ui",
+		"/etc/default/x-ui",
+		"/etc/conf.d/x-ui",
+		"/etc/sysconfig/x-ui",
 	}
 }
 
 // GetLogFolder returns the path to the log folder based on environment variables or platform defaults.
 func GetLogFolder() string {
-	logFolderPath := os.Getenv("DUI_LOG_FOLDER")
+	logFolderPath := os.Getenv("XUI_LOG_FOLDER")
 	if logFolderPath != "" {
 		return logFolderPath
 	}
@@ -216,12 +216,12 @@ func GetLogFolder() string {
 	// scatters a log/ directory through the source tree (one per tested package).
 	// Redirect test runs to a shared temp folder so the source tree stays clean.
 	if testing.Testing() {
-		return filepath.Join(os.TempDir(), "d-ui-test-log")
+		return filepath.Join(os.TempDir(), "3x-ui-test-log")
 	}
 	if runtime.GOOS == "windows" {
 		return filepath.Join(".", "log")
 	}
-	return "/var/log/d-ui"
+	return "/var/log/x-ui"
 }
 
 func copyFile(src, dst string) error {
@@ -249,10 +249,10 @@ func init() {
 	if runtime.GOOS != "windows" {
 		return
 	}
-	if os.Getenv("DUI_DB_FOLDER") != "" {
+	if os.Getenv("XUI_DB_FOLDER") != "" {
 		return
 	}
-	oldDBFolder := "/etc/d-ui"
+	oldDBFolder := "/etc/x-ui"
 	oldDBPath := fmt.Sprintf("%s/%s.db", oldDBFolder, GetName())
 	newDBFolder := GetDBFolderPath()
 	newDBPath := fmt.Sprintf("%s/%s.db", newDBFolder, GetName())

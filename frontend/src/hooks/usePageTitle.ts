@@ -7,6 +7,8 @@ const TITLE_KEYS: Record<string, string> = {
   '/inbounds': 'menu.inbounds',
   '/clients': 'menu.clients',
   '/groups': 'menu.groups',
+  '/admins': 'admins.title',
+  '/admin-roles': 'adminRoles.title',
   '/nodes': 'menu.nodes',
   '/hosts': 'menu.hosts',
   '/settings': 'menu.settings',
@@ -22,7 +24,7 @@ export function usePageTitle() {
 
   useEffect(() => {
     const key = TITLE_KEYS[pathname];
-    const title = key ? t(key) : 'Daltoon-UI';
+    const title = key ? t(key) : 'HEIMDALL';
     const host = window.location.hostname;
     document.title = host ? `${host} - ${title}` : title;
   }, [pathname, t]);

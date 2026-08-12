@@ -49,6 +49,7 @@ export const REMARK_VARIABLES: RemarkVar[] = [
   { token: 'PROTOCOL', group: 'connection', sample: 'VLESS' },
   { token: 'TRANSPORT', group: 'connection', sample: 'ws' },
   { token: 'SECURITY', group: 'connection', sample: 'TLS' },
+  { token: 'FACTOR', group: 'connection', sample: '3x' },
 ];
 
 const SAMPLE_BY_TOKEN: Record<string, string> = Object.fromEntries(

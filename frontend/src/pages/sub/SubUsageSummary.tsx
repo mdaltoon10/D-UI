@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Progress, Tag, Row, Col } from 'antd';
-import { ClockCircleOutlined, ThunderboltOutlined, GlobalOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { Progress, Tag } from 'antd';
+import { ClockCircleOutlined, ThunderboltOutlined } from '@ant-design/icons';
 
 import './SubUsageSummary.css';
 
@@ -13,10 +13,6 @@ interface SubUsageSummaryProps {
   remainedLabel: string;
   expireMs: number;
   isActive: boolean;
-  upLimitMbps?: number;
-  downLimitMbps?: number;
-  ipLimit?: number;
-  iranDirect?: boolean;
 }
 
 function pickStrokeColor(pct: number): { from: string; to: string } {
@@ -43,10 +39,6 @@ export default function SubUsageSummary({
   remainedLabel,
   expireMs,
   isActive,
-  upLimitMbps = 40,
-  downLimitMbps = 80,
-  ipLimit: _ipLimit = 5,
-  iranDirect = true,
 }: SubUsageSummaryProps) {
   const { t } = useTranslation();
   const pct = useMemo(() => {
@@ -69,11 +61,6 @@ export default function SubUsageSummary({
           <span className="usage-summary-total">{isUnlimited ? '∞' : totalLabel}</span>
         </div>
         <div className="usage-summary-chips">
-          {iranDirect && (
-            <Tag color="cyan" icon={<GlobalOutlined />}>
-              Iran Direct Routing
-            </Tag>
-          )}
           {isUnlimited && (
             <Tag color="purple" icon={<ThunderboltOutlined />}>
               {t('subscription.unlimited')}
@@ -104,29 +91,6 @@ export default function SubUsageSummary({
           </>
         )}
       </div>
-
-      <Row gutter={[12, 12]} style={{ marginTop: 16 }}>
-        <Col span={12}>
-          <div style={{ background: 'var(--ant-color-fill-quaternary)', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
-            <div style={{ fontSize: 11, color: 'var(--ant-color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <ArrowDownOutlined style={{ color: '#10b981' }} /> Download Speed Limit
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
-              {downLimitMbps > 0 ? `${downLimitMbps} Mbps` : 'Unlimited'}
-            </div>
-          </div>
-        </Col>
-        <Col span={12}>
-          <div style={{ background: 'var(--ant-color-fill-quaternary)', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
-            <div style={{ fontSize: 11, color: 'var(--ant-color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <ArrowUpOutlined style={{ color: '#3b82f6' }} /> Upload Speed Limit
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
-              {upLimitMbps > 0 ? `${upLimitMbps} Mbps` : 'Unlimited'}
-            </div>
-          </div>
-        </Col>
-      </Row>
     </div>
   );
 }

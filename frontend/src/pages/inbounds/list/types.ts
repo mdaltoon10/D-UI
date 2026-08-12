@@ -28,6 +28,7 @@ export interface DBInboundRecord extends ProtocolFlags {
   up: number;
   down: number;
   total: number;
+    usageMultiplier?: number;
   expiryTime: number;
   _expiryTime: { valueOf(): number } | null;
   nodeId?: number | null;

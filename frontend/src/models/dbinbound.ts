@@ -9,6 +9,7 @@ export interface ClientStats {
     up: number;
     down: number;
     total: number;
+    usageMultiplier?: number;
     expiryTime: number;
     enable?: boolean;
     inboundId?: number;
@@ -26,6 +27,7 @@ export type DBInboundInit = Partial<{
     up: number;
     down: number;
     total: number;
+    usageMultiplier?: number;
     remark: string;
     enable: boolean;
     expiryTime: number;
@@ -72,6 +74,7 @@ export class DBInbound {
     up: number;
     down: number;
     total: number;
+    usageMultiplier: number;
     remark: string;
     enable: boolean;
     expiryTime: number;
@@ -101,6 +104,7 @@ export class DBInbound {
         this.up = 0;
         this.down = 0;
         this.total = 0;
+        this.usageMultiplier = 1;
         this.remark = "";
         this.enable = true;
         this.expiryTime = 0;

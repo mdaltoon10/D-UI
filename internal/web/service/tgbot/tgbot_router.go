@@ -237,6 +237,21 @@ func (t *Tgbot) answerCommand(message *telego.Message, chatId int64, isAdmin boo
 		} else {
 			handleUnknownCommand()
 		}
+	case "clearall":
+		onlyMessage = true
+		if isAdmin {
+			inlineKeyboard := tu.InlineKeyboard(
+				tu.InlineKeyboardRow(
+					tu.InlineKeyboardButton(t.I18nBot("tgbot.buttons.cancelReset")).WithCallbackData(t.encodeQuery("reset_all_traffics_cancel")),
+				),
+				tu.InlineKeyboardRow(
+					tu.InlineKeyboardButton(t.I18nBot("tgbot.buttons.confirmResetTraffic")).WithCallbackData(t.encodeQuery("reset_all_traffics_c")),
+				),
+			)
+			t.SendMsgToTgbot(chatId, t.I18nBot("tgbot.messages.AreYouSure"), inlineKeyboard)
+		} else {
+			handleUnknownCommand()
+		}
 	default:
 		handleUnknownCommand()
 	}
@@ -1129,9 +1144,6 @@ func (t *Tgbot) answerCallback(callbackQuery *telego.CallbackQuery, isAdmin bool
 	case "get_backup":
 		t.sendCallbackAnswerTgBot(callbackQuery.ID, t.I18nBot("tgbot.buttons.dbBackup"))
 		t.sendBackup(chatId)
-	case "get_banlogs":
-		t.sendCallbackAnswerTgBot(callbackQuery.ID, t.I18nBot("tgbot.buttons.getBanLogs"))
-		t.sendBanLogs(chatId, true)
 	case "client_traffic":
 		tgUserID := callbackQuery.From.ID
 		t.sendCallbackAnswerTgBot(callbackQuery.ID, t.I18nBot("tgbot.buttons.clientUsage"))

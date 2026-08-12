@@ -9,12 +9,12 @@ import (
 
 	"github.com/op/go-logging"
 
-	duilogger "github.com/mdaltoon10/D-UI/v3/internal/logger"
+	xuilogger "github.com/mdaltoon10/D-UI/v3/internal/logger"
 )
 
 func TestMain(m *testing.M) {
-	_ = os.Setenv("DUI_LOG_FOLDER", os.TempDir())
-	duilogger.InitLogger(logging.ERROR)
+	_ = os.Setenv("XUI_LOG_FOLDER", os.TempDir())
+	xuilogger.InitLogger(logging.ERROR)
 	os.Exit(m.Run())
 }
 
