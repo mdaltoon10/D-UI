@@ -70,7 +70,7 @@ func TestDepletedCond_ProbeGuard(t *testing.T) {
 
 	// No global rows: the cross-panel EXISTS branch is skipped (#5392), but a
 	// client over its local quota is still disabled.
-	if got := depletedCond(db); got != depletedClientsCondLocal {
+	if got, _ := depletedCond(db); got != depletedClientsCondLocal {
 		t.Fatalf("empty globals must use the local-only predicate")
 	}
 	seedClientRow(t, "local-cap", 1, 600, 600, 1000)
@@ -85,7 +85,7 @@ func TestDepletedCond_ProbeGuard(t *testing.T) {
 	if err := svc.AcceptGlobalTraffic("master-a", []*xray.ClientTraffic{{Email: "local-cap", Up: 1, Down: 1}}); err != nil {
 		t.Fatalf("AcceptGlobalTraffic: %v", err)
 	}
-	if got := depletedCond(db); got != depletedClientsCond {
+	if got, _ := depletedCond(db); got != depletedClientsCond {
 		t.Fatalf("with globals present the cross-panel predicate must be used")
 	}
 }
