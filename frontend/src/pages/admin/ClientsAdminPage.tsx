@@ -91,6 +91,7 @@ interface ClientSlim {
 const ClientFormModal = lazy(() => import('@/pages/clients/ClientFormModal'));
 const ClientInfoModal = lazy(() => import('@/pages/clients/ClientInfoModal'));
 const ClientQrModal = lazy(() => import('@/pages/clients/ClientQrModal'));
+const ClientActivityModal = lazy(() => import('@/pages/clients/ClientActivityModal'));
 
 type Bucket = 'active' | 'deactive' | 'depleted' | 'expiring';
 
