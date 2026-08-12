@@ -167,16 +167,17 @@ func (s *ClientService) List() ([]ClientWithAttachments, error) {
 		}
 		overlayGlobalTrafficValues(db, stats)
 		for i := range stats {
-			trafficByEmail[stats[i].Email] = &stats[i]
+			trafficByEmail[strings.ToLower(strings.TrimSpace(stats[i].Email))] = &stats[i]
 		}
 	}
 
 	out := make([]ClientWithAttachments, 0, len(rows))
 	for i := range rows {
+		emailKey := strings.ToLower(strings.TrimSpace(rows[i].Email))
 		out = append(out, ClientWithAttachments{
 			ClientRecord: rows[i],
 			InboundIds:   attachments[rows[i].Id],
-			Traffic:      trafficByEmail[rows[i].Email],
+			Traffic:      trafficByEmail[emailKey],
 		})
 	}
 	return out, nil

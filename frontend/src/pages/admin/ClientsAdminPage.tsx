@@ -29,6 +29,7 @@ import {
   ReloadOutlined,
   TeamOutlined,
   DeleteOutlined,
+  FundOutlined,
   CheckCircleOutlined,
   PlusOutlined,
   MinusOutlined,
@@ -167,6 +168,8 @@ function AdminClientsSubList({
 
   const [qrOpen, setQrOpen] = useState(false);
   const [qrClient, setQrClient] = useState<any | null>(null);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityClient, setActivityClient] = useState<any | null>(null);
 
   const [togglingEmail, setTogglingEmail] = useState<string | null>(null);
 
@@ -212,6 +215,11 @@ function AdminClientsSubList({
     }, 10000);
     return () => clearInterval(timer);
   }, [page, pageSize, fetchClients]);
+
+  const onShowActivity = useCallback((row: any) => {
+    setActivityClient(row);
+    setActivityOpen(true);
+  }, []);
 
   const onShowQr = useCallback(async (row: any) => {
     const full = await hydrate(row.email);
@@ -424,6 +432,9 @@ function AdminClientsSubList({
           <Tooltip title={t('pages.clients.qrCode')}>
             <Button size="small" type="text" style={{ fontSize: 16 }} icon={<QrcodeOutlined />} aria-label={t('pages.clients.qrCode')} onClick={() => onShowQr(record)} />
           </Tooltip>
+          <Tooltip title="Activity Monitoring">
+            <Button size="small" type="text" style={{ fontSize: 16 }} icon={<FundOutlined />} aria-label="Activity Monitoring" onClick={() => onShowActivity(record)} />
+          </Tooltip>
           <Tooltip title={t('pages.clients.clientInfo')}>
             <Button size="small" type="text" style={{ fontSize: 16 }} icon={<InfoCircleOutlined />} aria-label={t('pages.clients.clientInfo')} onClick={() => onShowInfo(record)} />
           </Tooltip>
@@ -571,7 +582,7 @@ function AdminClientsSubList({
         </Tooltip>
       ),
     },
-  ], [t, togglingEmail, clientBucket, isOnline, inboundsById, datepicker, trafficDiff, isFa, expiryLabel, onDelete, onEdit, onResetTraffic, onShowInfo, onShowQr, onToggleEnable]);
+  ], [t, togglingEmail, clientBucket, isOnline, inboundsById, datepicker, trafficDiff, isFa, expiryLabel, onDelete, onEdit, onResetTraffic, onShowInfo, onShowQr, onToggleEnable, onShowActivity]);
 
   return (
     <div style={{ padding: isMobile ? '8px' : '16px', background: 'var(--ant-color-fill-quaternary)', borderRadius: '12px', margin: '8px 0', border: '1px solid var(--ant-color-border-secondary)' }}>
@@ -658,6 +669,9 @@ function AdminClientsSubList({
                     {bucket === 'depleted' && <Tag color="red" className="status-tag">{t('depleted')}</Tag>}
                     {bucket === 'expiring' && <Tag color="orange" className="status-tag">{t('depletingSoon')}</Tag>}
                     <div className="card-actions">
+          <Tooltip title="Activity Monitoring">
+            <Button size="small" type="text" style={{ fontSize: 16 }} icon={<FundOutlined />} aria-label="Activity Monitoring" onClick={() => onShowActivity(record)} />
+          </Tooltip>
                       <Tooltip title={t('pages.clients.clientInfo')}>
                         <InfoCircleOutlined
                           className="row-action-trigger"
@@ -740,6 +754,11 @@ function AdminClientsSubList({
 
       <Suspense fallback={null}>
         <LazyMount when={formOpen}>
+          <ClientActivityModal
+            open={activityOpen}
+            client={activityClient}
+            onClose={() => setActivityOpen(false)}
+          />
           <ClientFormModal
             open={formOpen}
             mode={formMode}

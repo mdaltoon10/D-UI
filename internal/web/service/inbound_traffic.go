@@ -144,7 +144,7 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 	trafficByEmail := make(map[string]*xray.ClientTraffic, len(traffics))
 	for i := range traffics {
 		if traffics[i] != nil {
-			trafficByEmail[traffics[i].Email] = traffics[i]
+			trafficByEmail[strings.ToLower(strings.TrimSpace(traffics[i].Email))] = traffics[i]
 		}
 	}
 	now := time.Now().UnixMilli()
@@ -154,7 +154,8 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 	// deadlock. An atomic "SET up = up + ?" never holds a row lock across a
 	// subsequent lock acquisition, so concurrent writers cannot deadlock.
 	for _, ct := range dbClientTraffics {
-		t, ok := trafficByEmail[ct.Email]
+		emailKey := strings.ToLower(strings.TrimSpace(ct.Email))
+		t, ok := trafficByEmail[emailKey]
 		if !ok || (t.Up == 0 && t.Down == 0) {
 			continue
 		}
@@ -301,7 +302,7 @@ func (s *InboundService) autoRenewClients(tx *gorm.DB) (bool, int64, error) {
 	// attached to, so it could be a node inbound even when the client also has
 	// local inbounds. The email-based join through client_inbounds is authoritative.
 	err = tx.Model(xray.ClientTraffic{}).
-		Where("reset > 0 AND expiry_time > 0 AND ((expiry_time >= 1000000000000 AND expiry_time <= ?) OR (expiry_time < 1000000000000 AND expiry_time * 1000 <= ?))", now, now).
+		Where("reset > 0 and expiry_time > 0 and expiry_time <= ?", now).
 		Where("email IN (?)", tx.Table("client_inbounds ci").
 			Select("c.email").
 			Joins("JOIN clients c ON c.id = ci.client_id").
@@ -377,9 +378,6 @@ func (s *InboundService) autoRenewClients(tx *gorm.DB) (bool, int64, error) {
 				continue
 			}
 			newExpiryTime := traffic.ExpiryTime
-			if newExpiryTime > 0 && newExpiryTime < 1000000000000 {
-				newExpiryTime *= 1000
-			}
 			for newExpiryTime < now {
 				newExpiryTime += (int64(traffic.Reset) * 86400000)
 			}
@@ -436,8 +434,8 @@ func (s *InboundService) autoRenewClients(tx *gorm.DB) (bool, int64, error) {
 	if err = clearGlobalTraffic(tx, renewEmails...); err != nil {
 		return false, 0, err
 	}
-	if p != nil {
-		err1 = s.xrayApi.Init(p.GetAPIPort())
+	if process := XrayProcess(); process != nil {
+		err1 = s.xrayApi.Init(process.GetAPIPort())
 		if err1 != nil {
 			return true, int64(len(traffics)), nil
 		}

@@ -80,6 +80,7 @@ import { useSecurityActions } from './useSecurityActions';
 import { useInboundFallbacks } from './useInboundFallbacks';
 import FallbacksCard from './FallbacksCard';
 import SniffingTab from './SniffingTab';
+import SubscriptionProfilesForm from './SubscriptionProfilesForm';
 
 import type { DBInbound } from '@/models/dbinbound';
 import type { NodeRecord } from '@/api/queries/useNodesQuery';
@@ -824,6 +825,8 @@ export default function InboundFormModal({
           form={form}
         />
       )}
+
+      <SubscriptionProfilesForm protocol={protocol} />
     </>
   );
 

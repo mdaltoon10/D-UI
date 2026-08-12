@@ -553,7 +553,7 @@ export function useClients() {
     if (p.snapshot !== false) setAllClientStats(p.clients);
     const byEmail = new Map<string, ClientTraffic>();
     for (const row of p.clients) {
-      if (row && row.email) byEmail.set(row.email, row);
+      if (row && row.email) byEmail.set(row.email.trim().toLowerCase(), row);
     }
     queryClient.setQueryData<ClientPageResponse>(keys.clients.list(queryRef.current), (prev) => {
       if (!prev) return prev;
@@ -561,7 +561,8 @@ export function useClients() {
       const next = prev.items.slice();
       for (let i = 0; i < next.length; i++) {
         const row = next[i];
-        const upd = byEmail.get(row?.email);
+        const emailKey = row?.email?.trim().toLowerCase();
+        const upd = emailKey ? byEmail.get(emailKey) : undefined;
         if (!upd) continue;
         const merged: ClientTraffic = { ...(row.traffic || {}) };
         if (typeof upd.up === 'number') {

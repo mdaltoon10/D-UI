@@ -30,6 +30,7 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   DeleteOutlined,
+  FundOutlined,
   DisconnectOutlined,
   DownloadOutlined,
   EditOutlined,
@@ -72,6 +73,7 @@ const ClientBulkAddModal = lazy(() => import('./ClientBulkAddModal'));
 const ClientBulkAdjustModal = lazy(() => import('./ClientBulkAdjustModal'));
 const FilterDrawer = lazy(() => import('./FilterDrawer'));
 const SubLinksModal = lazy(() => import('./SubLinksModal'));
+const ClientActivityModal = lazy(() => import('./ClientActivityModal'));
 const BulkAddToGroupModal = lazy(() => import('./BulkAddToGroupModal'));
 const BulkAttachInboundsModal = lazy(() => import('./BulkAttachInboundsModal'));
 const BulkDetachInboundsModal = lazy(() => import('./BulkDetachInboundsModal'));
@@ -240,6 +242,8 @@ export default function ClientsPage() {
   const [infoClient, setInfoClient] = useState<ClientRecord | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
   const [qrClient, setQrClient] = useState<ClientRecord | null>(null);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityClient, setActivityClient] = useState<ClientRecord | null>(null);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [bulkAdjustOpen, setBulkAdjustOpen] = useState(false);
   const [subLinksOpen, setSubLinksOpen] = useState(false);
@@ -510,6 +514,10 @@ export default function ClientsPage() {
     setInfoOpen(true);
   }
 
+  function onShowActivity(row: ClientRecord) {
+    setActivityClient(row);
+    setActivityOpen(true);
+  }
   async function onShowQr(row: ClientRecord) {
     const full = await hydrate(row.email);
     setQrClient(full ? { ...row, ...full.client, inboundIds: full.inboundIds } : row);
@@ -761,6 +769,9 @@ export default function ClientsPage() {
         <Space size={4}>
           <Tooltip title={t('pages.clients.qrCode')}>
             <Button size="small" type="text" style={{ fontSize: 16 }} icon={<QrcodeOutlined />} aria-label={t('pages.clients.qrCode')} onClick={() => onShowQr(record)} />
+          </Tooltip>
+          <Tooltip title="Activity Monitoring">
+            <Button size="small" type="text" style={{ fontSize: 16 }} icon={<FundOutlined />} aria-label="Activity Monitoring" onClick={() => onShowActivity(record)} />
           </Tooltip>
           <Tooltip title={t('pages.clients.clientInfo')}>
             <Button size="small" type="text" style={{ fontSize: 16 }} icon={<InfoCircleOutlined />} aria-label={t('pages.clients.clientInfo')} onClick={() => onShowInfo(record)} />
@@ -1381,6 +1392,9 @@ export default function ClientsPage() {
                                     {bucket === 'depleted' && <Tag color="red" className="status-tag">{t('depleted')}</Tag>}
                                     {bucket === 'expiring' && <Tag color="orange" className="status-tag">{t('depletingSoon')}</Tag>}
                                     <div className="card-actions">
+          <Tooltip title="Activity Monitoring">
+            <Button size="small" type="text" style={{ fontSize: 16 }} icon={<FundOutlined />} aria-label="Activity Monitoring" onClick={() => onShowActivity(record)} />
+          </Tooltip>
                                       <Tooltip title={t('pages.clients.clientInfo')}>
                                         <InfoCircleOutlined
                                           className="row-action-trigger"
@@ -1455,6 +1469,11 @@ export default function ClientsPage() {
         </Layout>
 
         <LazyMount when={formOpen}>
+          <ClientActivityModal
+            open={activityOpen}
+            client={activityClient}
+            onClose={() => setActivityOpen(false)}
+          />
           <ClientFormModal
             open={formOpen}
             mode={formMode}

@@ -499,14 +499,15 @@ export function useInbounds() {
       if (Array.isArray(p.clients) && p.clients.length > 0) {
         const byEmail = new Map<string, { email: string; up?: number; down?: number; total?: number; expiryTime?: number; enable?: boolean }>();
         for (const row of p.clients) {
-          if (row && row.email) byEmail.set(row.email, row);
+          if (row && row.email) byEmail.set(row.email.trim().toLowerCase(), row);
         }
         for (const ib of dbInboundsRef.current) {
           const stats = (ib as unknown as { clientStats: { email: string; up: number; down: number; total: number; expiryTime: number; enable: boolean }[] }).clientStats;
           if (!Array.isArray(stats)) continue;
           for (let i = 0; i < stats.length; i++) {
             const stat = stats[i];
-            const upd = byEmail.get(stat.email);
+            const emailKey = stat.email ? stat.email.trim().toLowerCase() : '';
+            const upd = emailKey ? byEmail.get(emailKey) : undefined;
             if (!upd) continue;
             if (typeof upd.up === 'number') stat.up = upd.up;
             if (typeof upd.down === 'number') stat.down = upd.down;

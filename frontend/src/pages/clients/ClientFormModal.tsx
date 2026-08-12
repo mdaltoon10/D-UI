@@ -103,6 +103,8 @@ interface FormState {
   security: string;
   reverseTag: string;
   totalGB: number;
+  uploadLimit: number;
+  downloadLimit: number;
   expiryDate: Dayjs | null;
   delayedStart: boolean;
   delayedDays: number;
@@ -131,6 +133,8 @@ function emptyForm(): FormState {
     security: 'auto',
     reverseTag: '',
     totalGB: 0,
+    uploadLimit: 0,
+    downloadLimit: 0,
     expiryDate: null,
     delayedStart: false,
     delayedDays: 0,
@@ -631,6 +635,18 @@ export default function ClientFormModal({
                         <Form.Item label={t('pages.clients.totalGB')} tooltip={t('pages.clients.totalGBDesc')}>
                           <InputNumber value={form.totalGB} min={0} step={1} style={{ width: '100%' }}
                             onChange={(v) => update('totalGB', Number(v) || 0)} />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={6}>
+                        <Form.Item label="Upload Limit (Mbps)" tooltip="Per-client upload speed limit (0 = unlimited)">
+                          <InputNumber value={form.uploadLimit} min={0} step={1} style={{ width: '100%' }}
+                            onChange={(v) => update('uploadLimit', Number(v) || 0)} />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} md={6}>
+                        <Form.Item label="Download Limit (Mbps)" tooltip="Per-client download speed limit (0 = unlimited)">
+                          <InputNumber value={form.downloadLimit} min={0} step={1} style={{ width: '100%' }}
+                            onChange={(v) => update('downloadLimit', Number(v) || 0)} />
                         </Form.Item>
                       </Col>
                       <Col xs={24} md={6}>
