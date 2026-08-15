@@ -42,6 +42,8 @@ function emptyForm(): FormState {
     comment: '',
     flow: '',
     limitIp: 0,
+    uploadLimit: 0,
+    downloadLimit: 0,
     totalGB: 0,
     expiryTime: 0,
     reset: 0,
@@ -195,6 +197,10 @@ export default function ClientBulkAddModal({
           expiryTime: form.expiryTime,
           reset: Number(form.reset) || 0,
           limitIp: Number(form.limitIp) || 0,
+          uploadLimit: Number(form.uploadLimit) || 0,
+          downloadLimit: Number(form.downloadLimit) || 0,
+          uploadMbps: Number(form.uploadLimit) || 0,
+          downloadMbps: Number(form.downloadLimit) || 0,
           group: form.group,
           comment: form.comment,
           enable: true,
@@ -337,6 +343,14 @@ export default function ClientBulkAddModal({
               />
             </Form.Item>
           )}
+
+          <Form.Item label="Upload Limit (Mbps)" tooltip="Per-client upload speed limit (0 = unlimited)">
+            <InputNumber value={form.uploadLimit} min={0} step={1} onChange={(v) => update('uploadLimit', Number(v) || 0)} />
+          </Form.Item>
+
+          <Form.Item label="Download Limit (Mbps)" tooltip="Per-client download speed limit (0 = unlimited)">
+            <InputNumber value={form.downloadLimit} min={0} step={1} onChange={(v) => update('downloadLimit', Number(v) || 0)} />
+          </Form.Item>
 
           <Form.Item label={t('pages.clients.limitIp')}>
             <Tooltip title={limitIpNotice || undefined}>

@@ -605,6 +605,10 @@ type Client struct {
 	KeepAlive    int            `json:"keepAlive,omitempty"`
 	Email        string         `json:"email"`                        // Client email identifier
 	LimitIP      int            `json:"limitIp"`                      // IP limit for this client
+	UploadMbps   int            `json:"uploadMbps,omitempty" form:"uploadMbps"` // Upload limit in Mbps
+	DownloadMbps int            `json:"downloadMbps,omitempty" form:"downloadMbps"` // Download limit in Mbps
+	UploadLimit  int            `json:"uploadLimit,omitempty" form:"uploadLimit"` // Alias for upload limit
+	DownloadLimit int           `json:"downloadLimit,omitempty" form:"downloadLimit"` // Alias for download limit
 	TotalGB      int64          `json:"totalGB" form:"totalGB"`       // Total traffic limit in GB
 	ExpiryTime   int64          `json:"expiryTime" form:"expiryTime"` // Expiration timestamp
 	Enable       bool           `json:"enable" form:"enable"`         // Whether the client is enabled
@@ -635,6 +639,8 @@ type ClientRecord struct {
 	PreSharedKey string `json:"preSharedKey" gorm:"column:wg_pre_shared_key"`
 	KeepAlive    int    `json:"keepAlive" gorm:"column:wg_keep_alive;default:0"`
 	LimitIP      int    `json:"limitIp" gorm:"column:limit_ip"`
+	UploadMbps   int    `json:"uploadMbps" gorm:"column:upload_mbps;default:0"`
+	DownloadMbps int    `json:"downloadMbps" gorm:"column:download_mbps;default:0"`
 	TotalGB      int64  `json:"totalGB" gorm:"column:total_gb"`
 	ExpiryTime   int64  `json:"expiryTime" gorm:"column:expiry_time"`
 	Enable       bool   `json:"enable" gorm:"default:true"`

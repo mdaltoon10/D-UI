@@ -81,6 +81,10 @@ export interface InboundClient {
   password?: string;
   limitIP?: number;
   limitIp?: number;
+  uploadMbps?: number;
+  downloadMbps?: number;
+  uploadLimit?: number;
+  downloadLimit?: number;
   totalGB?: number;
   expiryTime?: number;
   enable?: boolean;
@@ -1089,8 +1093,12 @@ export function handleMockRequest(url: string, _method: string, requestData: unk
               flow: c.flow || '',
               security: c.security || '',
               totalGB: c.totalGB || 0,
+              uploadLimit: c.uploadLimit || c.uploadMbps || 0,
+              downloadLimit: c.downloadLimit || c.downloadMbps || 0,
+              uploadMbps: c.uploadMbps || c.uploadLimit || 0,
+              downloadMbps: c.downloadMbps || c.downloadLimit || 0,
               expiryTime: c.expiryTime || 0,
-              limitIp: c.limitIp || 0,
+              limitIp: c.limitIp || c.limitIP || 0,
               tgId: c.tgId || '',
               group: c.group || '',
               comment: c.comment || '',
@@ -1141,6 +1149,10 @@ export function handleMockRequest(url: string, _method: string, requestData: unk
             id: body.client?.id || body.client?.uuid || 'uuid-12345678-abcd-1234-abcd-12345678abcd',
             email: body.client?.email,
             limitIP: body.client?.limitIp || 0,
+            uploadLimit: body.client?.uploadLimit || body.client?.uploadMbps || 0,
+            downloadLimit: body.client?.downloadLimit || body.client?.downloadMbps || 0,
+            uploadMbps: body.client?.uploadMbps || body.client?.uploadLimit || 0,
+            downloadMbps: body.client?.downloadMbps || body.client?.downloadLimit || 0,
             totalGB: body.client?.totalGB || 0,
             expiryTime: body.client?.expiryTime || 0,
             enable: body.client?.enable !== false,
@@ -1185,6 +1197,11 @@ export function handleMockRequest(url: string, _method: string, requestData: unk
           clients[idx] = {
             ...c,
             limitIP: body.limitIp ?? c.limitIP,
+            limitIp: body.limitIp ?? c.limitIp,
+            uploadLimit: body.uploadLimit ?? body.uploadMbps ?? c.uploadLimit ?? c.uploadMbps,
+            downloadLimit: body.downloadLimit ?? body.downloadMbps ?? c.downloadLimit ?? c.downloadMbps,
+            uploadMbps: body.uploadMbps ?? body.uploadLimit ?? c.uploadMbps ?? c.uploadLimit,
+            downloadMbps: body.downloadMbps ?? body.downloadLimit ?? c.downloadMbps ?? c.downloadLimit,
             totalGB: body.totalGB ?? c.totalGB,
             expiryTime: body.expiryTime ?? c.expiryTime,
             enable: body.enable ?? c.enable,

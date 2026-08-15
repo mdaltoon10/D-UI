@@ -300,6 +300,18 @@ export default function ClientInfoModal({
                   <td>{!client.limitIp ? <Tag>∞</Tag> : <Tag>{client.limitIp}</Tag>}</td>
                 </tr>
                 <tr>
+                  <td>Speed Limit (Up / Down)</td>
+                  <td>
+                    {(!client.uploadLimit && !client.uploadMbps && !client.downloadLimit && !client.downloadMbps) ? (
+                      <Tag>∞</Tag>
+                    ) : (
+                      <Tag color="cyan">
+                        ↑ {client.uploadLimit || client.uploadMbps || '∞'} Mbps / ↓ {client.downloadLimit || client.downloadMbps || '∞'} Mbps
+                      </Tag>
+                    )}
+                  </td>
+                </tr>
+                <tr>
                   <td>{t('pages.inbounds.IPLimitlog')}</td>
                   <td>
                     <Button size="small" icon={<EyeOutlined />} aria-label={t('pages.clients.ipLog')} loading={ipsLoading} onClick={openIpsModal}>

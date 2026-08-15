@@ -1468,12 +1468,14 @@ export default function ClientsPage() {
           </Layout.Content>
         </Layout>
 
-        <LazyMount when={formOpen}>
+        <LazyMount when={activityOpen}>
           <ClientActivityModal
             open={activityOpen}
             client={activityClient}
             onClose={() => setActivityOpen(false)}
           />
+        </LazyMount>
+        <LazyMount when={formOpen}>
           <ClientFormModal
             open={formOpen}
             mode={formMode}
