@@ -730,7 +730,7 @@ func (a *ClientController) getActivity(c *gin.Context) {
 	}
 
 	var records []gin.H
-	accessLogCandidates := []string{"/var/log/xray/access.log", "access.log", "/etc/xray/access.log"}
+	accessLogCandidates := []string{"/var/log/xray/access.log", "access.log", "/etc/xray/access.log", "/usr/local/x-ui/bin/access.log", "/var/log/x-ui/access.log"}
 	if accessLogPath, err := xray.GetAccessLogPath(); err == nil && accessLogPath != "" && accessLogPath != "none" {
 		accessLogCandidates = append([]string{accessLogPath}, accessLogCandidates...)
 	}
@@ -747,9 +747,9 @@ func (a *ClientController) getActivity(c *gin.Context) {
 				matched := false
 				if strings.Contains(line, email) {
 					matched = true
-				} else {
+				} else if len(ipSet) > 0 {
 					for ip := range ipSet {
-						if strings.Contains(line, ip) {
+						if ip != "" && ip != "127.0.0.1" && strings.Contains(line, ip) {
 							matched = true
 							break
 						}
@@ -774,24 +774,32 @@ func (a *ClientController) getActivity(c *gin.Context) {
 						var dest string
 						var src string
 						for idx, p := range parts {
-							if p == "from" && idx+1 < len(parts) {
-								src = strings.TrimLeft(parts[idx+1], "/")
+							if (p == "from" || p == "from:") && idx+1 < len(parts) {
+								src = strings.TrimPrefix(parts[idx+1], "tcp:")
+								src = strings.TrimPrefix(src, "udp:")
 							} else if p == "accepted" && idx+1 < len(parts) {
-								dest = strings.TrimLeft(parts[idx+1], "/")
+								dest = strings.TrimPrefix(parts[idx+1], "tcp:")
+								dest = strings.TrimPrefix(dest, "udp:")
 							}
 						}
-						if dest == "" {
-							dest = parts[len(parts)-1]
+						if src == "" && len(parts) >= 3 {
+							src = strings.TrimPrefix(parts[2], "tcp:")
+							src = strings.TrimPrefix(src, "udp:")
 						}
-						if src == "" {
-							src = parts[2]
+						if dest == "" && len(parts) >= 5 {
+							dest = strings.TrimPrefix(parts[4], "tcp:")
+							dest = strings.TrimPrefix(dest, "udp:")
+						} else if dest == "" {
+							dest = strings.TrimPrefix(parts[len(parts)-1], "tcp:")
+							dest = strings.TrimPrefix(dest, "udp:")
 						}
+						
 						records = append(records, gin.H{
 							"id":          strconv.Itoa(count + 1),
 							"destination": formatDestLabel(dest),
 							"sourceIp":    src,
-							"upload":      "120 KB",
-							"download":    "1.5 MB",
+							"upload":      "-",
+							"download":    "-",
 						})
 						count++
 					}
@@ -801,36 +809,8 @@ func (a *ClientController) getActivity(c *gin.Context) {
 		}
 	}
 
-	// Always ensure rich multi-platform destinations (Google, Instagram, WhatsApp, YouTube, Telegram, Meta, Cloudflare)
-	allServices := []struct {
-		dest   string
-		upKb   int
-		downMb float64
-	}{
-		{"www.google.com:443 (Google Search & Services)", 720, 28.5},
-		{"www.instagram.com:443 (Instagram Reels & Feed)", 950, 42.1},
-		{"www.youtube.com:443 (YouTube Video Streaming)", 450, 85.3},
-		{"web.whatsapp.com:443 (WhatsApp Web & Chat)", 310, 12.8},
-		{"149.154.166.120:443 (Telegram DC4 Messaging)", 540, 21.4},
-		{"graph.instagram.com:443 (Instagram Media API)", 620, 19.6},
-		{"g.whatsapp.net:443 (WhatsApp Media & Voice)", 280, 15.2},
-		{"i.ytimg.com:443 (YouTube Thumbnails & Content)", 180, 8.4},
-		{"android.googleapis.com:443 (Google Play & Push FCM)", 390, 6.7},
-		{"149.154.167.92:443 (Telegram CDN Media)", 810, 34.0},
-		{"z-m-gateway.facebook.com:443 (Meta & Messenger)", 260, 11.2},
-		{"1.1.1.1:443 (Cloudflare DNS & Edge)", 95, 3.1},
-	}
-
-	if len(records) == 0 {
-		for i, s := range allServices {
-			records = append(records, gin.H{
-				"id":          strconv.Itoa(i + 1),
-				"destination": s.dest,
-				"sourceIp":    primaryIp,
-				"upload":      strconv.Itoa(s.upKb) + " KB",
-				"download":    strconv.FormatFloat(s.downMb, 'f', 2, 64) + " MB",
-			})
-		}
+	if records == nil {
+		records = []gin.H{}
 	}
 
 	jsonObj(c, gin.H{
