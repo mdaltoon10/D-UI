@@ -1392,9 +1392,19 @@ export default function ClientsPage() {
                                     {bucket === 'depleted' && <Tag color="red" className="status-tag">{t('depleted')}</Tag>}
                                     {bucket === 'expiring' && <Tag color="orange" className="status-tag">{t('depletingSoon')}</Tag>}
                                     <div className="card-actions">
-          <Tooltip title="Activity Monitoring">
-            <Button size="small" type="text" style={{ fontSize: 16 }} icon={<FundOutlined />} aria-label="Activity Monitoring" onClick={() => onShowActivity(record)} />
-          </Tooltip>
+                                      <Tooltip title="Activity Monitoring">
+                                        <Button
+                                          size="small"
+                                          type="text"
+                                          style={{ fontSize: 16 }}
+                                          icon={<FundOutlined />}
+                                          aria-label="Activity Monitoring"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onShowActivity(row);
+                                          }}
+                                        />
+                                      </Tooltip>
                                       <Tooltip title={t('pages.clients.clientInfo')}>
                                         <InfoCircleOutlined
                                           className="row-action-trigger"
