@@ -105,6 +105,18 @@ const ClientActivityModal: React.FC<ClientActivityModalProps> = ({ open, client,
       key: 'sourceIp',
       render: (ip: string) => (ip ? <Tag color="blue">{ip}</Tag> : <span style={{ color: '#8c8c8c' }}>-</span>),
     },
+    {
+      title: 'Upload',
+      dataIndex: 'upload',
+      key: 'upload',
+      render: (val: string) => (val && val !== '-' ? <Tag color="green">↑ {val}</Tag> : <span style={{ color: '#8c8c8c' }}>-</span>),
+    },
+    {
+      title: 'Download',
+      dataIndex: 'download',
+      key: 'download',
+      render: (val: string) => (val && val !== '-' ? <Tag color="geekblue">↓ {val}</Tag> : <span style={{ color: '#8c8c8c' }}>-</span>),
+    },
   ];
 
   return (
