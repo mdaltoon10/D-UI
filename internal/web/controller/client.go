@@ -724,11 +724,6 @@ func (a *ClientController) getActivity(c *gin.Context) {
 		}
 	}
 
-	primaryIp := "127.0.0.1"
-	if len(ipList) > 0 {
-		primaryIp = ipList[0]
-	}
-
 	var records []gin.H
 	accessLogCandidates := []string{"/var/log/xray/access.log", "access.log", "/etc/xray/access.log", "/usr/local/x-ui/bin/access.log", "/var/log/x-ui/access.log"}
 	if accessLogPath, err := xray.GetAccessLogPath(); err == nil && accessLogPath != "" && accessLogPath != "none" {
