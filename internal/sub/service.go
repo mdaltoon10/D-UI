@@ -2442,6 +2442,8 @@ type PageData struct {
 	DownloadByte  int64
 	UploadByte    int64
 	TotalByte     int64
+	UpLimitMbps   int
+	DownLimitMbps int
 	SubUrl        string
 	SubJsonUrl    string
 	SubClashUrl   string
@@ -2590,6 +2592,16 @@ func (s *SubService) BuildPageData(subId string, hostHeader string, traffic xray
 		}
 	}
 
+	upLimitMbps := 0
+	downLimitMbps := 0
+	if len(pageEmails) > 0 {
+		var firstRec model.ClientRecord
+		if err := database.GetDB().Model(&model.ClientRecord{}).Where("email IN ?", pageEmails).First(&firstRec).Error; err == nil {
+			upLimitMbps = firstRec.UploadMbps
+			downLimitMbps = firstRec.DownloadMbps
+		}
+	}
+
 	return PageData{
 		Host:          hostHeader,
 		BasePath:      basePath,
@@ -2606,6 +2618,8 @@ func (s *SubService) BuildPageData(subId string, hostHeader string, traffic xray
 		DownloadByte:  traffic.Down,
 		UploadByte:    traffic.Up,
 		TotalByte:     traffic.Total,
+		UpLimitMbps:   upLimitMbps,
+		DownLimitMbps: downLimitMbps,
 		SubUrl:        subURL,
 		SubJsonUrl:    subJsonURL,
 		SubClashUrl:   subClashURL,

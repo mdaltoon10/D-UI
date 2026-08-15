@@ -43,9 +43,9 @@ export default function SubUsageSummary({
   remainedLabel,
   expireMs,
   isActive,
-  upLimitMbps = 40,
-  downLimitMbps = 80,
-  ipLimit: _ipLimit = 5,
+  upLimitMbps = 0,
+  downLimitMbps = 0,
+  ipLimit: _ipLimit = 0,
   iranDirect = true,
 }: SubUsageSummaryProps) {
   const { t } = useTranslation();

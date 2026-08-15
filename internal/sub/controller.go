@@ -256,6 +256,8 @@ func (a *SUBController) serveSubPage(c *gin.Context, basePath string, page PageD
 		"downloadByte":  page.DownloadByte,
 		"uploadByte":    page.UploadByte,
 		"totalByte":     page.TotalByte,
+		"upLimitMbps":   page.UpLimitMbps,
+		"downLimitMbps": page.DownLimitMbps,
 		"subUrl":        page.SubUrl,
 		"subJsonUrl":    page.SubJsonUrl,
 		"subClashUrl":   page.SubClashUrl,

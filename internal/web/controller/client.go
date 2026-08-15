@@ -686,9 +686,13 @@ func (a *ClientController) getActivity(c *gin.Context) {
 	
 	ips, _ := a.inboundService.GetClientIpsWithNodes(email)
 	var ipList []string
+	ipSet := make(map[string]struct{})
 	for _, info := range ips {
 		if info.IP != "" {
+			cleanIP := strings.Split(info.IP, ":")[0]
 			ipList = append(ipList, info.IP)
+			ipSet[cleanIP] = struct{}{}
+			ipSet[info.IP] = struct{}{}
 		}
 	}
 
@@ -699,22 +703,61 @@ func (a *ClientController) getActivity(c *gin.Context) {
 			defer f.Close()
 			scanner := bufio.NewScanner(f)
 			count := 0
-			for scanner.Scan() && count < 50 {
+			var matchedLines []string
+			for scanner.Scan() {
 				line := scanner.Text()
-				if strings.Contains(line, email) || strings.Contains(line, "accepted") {
-					parts := strings.Fields(line)
-					if len(parts) >= 4 {
-						dest := parts[len(parts)-1]
-						src := parts[2]
-						records = append(records, gin.H{
-							"id":          strconv.Itoa(count + 1),
-							"destination": dest,
-							"sourceIp":    src,
-							"upload":      "120 KB",
-							"download":    "1.5 MB",
-						})
-						count++
+				if line == "" || strings.Contains(line, "api -> api") {
+					continue
+				}
+				// Match by email directly or by client's connected source IPs
+				matched := false
+				if strings.Contains(line, email) {
+					matched = true
+				} else {
+					for ip := range ipSet {
+						if strings.Contains(line, ip) {
+							matched = true
+							break
+						}
 					}
+				}
+				if matched {
+					matchedLines = append(matchedLines, line)
+				}
+			}
+
+			// Take latest matches first
+			start := 0
+			if len(matchedLines) > 50 {
+				start = len(matchedLines) - 50
+			}
+			for i := len(matchedLines) - 1; i >= start; i-- {
+				line := matchedLines[i]
+				parts := strings.Fields(line)
+				if len(parts) >= 4 {
+					var dest string
+					var src string
+					for idx, p := range parts {
+						if p == "from" && idx+1 < len(parts) {
+							src = strings.TrimLeft(parts[idx+1], "/")
+						} else if p == "accepted" && idx+1 < len(parts) {
+							dest = strings.TrimLeft(parts[idx+1], "/")
+						}
+					}
+					if dest == "" {
+						dest = parts[len(parts)-1]
+					}
+					if src == "" {
+						src = parts[2]
+					}
+					records = append(records, gin.H{
+						"id":          strconv.Itoa(count + 1),
+						"destination": dest,
+						"sourceIp":    src,
+						"upload":      "120 KB",
+						"download":    "1.5 MB",
+					})
+					count++
 				}
 			}
 		}

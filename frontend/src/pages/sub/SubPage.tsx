@@ -300,9 +300,9 @@ export default function SubPage() {
                   remainedLabel={remained}
                   expireMs={expireMs}
                   isActive={isActive}
-                  upLimitMbps={Number(subData.upLimitMbps || 40)}
-                  downLimitMbps={Number(subData.downLimitMbps || 80)}
-                  ipLimit={Number(subData.ipLimit || 5)}
+                  upLimitMbps={Number(subData.upLimitMbps || 0)}
+                  downLimitMbps={Number(subData.downLimitMbps || 0)}
+                  ipLimit={Number(subData.ipLimit || 0)}
                   iranDirect={subData.iranDirect !== false}
                 />
 

@@ -19,13 +19,18 @@ interface ActivityRecord {
 }
 
 const DEFAULT_DESTINATIONS = [
-  '149.154.166.120 (Telegram DC4)',
-  'www.googleapis.com',
-  'android.googleapis.com',
-  '1.1.1.1 (Cloudflare DNS)',
-  '149.154.167.92 (Telegram Media)',
-  'z-m-gateway.facebook.com',
-  '149.154.175.56 (Telegram DC5)',
+  'www.google.com:443 (Google Search)',
+  'www.youtube.com:443 (YouTube Video Streaming)',
+  'www.instagram.com:443 (Instagram)',
+  'web.whatsapp.com:443 (WhatsApp Web)',
+  '149.154.166.120:443 (Telegram DC4)',
+  'android.googleapis.com:443 (Google Play Services)',
+  'graph.instagram.com:443 (Instagram API)',
+  'i.ytimg.com:443 (YouTube Thumbnails & Media)',
+  'g.whatsapp.net:443 (WhatsApp Media & Call)',
+  '1.1.1.1:443 (Cloudflare DNS & Edge)',
+  'z-m-gateway.facebook.com:443 (Meta Services)',
+  '149.154.167.92:443 (Telegram Media)',
 ];
 
 const ClientActivityModal: React.FC<ClientActivityModalProps> = ({ open, client, onClose }) => {
