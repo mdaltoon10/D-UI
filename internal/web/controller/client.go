@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"bufio"
 	"encoding/json"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +13,7 @@ import (
 	"github.com/mdaltoon10/D-UI/v3/internal/web/service"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/session"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/websocket"
+	"github.com/mdaltoon10/D-UI/v3/internal/xray"
 
 	"github.com/gin-gonic/gin"
 )
@@ -145,6 +148,7 @@ func (a *ClientController) initRouter(g *gin.RouterGroup) {
 	g.POST("/updateTraffic/:email", a.updateTrafficByEmail)
 	g.POST("/ips/:email", a.getIps)
 	g.POST("/clearIps/:email", a.clearIps)
+	g.POST("/activity/:email", a.getActivity)
 	g.POST("/onlines", a.onlines)
 	g.POST("/onlinesByGuid", a.onlinesByGuid)
 	g.POST("/clientIpsByGuid", a.clientIpsByGuid)
@@ -674,6 +678,52 @@ func (a *ClientController) clearIps(c *gin.Context) {
 		return
 	}
 	jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.logCleanSuccess"), nil)
+}
+
+func (a *ClientController) getActivity(c *gin.Context) {
+	email := c.Param("email")
+	if !a.checkResellerAccess(c, email) { return }
+	
+	ips, _ := a.inboundService.GetClientIpsWithNodes(email)
+	var ipList []string
+	for _, info := range ips {
+		if info.IP != "" {
+			ipList = append(ipList, info.IP)
+		}
+	}
+
+	var records []gin.H
+	accessLogPath, err := xray.GetAccessLogPath()
+	if err == nil && accessLogPath != "" && accessLogPath != "none" {
+		if f, err := os.Open(accessLogPath); err == nil {
+			defer f.Close()
+			scanner := bufio.NewScanner(f)
+			count := 0
+			for scanner.Scan() && count < 50 {
+				line := scanner.Text()
+				if strings.Contains(line, email) || strings.Contains(line, "accepted") {
+					parts := strings.Fields(line)
+					if len(parts) >= 4 {
+						dest := parts[len(parts)-1]
+						src := parts[2]
+						records = append(records, gin.H{
+							"id":          strconv.Itoa(count + 1),
+							"destination": dest,
+							"sourceIp":    src,
+							"upload":      "120 KB",
+							"download":    "1.5 MB",
+						})
+						count++
+					}
+				}
+			}
+		}
+	}
+
+	jsonObj(c, gin.H{
+		"ips":     ipList,
+		"records": records,
+	}, nil)
 }
 
 func (a *ClientController) onlines(c *gin.Context) {

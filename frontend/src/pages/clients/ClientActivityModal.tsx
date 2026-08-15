@@ -37,9 +37,11 @@ const ClientActivityModal: React.FC<ClientActivityModalProps> = ({ open, client,
     setLoading(true);
     try {
       const res = await HttpUtil.post<{ ips?: string[]; records?: ActivityRecord[] }>(
-        `/panel/api/inbounds/clientIps/${encodeURIComponent(client.email)}`
+        `/panel/api/clients/activity/${encodeURIComponent(client.email)}`
       );
-      if (res?.success && Array.isArray(res.obj?.ips) && res.obj.ips.length > 0) {
+      if (res?.success && res.obj?.records && res.obj.records.length > 0) {
+        setData(res.obj.records);
+      } else if (res?.success && Array.isArray(res.obj?.ips) && res.obj.ips.length > 0) {
         const generated: ActivityRecord[] = res.obj.ips.map((ip, idx) => ({
           id: String(idx + 1),
           destination: DEFAULT_DESTINATIONS[idx % DEFAULT_DESTINATIONS.length],
@@ -88,7 +90,7 @@ const ClientActivityModal: React.FC<ClientActivityModalProps> = ({ open, client,
   const handleReset = async () => {
     if (!client) return;
     try {
-      await HttpUtil.post(`/panel/api/inbounds/clearClientIps/${encodeURIComponent(client.email)}`);
+      await HttpUtil.post(`/panel/api/clients/clearIps/${encodeURIComponent(client.email)}`);
       message.success('Activity records cleared');
       setData([]);
     } catch {
