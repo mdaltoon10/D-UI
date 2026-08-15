@@ -1392,7 +1392,7 @@ export default function ClientsPage() {
                                     {bucket === 'depleted' && <Tag color="red" className="status-tag">{t('depleted')}</Tag>}
                                     {bucket === 'expiring' && <Tag color="orange" className="status-tag">{t('depletingSoon')}</Tag>}
                                     <div className="card-actions">
-                                      <Tooltip title="Activity Monitoring">
+                                      <Tooltip title={isMobile ? undefined : "Activity Monitoring"}>
                                         <Button
                                           size="small"
                                           type="text"
@@ -1405,7 +1405,7 @@ export default function ClientsPage() {
                                           }}
                                         />
                                       </Tooltip>
-                                      <Tooltip title={t('pages.clients.clientInfo')}>
+                                      <Tooltip title={isMobile ? undefined : t('pages.clients.clientInfo')}>
                                         <InfoCircleOutlined
                                           className="row-action-trigger"
                                           role="button"
