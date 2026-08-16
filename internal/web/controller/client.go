@@ -1,21 +1,17 @@
 package controller
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/mdaltoon10/D-UI/v3/internal/config"
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/service"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/session"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/websocket"
-	"github.com/mdaltoon10/D-UI/v3/internal/xray"
 
 	"github.com/gin-gonic/gin"
 )
