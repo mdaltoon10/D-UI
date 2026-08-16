@@ -62,6 +62,10 @@ export class AllSetting {
   subJsonFinalMask = '';
   subThemeDir = '';
   subHideSettings = false;
+  subDaltoonTemplate = false;
+  subShowGauges = false;
+  subIranDirect = false;
+  subIranRules = 'geosite:category-ir,geoip:ir,domain:.ir';
 
   timeLocation = 'Local';
 

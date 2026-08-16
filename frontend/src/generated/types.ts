@@ -60,6 +60,10 @@ export interface AllSetting {
   subEnableRouting: boolean;
   subEncrypt: boolean;
   subHideSettings: boolean;
+  subDaltoonTemplate?: boolean;
+  subShowGauges?: boolean;
+  subIranDirect?: boolean;
+  subIranRules?: string;
   subIncyEnableRouting: boolean;
   subIncyRoutingRules: string;
   subJsonEnable: boolean;
@@ -165,6 +169,10 @@ export interface AllSettingView {
   subEnableRouting: boolean;
   subEncrypt: boolean;
   subHideSettings: boolean;
+  subDaltoonTemplate?: boolean;
+  subShowGauges?: boolean;
+  subIranDirect?: boolean;
+  subIranRules?: string;
   subIncyEnableRouting: boolean;
   subIncyRoutingRules: string;
   subJsonEnable: boolean;

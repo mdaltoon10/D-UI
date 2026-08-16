@@ -21,6 +21,12 @@ interface SubPageData {
   downloadByte?: string | number;
   uploadByte?: string | number;
   usedByte?: string | number;
+  upLimitMbps?: number;
+  downLimitMbps?: number;
+  ipLimit?: number;
+  showGauges?: boolean;
+  iranDirect?: boolean;
+  daltoonTemplate?: boolean;
 }
 
 interface Window {

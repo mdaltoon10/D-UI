@@ -303,7 +303,8 @@ export default function SubPage() {
                   upLimitMbps={Number(subData.upLimitMbps || 0)}
                   downLimitMbps={Number(subData.downLimitMbps || 0)}
                   ipLimit={Number(subData.ipLimit || 0)}
-                  iranDirect={subData.iranDirect !== false}
+                  iranDirect={!!subData.iranDirect}
+                  showGauges={!!subData.showGauges}
                 />
 
                 {(subUrl || subJsonUrl || subClashUrl) && (

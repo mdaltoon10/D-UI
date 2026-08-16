@@ -104,6 +104,10 @@ type AllSetting struct {
 	SubJsonFinalMask            string `json:"subJsonFinalMask" form:"subJsonFinalMask"` // JSON subscription global finalmask (tcp/udp masks + quicParams)
 	SubThemeDir                 string `json:"subThemeDir" form:"subThemeDir"`           // Absolute path to a folder containing a custom subscription page template
 	SubHideSettings             bool   `json:"subHideSettings" form:"subHideSettings"`   // Hide server settings in happ subscription (Only for Happ)
+	SubDaltoonTemplate          bool   `json:"subDaltoonTemplate" form:"subDaltoonTemplate"`
+	SubShowGauges               bool   `json:"subShowGauges" form:"subShowGauges"`
+	SubIranDirect               bool   `json:"subIranDirect" form:"subIranDirect"`
+	SubIranRules                string `json:"subIranRules" form:"subIranRules"`
 
 	// LDAP settings
 	LdapEnable             bool   `json:"ldapEnable" form:"ldapEnable"`

@@ -243,29 +243,36 @@ func (a *SUBController) serveSubPage(c *gin.Context, basePath string, page PageD
 		datepicker = "gregorian"
 	}
 
+	subShowGauges, _ := a.settingService.GetSubShowGauges()
+	subIranDirect, _ := a.settingService.GetSubIranDirect()
+	subDaltoonTemplate, _ := a.settingService.GetSubDaltoonTemplate()
+
 	subData := map[string]any{
-		"sId":           page.SId,
-		"enabled":       page.Enabled,
-		"download":      page.Download,
-		"upload":        page.Upload,
-		"total":         page.Total,
-		"used":          page.Used,
-		"remained":      page.Remained,
-		"expire":        page.Expire,
-		"lastOnline":    page.LastOnline,
-		"downloadByte":  page.DownloadByte,
-		"uploadByte":    page.UploadByte,
-		"totalByte":     page.TotalByte,
-		"upLimitMbps":   page.UpLimitMbps,
-		"downLimitMbps": page.DownLimitMbps,
-		"subUrl":        page.SubUrl,
-		"subJsonUrl":    page.SubJsonUrl,
-		"subClashUrl":   page.SubClashUrl,
-		"subTitle":      page.SubTitle,
-		"subSupportUrl": page.SubSupportUrl,
-		"links":         page.Result,
-		"emails":        page.Emails,
-		"datepicker":    datepicker,
+		"sId":             page.SId,
+		"enabled":         page.Enabled,
+		"download":        page.Download,
+		"upload":          page.Upload,
+		"total":           page.Total,
+		"used":            page.Used,
+		"remained":        page.Remained,
+		"expire":          page.Expire,
+		"lastOnline":      page.LastOnline,
+		"downloadByte":    page.DownloadByte,
+		"uploadByte":      page.UploadByte,
+		"totalByte":       page.TotalByte,
+		"upLimitMbps":     page.UpLimitMbps,
+		"downLimitMbps":   page.DownLimitMbps,
+		"subUrl":          page.SubUrl,
+		"subJsonUrl":      page.SubJsonUrl,
+		"subClashUrl":     page.SubClashUrl,
+		"subTitle":        page.SubTitle,
+		"subSupportUrl":   page.SubSupportUrl,
+		"links":           page.Result,
+		"emails":          page.Emails,
+		"datepicker":      datepicker,
+		"showGauges":      subShowGauges,
+		"iranDirect":      subIranDirect,
+		"daltoonTemplate": subDaltoonTemplate,
 	}
 
 	// When an admin has configured a custom subscription theme, render it

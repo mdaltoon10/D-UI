@@ -203,21 +203,21 @@ export default function SubscriptionGeneralTab({ allSetting, updateSetting }: Su
               title="Daltoon Subscription Template (Ourenus-based)"
               description="Clean subscription page experience with speed gauges, real-time client limits, and OS client quick-importers."
             >
-              <Switch checked={true} onChange={() => {}} />
+              <Switch checked={!!allSetting.subDaltoonTemplate} onChange={(v) => updateSetting({ subDaltoonTemplate: v })} />
             </SettingListItem>
             <SettingListItem
               paddings="small"
               title="Show Speed & Traffic Gauges"
               description="Display upload/download speed limit gauges and connection stats in client subscription pages."
             >
-              <Switch checked={true} onChange={() => {}} />
+              <Switch checked={!!allSetting.subShowGauges} onChange={(v) => updateSetting({ subShowGauges: v })} />
             </SettingListItem>
             <SettingListItem
               paddings="small"
               title="Iran Direct Routing (مسیریابی مستقیم ایران)"
               description="Directly route Iranian domestic traffic (.ir domains & IR IP ranges) to bypass proxy for higher performance."
             >
-              <Switch checked={allSetting.subClashEnableRouting} onChange={(v) => updateSetting({ subClashEnableRouting: v })} />
+              <Switch checked={!!allSetting.subIranDirect} onChange={(v) => updateSetting({ subIranDirect: v })} />
             </SettingListItem>
             <SettingListItem
               paddings="small"
@@ -226,7 +226,8 @@ export default function SubscriptionGeneralTab({ allSetting, updateSetting }: Su
             >
               <Select
                 mode="multiple"
-                defaultValue={['geosite:category-ir', 'geoip:ir', 'domain:.ir']}
+                value={allSetting.subIranRules ? allSetting.subIranRules.split(',').filter(Boolean) : ['geosite:category-ir', 'geoip:ir', 'domain:.ir']}
+                onChange={(vals) => updateSetting({ subIranRules: vals.join(',') })}
                 style={{ width: '100%' }}
                 options={[
                   { label: 'GEOSITE:category-ir (Iranian Websites)', value: 'geosite:category-ir' },

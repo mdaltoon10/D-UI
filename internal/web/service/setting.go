@@ -102,6 +102,10 @@ var defaultValueMap = map[string]string{
 	"subJsonRules":                "",
 	"subJsonFinalMask":            "",
 	"subThemeDir":                 "",
+	"subDaltoonTemplate":          "false",
+	"subShowGauges":               "false",
+	"subIranDirect":               "false",
+	"subIranRules":                "geosite:category-ir,geoip:ir,domain:.ir",
 	"datepicker":                  "gregorian",
 	"warp":                        "",
 	"warpUpdateInterval":          "0",
@@ -837,6 +841,22 @@ func (s *SettingService) GetSubJsonFinalMask() (string, error) {
 
 func (s *SettingService) GetSubThemeDir() (string, error) {
 	return s.getString("subThemeDir")
+}
+
+func (s *SettingService) GetSubDaltoonTemplate() (bool, error) {
+	return s.getBool("subDaltoonTemplate")
+}
+
+func (s *SettingService) GetSubShowGauges() (bool, error) {
+	return s.getBool("subShowGauges")
+}
+
+func (s *SettingService) GetSubIranDirect() (bool, error) {
+	return s.getBool("subIranDirect")
+}
+
+func (s *SettingService) GetSubIranRules() (string, error) {
+	return s.getString("subIranRules")
 }
 
 func (s *SettingService) GetDatepicker() (string, error) {

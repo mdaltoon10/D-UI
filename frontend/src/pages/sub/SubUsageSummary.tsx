@@ -17,6 +17,7 @@ interface SubUsageSummaryProps {
   downLimitMbps?: number;
   ipLimit?: number;
   iranDirect?: boolean;
+  showGauges?: boolean;
 }
 
 function pickStrokeColor(pct: number): { from: string; to: string } {
@@ -46,7 +47,8 @@ export default function SubUsageSummary({
   upLimitMbps = 0,
   downLimitMbps = 0,
   ipLimit: _ipLimit = 0,
-  iranDirect = true,
+  iranDirect = false,
+  showGauges = false,
 }: SubUsageSummaryProps) {
   const { t } = useTranslation();
   const pct = useMemo(() => {
@@ -105,28 +107,30 @@ export default function SubUsageSummary({
         )}
       </div>
 
-      <Row gutter={[12, 12]} style={{ marginTop: 16 }}>
-        <Col span={12}>
-          <div style={{ background: 'var(--ant-color-fill-quaternary)', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
-            <div style={{ fontSize: 11, color: 'var(--ant-color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <ArrowDownOutlined style={{ color: '#10b981' }} /> Download Speed Limit
+      {showGauges && (
+        <Row gutter={[12, 12]} style={{ marginTop: 16 }}>
+          <Col span={12}>
+            <div style={{ background: 'var(--ant-color-fill-quaternary)', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
+              <div style={{ fontSize: 11, color: 'var(--ant-color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <ArrowDownOutlined style={{ color: '#10b981' }} /> Download Speed Limit
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
+                {downLimitMbps > 0 ? `${downLimitMbps} Mbps` : 'Unlimited'}
+              </div>
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
-              {downLimitMbps > 0 ? `${downLimitMbps} Mbps` : 'Unlimited'}
+          </Col>
+          <Col span={12}>
+            <div style={{ background: 'var(--ant-color-fill-quaternary)', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
+              <div style={{ fontSize: 11, color: 'var(--ant-color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <ArrowUpOutlined style={{ color: '#3b82f6' }} /> Upload Speed Limit
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
+                {upLimitMbps > 0 ? `${upLimitMbps} Mbps` : 'Unlimited'}
+              </div>
             </div>
-          </div>
-        </Col>
-        <Col span={12}>
-          <div style={{ background: 'var(--ant-color-fill-quaternary)', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ant-color-border-secondary)' }}>
-            <div style={{ fontSize: 11, color: 'var(--ant-color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <ArrowUpOutlined style={{ color: '#3b82f6' }} /> Upload Speed Limit
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>
-              {upLimitMbps > 0 ? `${upLimitMbps} Mbps` : 'Unlimited'}
-            </div>
-          </div>
-        </Col>
-      </Row>
+          </Col>
+        </Row>
+      )}
     </div>
   );
 }
