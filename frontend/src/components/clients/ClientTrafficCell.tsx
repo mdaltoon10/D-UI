@@ -115,15 +115,15 @@ export default function ClientTrafficCell({
                 ? {
                     fontSize: '11px',
                     marginTop: '6px',
-                    color: 'var(--ant-color-primary, #3b82f6)',
+                    color: isDark ? '#38bdf8' : '#0284c7',
                     fontWeight: 600,
                     fontVariantNumeric: 'tabular-nums',
                     display: 'inline-flex',
                     gap: '5px',
                     alignItems: 'center',
                     alignSelf: 'flex-start',
-                    background: isDark ? 'rgba(22, 119, 255, 0.16)' : 'rgba(22, 119, 255, 0.09)',
-                    border: isDark ? '1px solid rgba(22, 119, 255, 0.28)' : '1px solid rgba(22, 119, 255, 0.2)',
+                    background: isDark ? 'rgba(14, 116, 224, 0.22)' : 'rgba(2, 132, 199, 0.12)',
+                    border: isDark ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(2, 132, 199, 0.25)',
                     borderRadius: '6px',
                     padding: '2px 8px',
                     lineHeight: '1.4',
@@ -131,22 +131,22 @@ export default function ClientTrafficCell({
                 : {
                     fontSize: '11px',
                     marginTop: '4px',
-                    color: 'var(--ant-color-primary, #3b82f6)',
-                    fontWeight: 500,
+                    color: isDark ? '#38bdf8' : '#0284c7',
+                    fontWeight: 600,
                     fontVariantNumeric: 'tabular-nums',
                     display: 'inline-flex',
-                    gap: '4px',
+                    gap: '5px',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: isDark ? 'rgba(22, 119, 255, 0.12)' : 'rgba(22, 119, 255, 0.08)',
-                    border: isDark ? '1px solid rgba(22, 119, 255, 0.2)' : '1px solid rgba(22, 119, 255, 0.15)',
-                    borderRadius: '4px',
-                    padding: '1px 6px',
+                    background: isDark ? 'rgba(14, 116, 224, 0.2)' : 'rgba(2, 132, 199, 0.1)',
+                    border: isDark ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(2, 132, 199, 0.2)',
+                    borderRadius: '5px',
+                    padding: '2px 7px',
                   }
             }
           >
             <span>↑ {SizeFormatter.speedFormat(speedUp)}</span>
-            <span style={{ opacity: 0.4 }}>/</span>
+            <span style={{ opacity: 0.5 }}>/</span>
             <span>↓ {SizeFormatter.speedFormat(speedDown)}</span>
           </div>
         )}
