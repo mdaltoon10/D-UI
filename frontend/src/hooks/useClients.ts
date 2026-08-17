@@ -538,11 +538,53 @@ export function useClients() {
   const queryRef = useRef(query);
   queryRef.current = query;
 
+  const [clientSpeeds, setClientSpeeds] = useState<Record<string, { speedUp: number; speedDown: number; lastUpdated: number }>>({});
+  const clientPrevTotalsRef = useRef<Map<string, { up: number; down: number }>>(new Map());
+
+  const getClientSpeed = useCallback((email: string | undefined): { speedUp: number; speedDown: number } => {
+    if (!email) return { speedUp: 0, speedDown: 0 };
+    const key = email.trim().toLowerCase();
+    const info = clientSpeeds[key];
+    if (!info) return { speedUp: 0, speedDown: 0 };
+    if (Date.now() - info.lastUpdated > 12000) {
+      return { speedUp: 0, speedDown: 0 };
+    }
+    return { speedUp: info.speedUp, speedDown: info.speedDown };
+  }, [clientSpeeds]);
+
   const applyTrafficEvent = useCallback((payload: unknown) => {
     if (!payload || typeof payload !== 'object') return;
-    const p = payload as { onlineClients?: string[] };
+    const p = payload as {
+      onlineClients?: string[];
+      clientTraffics?: Array<{ email?: string; up?: number; down?: number }>;
+    };
     if (Array.isArray(p.onlineClients)) {
       queryClient.setQueryData(keys.clients.onlines(), p.onlineClients);
+    }
+    if (Array.isArray(p.clientTraffics) && p.clientTraffics.length > 0) {
+      const now = Date.now();
+      setClientSpeeds((prev) => {
+        const next = { ...prev };
+        let changed = false;
+        for (const ct of p.clientTraffics!) {
+          if (!ct || !ct.email) continue;
+          const key = ct.email.trim().toLowerCase();
+          const up = typeof ct.up === 'number' ? ct.up : 0;
+          const down = typeof ct.down === 'number' ? ct.down : 0;
+          const speedUp = up > 0 ? Math.round(up / 5) : 0;
+          const speedDown = down > 0 ? Math.round(down / 5) : 0;
+          if (speedUp > 0 || speedDown > 0) {
+            next[key] = { speedUp, speedDown, lastUpdated: now };
+            changed = true;
+          } else if (next[key] && (next[key].speedUp > 0 || next[key].speedDown > 0)) {
+            if (now - next[key].lastUpdated >= 8000) {
+              next[key] = { speedUp: 0, speedDown: 0, lastUpdated: now };
+              changed = true;
+            }
+          }
+        }
+        return changed ? next : prev;
+      });
     }
   }, [queryClient]);
 
@@ -551,10 +593,38 @@ export function useClients() {
     const p = payload as { clients?: ClientStatRow[]; snapshot?: boolean };
     if (!Array.isArray(p.clients) || p.clients.length === 0) return;
     if (p.snapshot !== false) setAllClientStats(p.clients);
+
+    const now = Date.now();
     const byEmail = new Map<string, ClientTraffic>();
+    const calculatedSpeeds: Record<string, { speedUp: number; speedDown: number; lastUpdated: number }> = {};
+    let hasNewSpeed = false;
+
     for (const row of p.clients) {
-      if (row && row.email) byEmail.set(row.email.trim().toLowerCase(), row);
+      if (!row || !row.email) continue;
+      const emailKey = row.email.trim().toLowerCase();
+      byEmail.set(emailKey, row);
+
+      const prev = clientPrevTotalsRef.current.get(emailKey);
+      const curUp = typeof row.up === 'number' ? row.up : 0;
+      const curDown = typeof row.down === 'number' ? row.down : 0;
+
+      if (prev) {
+        const deltaUp = curUp > prev.up ? curUp - prev.up : 0;
+        const deltaDown = curDown > prev.down ? curDown - prev.down : 0;
+        const speedUp = deltaUp > 0 ? Math.round(deltaUp / 5) : 0;
+        const speedDown = deltaDown > 0 ? Math.round(deltaDown / 5) : 0;
+        if (speedUp > 0 || speedDown > 0) {
+          calculatedSpeeds[emailKey] = { speedUp, speedDown, lastUpdated: now };
+          hasNewSpeed = true;
+        }
+      }
+      clientPrevTotalsRef.current.set(emailKey, { up: curUp, down: curDown });
     }
+
+    if (hasNewSpeed) {
+      setClientSpeeds((prev) => ({ ...prev, ...calculatedSpeeds }));
+    }
+
     queryClient.setQueryData<ClientPageResponse>(keys.clients.list(queryRef.current), (prev) => {
       if (!prev) return prev;
       let touched = false;
@@ -565,16 +635,8 @@ export function useClients() {
         const upd = emailKey ? byEmail.get(emailKey) : undefined;
         if (!upd) continue;
         const merged: ClientTraffic = { ...(row.traffic || {}) };
-        if (typeof upd.up === 'number') {
-          const prevUp = row.traffic?.up ?? upd.up;
-          merged.speedUp = upd.up >= prevUp ? (upd.up - prevUp) / 5 : 0;
-          merged.up = upd.up;
-        }
-        if (typeof upd.down === 'number') {
-          const prevDown = row.traffic?.down ?? upd.down;
-          merged.speedDown = upd.down >= prevDown ? (upd.down - prevDown) / 5 : 0;
-          merged.down = upd.down;
-        }
+        if (typeof upd.up === 'number') merged.up = upd.up;
+        if (typeof upd.down === 'number') merged.down = upd.down;
         if (typeof upd.total === 'number') merged.total = upd.total;
         if (typeof upd.expiryTime === 'number') merged.expiryTime = upd.expiryTime;
         if (typeof upd.enable === 'boolean') merged.enable = upd.enable;
@@ -602,6 +664,8 @@ export function useClients() {
     setQuery,
     inbounds,
     onlines,
+    clientSpeeds,
+    getClientSpeed,
     loading,
     transitioning,
     fetched,

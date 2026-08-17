@@ -147,6 +147,7 @@ function AdminClientsSubList({
     expireDiff,
     trafficDiff,
     setEnable,
+    getClientSpeed,
   } = useClients();
 
   const [clients, setClients] = useState<ClientSlim[]>([]);
@@ -547,15 +548,21 @@ function AdminClientsSubList({
       title: t('pages.clients.traffic'),
       key: 'traffic',
       width: 250,
-      render: (_v, record) => (
-        <ClientTrafficCell
-          up={record.traffic?.up}
-          down={record.traffic?.down}
-          total={record.totalGB}
-          enabled={record.enable}
-          trafficDiff={trafficDiff}
-        />
-      ),
+      render: (_v, record) => {
+        const speed = getClientSpeed(record.email);
+        const online = (Array.isArray(onlines) && onlines.includes(record.email)) || speed.speedUp > 0 || speed.speedDown > 0;
+        return (
+          <ClientTrafficCell
+            up={record.traffic?.up}
+            down={record.traffic?.down}
+            total={record.totalGB}
+            enabled={record.enable}
+            trafficDiff={trafficDiff}
+            speedUp={online ? speed.speedUp : 0}
+            speedDown={online ? speed.speedDown : 0}
+          />
+        );
+      },
     },
     {
       title: t('pages.clients.remaining'),
@@ -708,14 +715,22 @@ function AdminClientsSubList({
                       </Dropdown>
                     </div>
                   </div>
-                  <ClientTrafficCell
-                    compact
-                    up={row.traffic?.up}
-                    down={row.traffic?.down}
-                    total={row.totalGB}
-                    enabled={row.enable}
-                    trafficDiff={trafficDiff}
-                  />
+                  {(() => {
+                    const speed = getClientSpeed(row.email);
+                    const online = (Array.isArray(onlines) && onlines.includes(row.email)) || speed.speedUp > 0 || speed.speedDown > 0;
+                    return (
+                      <ClientTrafficCell
+                        compact
+                        up={row.traffic?.up}
+                        down={row.traffic?.down}
+                        total={row.totalGB}
+                        enabled={row.enable}
+                        trafficDiff={trafficDiff}
+                        speedUp={online ? speed.speedUp : 0}
+                        speedDown={online ? speed.speedDown : 0}
+                      />
+                    );
+                  })()}
                 </div>
               );
             })}

@@ -213,7 +213,7 @@ export default function ClientsPage() {
     summary: serverSummary,
     allGroups,
     setQuery,
-    inbounds, onlines, loading, transitioning, fetched, fetchError, subSettings,
+    inbounds, onlines, getClientSpeed, loading, transitioning, fetched, fetchError, subSettings,
     tgBotEnable, expireDiff, trafficDiff, pageSize,
     create, update, remove, bulkDelete, bulkAdjust, bulkEnable, bulkDisable, bulkAddToGroup, bulkRemoveFromGroup, attach, setExternalLinks, bulkAttach, detach, bulkDetach,
     resetTraffic, resetAllTraffics, delDepleted, delOrphans, exportClients, importClients, setEnable,
@@ -901,17 +901,21 @@ export default function ClientsPage() {
       title: t('pages.clients.traffic'),
       key: 'traffic',
       width: 300,
-      render: (_v, record) => (
-        <ClientTrafficCell
-          up={record.traffic?.up}
-          down={record.traffic?.down}
-          total={record.totalGB}
-          enabled={record.enable}
-          trafficDiff={trafficDiff}
-          speedUp={isOnline(record.email) ? record.traffic?.speedUp : 0}
-          speedDown={isOnline(record.email) ? record.traffic?.speedDown : 0}
-        />
-      ),
+      render: (_v, record) => {
+        const speed = getClientSpeed(record.email);
+        const online = isOnline(record.email) || speed.speedUp > 0 || speed.speedDown > 0;
+        return (
+          <ClientTrafficCell
+            up={record.traffic?.up}
+            down={record.traffic?.down}
+            total={record.totalGB}
+            enabled={record.enable}
+            trafficDiff={trafficDiff}
+            speedUp={online ? speed.speedUp : 0}
+            speedDown={online ? speed.speedDown : 0}
+          />
+        );
+      },
     },
     {
       title: t('pages.clients.remaining'),
@@ -930,7 +934,7 @@ export default function ClientsPage() {
       ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [t, togglingEmail, clientBucket, isOnline, inboundsById, filters, allGroups, datepicker, trafficDiff]);
+  ], [t, togglingEmail, clientBucket, isOnline, inboundsById, filters, allGroups, datepicker, trafficDiff, getClientSpeed]);
 
   const tablePagination = {
     current: currentPage,
@@ -1431,16 +1435,22 @@ export default function ClientsPage() {
                                       </Dropdown>
                                     </div>
                                   </div>
-                                  <ClientTrafficCell
-                                    compact
-                                    up={row.traffic?.up}
-                                    down={row.traffic?.down}
-                                    total={row.totalGB}
-                                    enabled={row.enable}
-                                    trafficDiff={trafficDiff}
-                                    speedUp={isOnline(row.email) ? row.traffic?.speedUp : 0}
-                                    speedDown={isOnline(row.email) ? row.traffic?.speedDown : 0}
-                                  />
+                                  {(() => {
+                                    const speed = getClientSpeed(row.email);
+                                    const online = isOnline(row.email) || speed.speedUp > 0 || speed.speedDown > 0;
+                                    return (
+                                      <ClientTrafficCell
+                                        compact
+                                        up={row.traffic?.up}
+                                        down={row.traffic?.down}
+                                        total={row.totalGB}
+                                        enabled={row.enable}
+                                        trafficDiff={trafficDiff}
+                                        speedUp={online ? speed.speedUp : 0}
+                                        speedDown={online ? speed.speedDown : 0}
+                                      />
+                                    );
+                                  })()}
                                 </div>
                               );
                             })}

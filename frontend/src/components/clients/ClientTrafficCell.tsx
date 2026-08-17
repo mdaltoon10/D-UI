@@ -97,25 +97,56 @@ export default function ClientTrafficCell({
 
   return (
     <Popover content={popover} trigger={['hover', 'click']} placement="top">
-      <div className="client-traffic-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+      <div
+        className={`client-traffic-container ${compact ? 'is-compact' : ''}`}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: compact ? 'flex-start' : 'center',
+          width: '100%',
+        }}
+      >
         {mainCell}
         {hasSpeed && (
           <div
-            className="client-traffic-speed"
-            style={{
-              fontSize: '11px',
-              marginTop: '4px',
-              color: 'var(--ant-color-primary)',
-              fontWeight: 500,
-              fontVariantNumeric: 'tabular-nums',
-              display: 'flex',
-              gap: '4px',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className={`client-traffic-speed ${compact ? 'is-compact-badge' : ''}`}
+            style={
+              compact
+                ? {
+                    fontSize: '11px',
+                    marginTop: '6px',
+                    color: 'var(--ant-color-primary, #3b82f6)',
+                    fontWeight: 600,
+                    fontVariantNumeric: 'tabular-nums',
+                    display: 'inline-flex',
+                    gap: '5px',
+                    alignItems: 'center',
+                    alignSelf: 'flex-start',
+                    background: isDark ? 'rgba(22, 119, 255, 0.16)' : 'rgba(22, 119, 255, 0.09)',
+                    border: isDark ? '1px solid rgba(22, 119, 255, 0.28)' : '1px solid rgba(22, 119, 255, 0.2)',
+                    borderRadius: '6px',
+                    padding: '2px 8px',
+                    lineHeight: '1.4',
+                  }
+                : {
+                    fontSize: '11px',
+                    marginTop: '4px',
+                    color: 'var(--ant-color-primary, #3b82f6)',
+                    fontWeight: 500,
+                    fontVariantNumeric: 'tabular-nums',
+                    display: 'inline-flex',
+                    gap: '4px',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: isDark ? 'rgba(22, 119, 255, 0.12)' : 'rgba(22, 119, 255, 0.08)',
+                    border: isDark ? '1px solid rgba(22, 119, 255, 0.2)' : '1px solid rgba(22, 119, 255, 0.15)',
+                    borderRadius: '4px',
+                    padding: '1px 6px',
+                  }
+            }
           >
             <span>↑ {SizeFormatter.speedFormat(speedUp)}</span>
-            <span style={{ opacity: 0.5 }}>/</span>
+            <span style={{ opacity: 0.4 }}>/</span>
             <span>↓ {SizeFormatter.speedFormat(speedDown)}</span>
           </div>
         )}
