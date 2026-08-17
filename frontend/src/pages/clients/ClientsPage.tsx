@@ -225,6 +225,7 @@ export default function ClientsPage() {
   useWebSocket({
     traffic: applyTrafficEvent,
     client_stats: applyClientStatsEvent,
+    clientStats: applyClientStatsEvent,
   });
 
   // Node list for the Nodes filter; the section only renders when the panel

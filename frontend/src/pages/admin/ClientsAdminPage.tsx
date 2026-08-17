@@ -47,6 +47,7 @@ import { HttpUtil, SizeFormatter, IntlUtil } from '@/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useDatepicker } from '@/hooks/useDatepicker';
 import { useClients } from '@/hooks/useClients';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { formatInboundLabel } from '@/lib/inbounds/label';
 import ClientTrafficCell from '@/components/clients/ClientTrafficCell';
@@ -148,7 +149,46 @@ function AdminClientsSubList({
     trafficDiff,
     setEnable,
     getClientSpeed,
+    applyTrafficEvent,
+    applyClientStatsEvent,
   } = useClients();
+
+  useWebSocket({
+    traffic: applyTrafficEvent,
+    client_stats: (payload: unknown) => {
+      applyClientStatsEvent(payload);
+      const p = payload as { clients?: Array<{ email?: string; up?: number; down?: number; total?: number; enable?: boolean; expiryTime?: number }> };
+      if (Array.isArray(p?.clients) && p.clients.length > 0) {
+        const byEmail = new Map<string, (typeof p.clients)[0]>();
+        for (const row of p.clients) {
+          if (row?.email) byEmail.set(row.email.trim().toLowerCase(), row);
+        }
+        setClients((prev) => {
+          let changed = false;
+          const next = prev.map((item) => {
+            const upd = byEmail.get(item.email.trim().toLowerCase());
+            if (!upd) return item;
+            changed = true;
+            return {
+              ...item,
+              traffic: {
+                ...(item.traffic || { total: 0, expiryTime: 0, enable: true, lastOnline: 0 }),
+                up: typeof upd.up === 'number' ? upd.up : item.traffic?.up || 0,
+                down: typeof upd.down === 'number' ? upd.down : item.traffic?.down || 0,
+                total: typeof upd.total === 'number' ? upd.total : item.traffic?.total || 0,
+                enable: typeof upd.enable === 'boolean' ? upd.enable : item.traffic?.enable ?? true,
+                expiryTime: typeof upd.expiryTime === 'number' ? upd.expiryTime : item.traffic?.expiryTime || 0,
+              },
+            };
+          });
+          return changed ? next : prev;
+        });
+      }
+    },
+    clientStats: (payload: unknown) => {
+      applyClientStatsEvent(payload);
+    },
+  });
 
   const [clients, setClients] = useState<ClientSlim[]>([]);
   const [loading, setLoading] = useState(false);
@@ -580,7 +620,8 @@ function AdminClientsSubList({
         </Tooltip>
       ),
     },
-  ], [t, togglingEmail, clientBucket, isOnline, inboundsById, datepicker, trafficDiff, isFa, expiryLabel, onDelete, onEdit, onResetTraffic, onShowInfo, onShowQr, onToggleEnable]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [t, togglingEmail, clientBucket, isOnline, inboundsById, datepicker, trafficDiff, isFa, expiryLabel, onDelete, onEdit, onResetTraffic, onShowInfo, onShowQr, onToggleEnable, getClientSpeed, onlines]);
 
   return (
     <div style={{ padding: isMobile ? '8px' : '16px', background: 'var(--ant-color-fill-quaternary)', borderRadius: '12px', margin: '8px 0', border: '1px solid var(--ant-color-border-secondary)' }}>
