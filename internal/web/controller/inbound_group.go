@@ -63,7 +63,7 @@ func (a *InboundGroupController) create(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	jsonObj(c, g, I18nWeb(c, "success"))
+	jsonObj(c, g, nil)
 }
 
 func (a *InboundGroupController) update(c *gin.Context) {
@@ -135,7 +135,7 @@ func (a *InboundGroupController) addInbounds(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	jsonObj(c, gin.H{"affected": affected}, I18nWeb(c, "success"))
+	jsonObj(c, gin.H{"affected": affected}, nil)
 }
 
 func (a *InboundGroupController) sync(c *gin.Context) {
