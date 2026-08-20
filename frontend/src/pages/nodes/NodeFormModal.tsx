@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Button,
-  Card,
   Col,
   Form,
   Input,
@@ -11,18 +10,15 @@ import {
   Modal,
   Row,
   Select,
-  Space,
   Switch,
   message,
 } from 'antd';
-import { PlusOutlined, DeleteOutlined, DeploymentUnitOutlined } from '@ant-design/icons';
 import type { NodeRecord } from '@/api/queries/useNodesQuery';
 import type { RemoteInboundOption } from '@/api/queries/useNodeMutations';
 import type { Msg } from '@/utils';
 import { NodeFormSchema, type NodeFormValues, type ProbeResult } from '@/schemas/node';
 import { antdRule } from '@/utils/zodForm';
 import { useOutboundTagGroups } from '@/api/queries/useOutboundTags';
-import { useInboundOptions } from '@/api/queries/useInboundOptions';
 import './NodeFormModal.css';
 
 type Mode = 'add' | 'edit';
@@ -54,7 +50,6 @@ function defaultValues(): NodeFormValues {
     pinnedCertSha256: '',
     inboundSyncMode: 'all',
     inboundTags: [],
-    inboundOverrides: [],
     outboundTag: '',
     publicAddress: '',
   };
@@ -84,44 +79,7 @@ export default function NodeFormModal({
   const tlsVerifyMode = Form.useWatch('tlsVerifyMode', form) ?? 'verify';
   const inboundSyncMode = Form.useWatch('inboundSyncMode', form) ?? 'all';
   const { data: outboundGroups } = useOutboundTagGroups({ excludeBlackhole: true });
-  const { data: mainInbounds = [] } = useInboundOptions();
 
-  const combinedInboundOptions = useMemo(() => {
-    const map = new Map<string, { value: string; label: string }>();
-
-    // Add from mainInbounds
-    for (const ib of mainInbounds || []) {
-      const val = ib.tag || ib.remark || String(ib.id);
-      const label = `${ib.remark || ib.tag}${ib.port ? ` (Port ${ib.port})` : ''}`;
-      map.set(val, { value: val, label });
-    }
-
-    // Add/override from remote fetched inbounds
-    for (const ib of inboundOptions || []) {
-      const val = ib.tag || ib.remark || String(ib.id);
-      if (!map.has(val)) {
-        map.set(val, { value: val, label: `${ib.remark || ib.tag}${ib.port ? ` (Port ${ib.port})` : ''}` });
-      }
-    }
-
-    return Array.from(map.values());
-  }, [mainInbounds, inboundOptions]);
-
-  const overrideSelectOptions = useMemo(() => {
-    const inboundOptionsList = combinedInboundOptions.map((ib) => ({
-      value: `inbound:${ib.value}`,
-      label: `⚡ ${ib.label}`,
-    }));
-
-    const result = [];
-    if (inboundOptionsList.length > 0) {
-      result.push({
-        label: t('pages.nodes.typeInbound'),
-        options: inboundOptionsList,
-      });
-    }
-    return result;
-  }, [combinedInboundOptions, t]);
   // when balancers exist they get a labeled group so it's clear the selection
   // routes through a balancer. Empty falls back to the placeholder ("Direct
   // connection") rather than a synthetic option, so it can't read as a second
@@ -148,7 +106,6 @@ export default function NodeFormModal({
         scheme: (node.scheme as 'http' | 'https') || base.scheme,
         inboundSyncMode: (node.inboundSyncMode as 'all' | 'selected') || base.inboundSyncMode,
         inboundTags: node.inboundTags ?? [],
-        inboundOverrides: node.inboundOverrides ?? [],
       }
       : base;
     if (next.scheme === 'http') next.tlsVerifyMode = 'skip';
@@ -179,7 +136,6 @@ export default function NodeFormModal({
       pinnedCertSha256: values.tlsVerifyMode === 'pin' ? values.pinnedCertSha256.trim() : '',
       inboundSyncMode: values.inboundSyncMode,
       inboundTags: values.inboundSyncMode === 'selected' ? values.inboundTags : [],
-      inboundOverrides: values.inboundOverrides || [],
       outboundTag: values.outboundTag || '',
       publicAddress: values.publicAddress?.trim() || '',
     };
@@ -492,116 +448,6 @@ export default function NodeFormModal({
               />
             </Form.Item>
           )}
-
-          <Card
-            size="small"
-            title={
-              <Space size={6}>
-                <DeploymentUnitOutlined className="text-primary" />
-                <span>{t('pages.nodes.inboundOverrides')}</span>
-              </Space>
-            }
-            className="mb-4 bg-neutral-900/30 border-neutral-700/40"
-          >
-            <div className="text-xs text-neutral-400 mb-3">
-              {t('pages.nodes.inboundOverridesHint')}
-            </div>
-
-            <Form.List name="inboundOverrides">
-              {(fields, { add, remove }) => (
-                <div className="flex flex-col gap-2">
-                  {fields.map(({ key, name, ...restField }) => (
-                    <Card
-                      key={key}
-                      size="small"
-                      type="inner"
-                      className="bg-neutral-800/40 border-neutral-700/40"
-                    >
-                      <Row gutter={[8, 8]} align="middle">
-                        <Col xs={24} sm={11}>
-                          <Form.Item
-                            shouldUpdate={(prevValues, curValues) =>
-                              prevValues.inboundOverrides?.[name]?.targetType !==
-                                curValues.inboundOverrides?.[name]?.targetType ||
-                              prevValues.inboundOverrides?.[name]?.targetValue !==
-                                curValues.inboundOverrides?.[name]?.targetValue
-                            }
-                            noStyle
-                          >
-                            {() => {
-                              const type = form.getFieldValue(['inboundOverrides', name, 'targetType']) || 'inbound';
-                              const val = form.getFieldValue(['inboundOverrides', name, 'targetValue']) || '';
-                              const currentCompositeValue = val ? `${type}:${val}` : undefined;
-
-                              return (
-                                <Select
-                                  value={currentCompositeValue}
-                                  placeholder={t('pages.nodes.targetValue')}
-                                  options={overrideSelectOptions}
-                                  showSearch
-                                  optionFilterProp="label"
-                                  style={{ width: '100%' }}
-                                  onChange={(selectedComposite) => {
-                                    if (!selectedComposite) return;
-                                    const [parsedType, ...rest] = selectedComposite.split(':');
-                                    const parsedVal = rest.join(':');
-                                    form.setFieldValue(['inboundOverrides', name, 'targetType'], parsedType);
-                                    form.setFieldValue(['inboundOverrides', name, 'targetValue'], parsedVal);
-                                  }}
-                                />
-                              );
-                            }}
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={7}>
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'host']}
-                            noStyle
-                          >
-                            <Input placeholder={t('pages.nodes.overrideHost')} />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={18} sm={4}>
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'port']}
-                            noStyle
-                          >
-                            <InputNumber
-                              min={1}
-                              max={65535}
-                              placeholder={t('pages.nodes.overridePort')}
-                              style={{ width: '100%' }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={6} sm={2} className="text-right">
-                          <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() => remove(name)}
-                          />
-                        </Col>
-                      </Row>
-                    </Card>
-                  ))}
-
-                  <Button
-                    type="dashed"
-                    block
-                    icon={<PlusOutlined />}
-                    onClick={() =>
-                      add({ targetType: 'inbound', targetValue: '', host: '', port: undefined })
-                    }
-                  >
-                    {t('pages.nodes.addOverride')}
-                  </Button>
-                </div>
-              )}
-            </Form.List>
-          </Card>
 
           <div className="test-row">
             <Button type="default" loading={testing} onClick={onTest}>

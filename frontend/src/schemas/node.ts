@@ -57,16 +57,6 @@ export const ProbeResultSchema = z.object({
   xrayError: z.string().optional(),
 }).loose();
 
-export const InboundOverrideSchema = z.object({
-  id: z.string().optional(),
-  targetType: z.enum(['inbound']),
-  targetValue: z.string(),
-  host: z.string().optional(),
-  port: z.number().int().min(1).max(65535).optional(),
-});
-
-export type InboundOverride = z.infer<typeof InboundOverrideSchema>;
-
 export const NodeFormSchema = z.object({
   id: z.number().optional(),
   name: z.string().trim().min(1, 'pages.nodes.toasts.fillRequired'),
@@ -86,7 +76,6 @@ export const NodeFormSchema = z.object({
   // Unmounted when sync mode is "all" (absent from antd onFinish values) and
   // serialized as null by the backend for a nil slice — tolerate both.
   inboundTags: z.array(z.string()).nullish().transform((tags) => tags ?? []),
-  inboundOverrides: z.array(InboundOverrideSchema).optional().default([]),
   outboundTag: z.string().optional(),
   publicAddress: z.string().optional().default(''),
 }).superRefine((val, ctx) => {
