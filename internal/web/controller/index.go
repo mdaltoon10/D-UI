@@ -213,12 +213,25 @@ func (a *IndexController) login(c *gin.Context) {
 			logger.Infof("Reseller %s logged in successfully, Ip Address: %s\n", safeUser, remoteIP)
 			
 			// Set session for reseller
+			settingService := service.SettingService{}
+			mainBasePath, _ := settingService.GetBasePath()
+			if mainBasePath == "" {
+				mainBasePath = "/"
+			}
+
 			resellerBasePath := "/"
-			trimmedMain := strings.Trim(basePath, "/")
+			trimmedMain := strings.Trim(mainBasePath, "/")
 			if trimmedMain != "" {
 				resellerBasePath += trimmedMain + "/"
 			}
-			resellerBasePath += admin.WebPath + "/"
+			
+			// If logged in from portal, set base_path to portal. Otherwise direct.
+			if isValidPortal {
+				resellerBasePath += "portal/" + admin.WebPath + "/"
+			} else {
+				resellerBasePath += admin.WebPath + "/"
+			}
+			
 			c.Set("base_path", resellerBasePath)
 			if err := session.SetLoginReseller(c, admin.Id, admin.Username); err != nil {
 				logger.Warning("Unable to save reseller session:", err)

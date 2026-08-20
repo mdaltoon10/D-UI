@@ -44,14 +44,18 @@ func (a *BaseController) checkLogin(c *gin.Context) {
 				if mainBasePath == "" {
 					mainBasePath = "/"
 				}
-				correctBasePath := "/"
+				portalBasePath := "/"
+				directBasePath := "/"
 				trimmedMain := strings.Trim(mainBasePath, "/")
 				if trimmedMain != "" {
-					correctBasePath += trimmedMain + "/"
+					portalBasePath += trimmedMain + "/"
+					directBasePath += trimmedMain + "/"
 				}
-				correctBasePath += admin.WebPath + "/"
+				portalBasePath += "portal/" + admin.WebPath + "/"
+				directBasePath += admin.WebPath + "/"
+
 				currentBasePath := c.GetString("base_path")
-				if currentBasePath != correctBasePath {
+				if currentBasePath != portalBasePath && currentBasePath != directBasePath {
 					if isAjax(c) {
 						pureJsonMsg(c, http.StatusForbidden, false, "Unauthorized context")
 					} else {
@@ -60,7 +64,7 @@ func (a *BaseController) checkLogin(c *gin.Context) {
 						if strings.HasPrefix(reqPath, "/panel") {
 							suffix = strings.TrimPrefix(reqPath, "/panel")
 						}
-						c.Redirect(http.StatusTemporaryRedirect, correctBasePath+"panel"+suffix)
+						c.Redirect(http.StatusTemporaryRedirect, portalBasePath+"panel"+suffix)
 					}
 					c.Abort()
 					return
@@ -80,7 +84,9 @@ func (a *BaseController) checkLogin(c *gin.Context) {
 			if db != nil {
 				var admin model.ResellerAdmin
 				webPath := strings.Trim(currentBasePath, "/")
-				if err := db.Where("web_path = ?", webPath).First(&admin).Error; err == nil {
+				parts := strings.Split(webPath, "/")
+				webPath = parts[len(parts)-1]
+				if err := db.Where("LOWER(web_path) = LOWER(?)", webPath).First(&admin).Error; err == nil {
 					// Impersonate the reseller for this request
 					c.Set("IMPERSONATE_RESELLER_ID", admin.Id)
 					c.Set("IMPERSONATE_RESELLER_USERNAME", admin.Username)
