@@ -15,7 +15,7 @@ import {
   Switch,
   message,
 } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, DeploymentUnitOutlined } from '@ant-design/icons';
 import type { NodeRecord } from '@/api/queries/useNodesQuery';
 import type { RemoteInboundOption } from '@/api/queries/useNodeMutations';
 import type { Msg } from '@/utils';
@@ -497,7 +497,7 @@ export default function NodeFormModal({
             size="small"
             title={
               <Space size={6}>
-                <ForkOutlined className="text-primary" />
+                <DeploymentUnitOutlined className="text-primary" />
                 <span>{t('pages.nodes.inboundOverrides')}</span>
               </Space>
             }
