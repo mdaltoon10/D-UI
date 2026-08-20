@@ -37,8 +37,8 @@ jobs:
 
       - name: Build Frontend
         run: |
-          cd frontend
           npm install --legacy-peer-deps
+          cd frontend
           npm run gen:zod || true
           npm run build
 

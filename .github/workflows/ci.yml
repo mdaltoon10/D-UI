@@ -66,7 +66,6 @@ jobs:
         run: mkdir -p internal/web/dist && touch internal/web/dist/.gitkeep
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
-      - name: Run govulncheck
         run: govulncheck ./...
 
   # Race + shuffle hygiene gate: data races and order-dependent tests fail the build.
@@ -125,10 +124,9 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install
-        run: npm ci
-        working-directory: frontend
+        run: npm install --legacy-peer-deps
       - name: Lint
         run: npm run lint
         working-directory: frontend
