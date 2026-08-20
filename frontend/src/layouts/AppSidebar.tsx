@@ -433,7 +433,7 @@ export default function AppSidebar() {
         localStorage.removeItem('daltoon_current_admin');
       }
       try {
-        await HttpUtil.post('/logout');
+        await HttpUtil.post('logout');
       } catch {
         // ignore network error on logout
       }

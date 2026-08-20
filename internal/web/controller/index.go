@@ -106,16 +106,26 @@ func (a *IndexController) portalLogin(c *gin.Context) {
 func (a *IndexController) index(c *gin.Context) {
 	if session.IsLogin(c) {
 		c.Header("Cache-Control", "no-store")
+		
+		// base_path from context already includes the portal/<web_path>/ prefix if accessed via portal.
+		// If they accessed the master admin panel directly (no portal path), but are logged in ONLY as a reseller,
+		// we should redirect them to their portal panel.
 		if resellerId := session.GetLoginReseller(c); resellerId != "" {
 			db := database.GetDB()
 			if db != nil {
 				var admin model.ResellerAdmin
 				if err := db.Where("id = ?", resellerId).First(&admin).Error; err == nil {
-					c.Redirect(http.StatusTemporaryRedirect, c.GetString("base_path") + admin.WebPath + "/panel/")
-					return
+					basePath := c.GetString("base_path")
+					
+					// If they are on the master panel URL, we must redirect them to the portal
+					if !strings.Contains(strings.ToLower(basePath), "/portal/"+strings.ToLower(admin.WebPath)+"/") {
+						c.Redirect(http.StatusTemporaryRedirect, basePath+"portal/"+admin.WebPath+"/panel/")
+						return
+					}
 				}
 			}
 		}
+		
 		c.Redirect(http.StatusTemporaryRedirect, c.GetString("base_path")+"panel/")
 		return
 	}
@@ -286,12 +296,26 @@ func loginFailureReason(err error) string {
 }
 
 func (a *IndexController) logout(c *gin.Context) {
-	user := session.GetLoginUser(c)
-	if user != nil {
-		logger.Infof("%s logged out successfully", user.Username)
+	isImpersonating := false
+	if _, ok := c.Get("IMPERSONATE_RESELLER_ID"); ok {
+		isImpersonating = true
 	}
-	if err := session.ClearSession(c); err != nil {
-		logger.Warning("Unable to clear session on logout:", err)
+
+	isReseller := c.GetBool("is_reseller")
+
+	if isReseller && !isImpersonating {
+		logger.Infof("Reseller logged out successfully")
+		if err := session.ClearResellerSession(c); err != nil {
+			logger.Warning("Unable to clear reseller session on logout:", err)
+		}
+	} else {
+		user := session.GetLoginUser(c)
+		if user != nil {
+			logger.Infof("%s logged out successfully", user.Username)
+		}
+		if err := session.ClearAdminSession(c); err != nil {
+			logger.Warning("Unable to clear admin session on logout:", err)
+		}
 	}
 	c.Header("Cache-Control", "no-store")
 	c.JSON(http.StatusOK, gin.H{"success": true})

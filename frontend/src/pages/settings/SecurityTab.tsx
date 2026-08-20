@@ -105,7 +105,7 @@ export default function SecurityTab({ allSetting, updateSetting, saveSetting }: 
     try {
       const msg = await HttpUtil.post('/panel/api/setting/updateUser', { ...user, twoFactorCode }) as ApiMsg;
       if (msg?.success) {
-        await HttpUtil.post('/logout');
+        await HttpUtil.post('logout');
         const basePath = window.X_UI_BASE_PATH || '/';
         window.location.replace(basePath);
       }

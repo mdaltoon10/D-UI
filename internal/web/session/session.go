@@ -194,6 +194,20 @@ func getUserByID(id int) (*model.User, error) {
 	return user, nil
 }
 
+func ClearAdminSession(c *gin.Context) error {
+	s := sessions.Default(c)
+	s.Delete(getContextKey(c, loginUserKey))
+	s.Delete(getContextKey(c, loginEpochKey))
+	return s.Save()
+}
+
+func ClearResellerSession(c *gin.Context) error {
+	s := sessions.Default(c)
+	s.Delete(getContextKey(c, loginResellerKey))
+	s.Delete(getContextKey(c, loginResellerUsernameKey))
+	return s.Save()
+}
+
 func ClearSession(c *gin.Context) error {
 	s := sessions.Default(c)
 	s.Delete(getContextKey(c, loginUserKey))
