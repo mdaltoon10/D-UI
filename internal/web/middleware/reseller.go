@@ -34,19 +34,14 @@ func ResellerPathMiddleware(mainBasePath string) gin.HandlerFunc {
 		}
 
 		webPath := segments[startIndex]
-		isPortal := false
-		if strings.EqualFold(webPath, "portal") && len(segments) > startIndex+1 {
-			webPath = segments[startIndex+1]
-			isPortal = true
-		} else {
-			// Reserved segments that are NOT resellers
-			reserved := map[string]bool{
-				"panel": true, "assets": true, "api": true, "login": true, "logout": true, 
-				"portal": true, "csrf-token": true, "getTwoFactorEnable": true,
-			}
-			if reserved[webPath] {
-				return
-			}
+		
+		// Reserved segments that are NOT resellers
+		reserved := map[string]bool{
+			"panel": true, "assets": true, "api": true, "login": true, "logout": true, 
+			"portal": true, "csrf-token": true, "getTwoFactorEnable": true,
+		}
+		if reserved[webPath] {
+			return
 		}
 
 		var admin model.ResellerAdmin
@@ -65,11 +60,7 @@ func ResellerPathMiddleware(mainBasePath string) gin.HandlerFunc {
 			if trimmedMain != "" {
 				resellerBasePath += trimmedMain + "/"
 			}
-			if isPortal {
-				resellerBasePath += "portal/" + admin.WebPath + "/"
-			} else {
-				resellerBasePath += admin.WebPath + "/"
-			}
+			resellerBasePath += admin.WebPath + "/"
 
 			c.Set("base_path", resellerBasePath)
 			c.Set("is_reseller", true)

@@ -148,7 +148,7 @@
   left: 12px;
   right: auto;
   z-index: 1100;
-  background: #059669;
+  background: #0077b6;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.18);
   width: 34px;
@@ -159,16 +159,16 @@
   display: none;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.4);
+  box-shadow: 0 3px 10px rgba(0, 119, 182, 0.4);
   transition: all 0.2s ease;
   user-select: none;
 }
 
 .drawer-handle:hover,
 .drawer-handle:focus-visible {
-  background: #10b981;
+  background: #00b4d8;
   border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.55);
+  box-shadow: 0 4px 14px rgba(0, 180, 216, 0.55);
   transform: translateY(-1px);
   outline: none;
 }
@@ -295,9 +295,9 @@ body.dark .pasarguard-drawer-header .drawer-main-title {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  color: #10b981;
+  background: rgba(0, 180, 216, 0.12);
+  border: 1px solid rgba(0, 180, 216, 0.25);
+  color: #00b4d8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -370,17 +370,17 @@ body.dark .sider-utility .ant-menu-item:hover {
 .pasarguard-drawer.light .ant-menu-item-selected,
 body:not(.dark) .sider-nav .ant-menu-item-selected,
 body:not(.dark) .sider-utility .ant-menu-item-selected {
-  background: rgba(16, 185, 129, 0.12) !important;
-  border-color: rgba(16, 185, 129, 0.3) !important;
-  color: #059669 !important;
+  background: rgba(0, 180, 216, 0.12) !important;
+  border-color: rgba(0, 180, 216, 0.3) !important;
+  color: #0077b6 !important;
   font-weight: 700 !important;
 }
 
 .pasarguard-drawer.dark .ant-menu-item-selected,
 body.dark .sider-nav .ant-menu-item-selected,
 body.dark .sider-utility .ant-menu-item-selected {
-  background: rgba(16, 185, 129, 0.12) !important;
-  border-color: rgba(16, 185, 129, 0.4) !important;
+  background: rgba(0, 180, 216, 0.12) !important;
+  border-color: rgba(0, 180, 216, 0.4) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
 }
@@ -388,23 +388,23 @@ body.dark .sider-utility .ant-menu-item-selected {
 .pasarguard-drawer.light .ant-menu-item-selected .anticon,
 body:not(.dark) .sider-nav .ant-menu-item-selected .anticon,
 body:not(.dark) .sider-utility .ant-menu-item-selected .anticon {
-  color: #059669 !important;
+  color: #0077b6 !important;
 }
 
 .pasarguard-drawer.dark .ant-menu-item-selected .anticon,
 body.dark .sider-nav .ant-menu-item-selected .anticon,
 body.dark .sider-utility .ant-menu-item-selected .anticon {
-  color: #10b981 !important;
+  color: #00b4d8 !important;
 }
 
 .pasarguard-drawer.light .ant-menu-submenu-open > .ant-menu-submenu-title,
 body:not(.dark) .ant-menu-submenu-open > .ant-menu-submenu-title {
-  color: #059669 !important;
+  color: #0077b6 !important;
 }
 
 .pasarguard-drawer.dark .ant-menu-submenu-open > .ant-menu-submenu-title,
 body.dark .ant-menu-submenu-open > .ant-menu-submenu-title {
-  color: #10b981 !important;
+  color: #00b4d8 !important;
 }
 
 /* Submenu dropdown item styling */
@@ -472,7 +472,7 @@ body.dark .ant-menu-sub {
   gap: 6px;
   font-family: monospace;
   font-size: 11.5px;
-  color: #10b981;
+  color: #00b4d8;
   font-weight: 600;
 }
 
@@ -480,8 +480,8 @@ body.dark .ant-menu-sub {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
+  background: #00b4d8;
+  box-shadow: 0 0 8px #00b4d8;
 }
 
 /* Badge pills inside menu items */
@@ -497,7 +497,7 @@ body.dark .ant-menu-sub {
 }
 .menu-pill.pill-cyan { background: rgba(6, 182, 212, 0.15); color: #06b6d4; border: 1px solid rgba(6, 182, 212, 0.3); }
 .menu-pill.pill-amber { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
-.menu-pill.pill-green { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+.menu-pill.pill-green { background: rgba(0, 180, 216, 0.15); color: #00b4d8; border: 1px solid rgba(0, 180, 216, 0.3); }
 .menu-pill.pill-purple { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.3); }
 .menu-pill.pill-orange { background: rgba(249, 115, 22, 0.15); color: #f97316; border: 1px solid rgba(249, 115, 22, 0.3); }
 .menu-pill.pill-teal { background: rgba(20, 184, 166, 0.15); color: #14b8a6; border: 1px solid rgba(20, 184, 166, 0.3); }

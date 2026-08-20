@@ -97,10 +97,10 @@ export default function LoginPage() {
           const cleanBase = basePath.endsWith('/') ? basePath : basePath + '/';
           const webPathLower = obj.webPath.toLowerCase();
           const cleanBaseLower = cleanBase.toLowerCase();
-          if (cleanBaseLower.endsWith('/portal/' + webPathLower + '/') || cleanBaseLower.endsWith('/' + webPathLower + '/')) {
+          if (cleanBaseLower.endsWith('/' + webPathLower + '/')) {
             window.location.href = cleanBase + 'panel/';
           } else {
-            window.location.href = cleanBase + 'portal/' + obj.webPath + '/panel/';
+            window.location.href = cleanBase + obj.webPath + '/panel/';
           }
         } else {
           localStorage.removeItem('daltoon_current_admin');

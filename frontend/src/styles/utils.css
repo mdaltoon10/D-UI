@@ -41,9 +41,9 @@ body {
   line-height: 1;
 }
 .sidebar-badge-pill.pill-green {
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(0, 180, 216, 0.2);
+  color: #00b4d8;
+  border: 1px solid rgba(0, 180, 216, 0.35);
 }
 .sidebar-badge-pill.pill-cyan {
   background: rgba(6, 182, 212, 0.2);

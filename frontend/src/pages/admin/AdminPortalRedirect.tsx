@@ -28,8 +28,8 @@ export default function AdminPortalRedirect() {
       justifyContent: 'center',
       height: '100vh',
       gap: 16,
-      background: isDark ? '#080e0c' : '#f0fdf4',
-      color: isDark ? '#10b981' : '#059669',
+      background: isDark ? '#020c1b' : '#f0f9ff',
+      color: isDark ? '#00b4d8' : '#0077b6',
       transition: 'all 0.2s ease'
     }}>
       <Spin size="large" />

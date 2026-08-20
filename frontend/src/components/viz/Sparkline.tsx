@@ -79,7 +79,7 @@ export default function Sparkline({
   name3,
   labels = [],
   height = 80,
-  stroke = '#10b981',
+  stroke = '#00b4d8',
   strokeWidth = 2,
   maxPoints = 120,
   showGrid = true,

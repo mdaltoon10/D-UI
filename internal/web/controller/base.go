@@ -44,18 +44,15 @@ func (a *BaseController) checkLogin(c *gin.Context) {
 				if mainBasePath == "" {
 					mainBasePath = "/"
 				}
-				portalBasePath := "/"
-				directBasePath := "/"
+				correctBasePath := "/"
 				trimmedMain := strings.Trim(mainBasePath, "/")
 				if trimmedMain != "" {
-					portalBasePath += trimmedMain + "/"
-					directBasePath += trimmedMain + "/"
+					correctBasePath += trimmedMain + "/"
 				}
-				portalBasePath += "portal/" + admin.WebPath + "/"
-				directBasePath += admin.WebPath + "/"
+				correctBasePath += admin.WebPath + "/"
 
 				currentBasePath := c.GetString("base_path")
-				if currentBasePath != portalBasePath && currentBasePath != directBasePath {
+				if currentBasePath != correctBasePath {
 					if isAjax(c) {
 						pureJsonMsg(c, http.StatusForbidden, false, "Unauthorized context")
 					} else {
@@ -64,7 +61,7 @@ func (a *BaseController) checkLogin(c *gin.Context) {
 						if strings.HasPrefix(reqPath, "/panel") {
 							suffix = strings.TrimPrefix(reqPath, "/panel")
 						}
-						c.Redirect(http.StatusTemporaryRedirect, portalBasePath+"panel"+suffix)
+						c.Redirect(http.StatusTemporaryRedirect, correctBasePath+"panel"+suffix)
 					}
 					c.Abort()
 					return

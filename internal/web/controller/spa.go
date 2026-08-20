@@ -140,22 +140,19 @@ func (a *DUIController) HandleNoRoutePanelSPA(c *gin.Context) bool {
 				if mainBasePath == "" {
 					mainBasePath = "/"
 				}
-				portalBasePath := "/"
-				directBasePath := "/"
+				correctBasePath := "/"
 				trimmedMain := strings.Trim(mainBasePath, "/")
 				if trimmedMain != "" {
-					portalBasePath += trimmedMain + "/"
-					directBasePath += trimmedMain + "/"
+					correctBasePath += trimmedMain + "/"
 				}
-				portalBasePath += "portal/" + admin.WebPath + "/"
-				directBasePath += admin.WebPath + "/"
+				correctBasePath += admin.WebPath + "/"
 
-				if basePath != portalBasePath && basePath != directBasePath {
+				if basePath != correctBasePath {
 					suffix := ""
 					if strings.HasPrefix(reqPath, "/panel") {
 						suffix = strings.TrimPrefix(reqPath, "/panel")
 					}
-					c.Redirect(http.StatusTemporaryRedirect, portalBasePath+"panel"+suffix)
+					c.Redirect(http.StatusTemporaryRedirect, correctBasePath+"panel"+suffix)
 					return true
 				}
 			}
@@ -209,11 +206,6 @@ func (a *DUIController) isResellerSubPath(c *gin.Context) (string, bool) {
 
 	// Check if segment at startIndex is a reseller
 	webPath := segments[startIndex]
-	isPortalPrefix := false
-	if strings.EqualFold(webPath, "portal") && len(segments) > startIndex+1 {
-		webPath = segments[startIndex+1]
-		isPortalPrefix = true
-	}
 	admin, err := a.adminService.GetAdminByWebPath(webPath)
 	if err != nil || admin == nil {
 		return "", false
@@ -223,11 +215,7 @@ func (a *DUIController) isResellerSubPath(c *gin.Context) (string, bool) {
 	if trimmedMain != "" {
 		resellerBasePath += trimmedMain + "/"
 	}
-	if isPortalPrefix {
-		resellerBasePath += "portal/" + admin.WebPath + "/"
-	} else {
-		resellerBasePath += admin.WebPath + "/"
-	}
+	resellerBasePath += admin.WebPath + "/"
 
 	return resellerBasePath, true
 }

@@ -70,12 +70,12 @@ const iconByName: Record<IconName, ComponentType<{ style?: React.CSSProperties }
 };
 
 const iconColorByKey: Record<string, string> = {
-  '/': '#10b981',
+  '/': '#00b4d8',
   '/inbounds': '#06b6d4',
   '/clients': '#f59e0b',
   '/groups': '#14b8a6',
-  'admin-access-parent': '#10b981',
-  '/authentication': '#10b981',
+  'admin-access-parent': '#00b4d8',
+  '/authentication': '#00b4d8',
   '/nodes': '#8b5cf6',
   '/hosts': '#f97316',
   '/outbound': '#a855f7',
@@ -269,7 +269,7 @@ export default function AppSidebar() {
 
   const settingsChildren = useMemo<NonNullable<MenuProps['items']>>(() => {
     const children: NonNullable<MenuProps['items']> = [
-      { key: '/settings#general', icon: <SettingOutlined style={{ color: '#10b981' }} />, label: t('pages.settings.panelSettings') },
+      { key: '/settings#general', icon: <SettingOutlined style={{ color: '#00b4d8' }} />, label: t('pages.settings.panelSettings') },
       { key: '/settings#security', icon: <SafetyOutlined style={{ color: '#f43f5e' }} />, label: t('pages.settings.securitySettings') },
       { key: '/settings#telegram', icon: <MessageOutlined style={{ color: '#0ea5e9' }} />, label: t('pages.settings.TGBotSettings') },
       { key: '/settings#email', icon: <MailOutlined style={{ color: '#f59e0b' }} />, label: t('pages.settings.emailSettings') },
@@ -284,7 +284,7 @@ export default function AppSidebar() {
   const xrayChildren = useMemo<NonNullable<MenuProps['items']>>(() => [
     { key: '/xray#basic', icon: <SettingOutlined style={{ color: '#38bdf8' }} />, label: t('pages.xray.basicTemplate') },
     { key: '/xray#balancer', icon: <ClusterOutlined style={{ color: '#a855f7' }} />, label: t('pages.xray.Balancers') },
-    { key: '/xray#dns', icon: <DatabaseOutlined style={{ color: '#10b981' }} />, label: 'DNS' },
+    { key: '/xray#dns', icon: <DatabaseOutlined style={{ color: '#00b4d8' }} />, label: 'DNS' },
     { key: '/xray#advanced', icon: <CodeOutlined style={{ color: '#f97316' }} />, label: t('pages.xray.advancedTemplate') },
   ], [t]);
 
@@ -332,7 +332,7 @@ export default function AppSidebar() {
     return [
       {
         key: '/admin-access',
-        icon: <TeamOutlined style={{ color: '#10b981' }} />,
+        icon: <TeamOutlined style={{ color: '#00b4d8' }} />,
         label: (
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <span>{adminTranslations.adminsList}</span>
@@ -386,7 +386,7 @@ export default function AppSidebar() {
         </span>
       );
 
-      const iconColor = iconColorByKey[tab.key] || '#10b981';
+      const iconColor = iconColorByKey[tab.key] || '#00b4d8';
 
       if (tab.key === '/settings') {
         return { key: tab.key, icon: <Icon style={{ color: iconColor }} />, label: labelNode, children: settingsChildren };
@@ -415,11 +415,9 @@ export default function AppSidebar() {
             const cleanBase = logoutRedirect.endsWith('/') ? logoutRedirect : logoutRedirect + '/';
             const cleanBaseLower = cleanBase.toLowerCase();
             const webPathLower = String(parsed.webPath).toLowerCase();
-            if (cleanBaseLower.endsWith('/portal/' + webPathLower + '/') || cleanBaseLower.endsWith('/' + webPathLower + '/')) {
+            if (cleanBaseLower.endsWith('/' + webPathLower + '/')) {
               let rootBase = '/';
-              if (cleanBaseLower.includes('/portal/' + webPathLower + '/')) {
-                rootBase = cleanBase.substring(0, cleanBaseLower.indexOf('/portal/' + webPathLower + '/')) + '/';
-              } else if (cleanBaseLower.includes('/' + webPathLower + '/')) {
+              if (cleanBaseLower.includes('/' + webPathLower + '/')) {
                 rootBase = cleanBase.substring(0, cleanBaseLower.indexOf('/' + webPathLower + '/')) + '/';
               }
               logoutRedirect = `${rootBase}portal/${parsed.webPath}`;
@@ -521,7 +519,7 @@ export default function AppSidebar() {
                 href="https://t.me/mDaltoon"
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: '#10b981', fontWeight: 'bold' }}
+                style={{ color: '#00b4d8', fontWeight: 'bold' }}
               >
                 mDaltoon
               </a>
@@ -597,7 +595,7 @@ export default function AppSidebar() {
               href="https://t.me/mDaltoon"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: '#10b981', fontWeight: 'bold' }}
+              style={{ color: '#00b4d8', fontWeight: 'bold' }}
             >
               mDaltoon
             </a>

@@ -29,8 +29,8 @@ const initialUltra = readBool(STORAGE_ULTRA, false);
 applyDom(initialDark, initialUltra);
 
 const DARK_TOKENS = {
-  colorPrimary: '#10b981',
-  colorSuccess: '#10b981',
+  colorPrimary: '#00b4d8',
+  colorSuccess: '#00b4d8',
   colorInfo: '#06b6d4',
   colorWarning: '#f59e0b',
   colorError: '#ef4444',
@@ -42,8 +42,8 @@ const DARK_TOKENS = {
   fontFamily: "'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
 };
 const ULTRA_DARK_TOKENS = {
-  colorPrimary: '#10b981',
-  colorSuccess: '#10b981',
+  colorPrimary: '#00b4d8',
+  colorSuccess: '#00b4d8',
   colorInfo: '#06b6d4',
   colorWarning: '#f59e0b',
   colorError: '#ef4444',
@@ -98,8 +98,8 @@ export function buildAntdThemeConfig(isDark: boolean, isUltra: boolean): ThemeCo
     return {
       algorithm: antdTheme.defaultAlgorithm,
       token: {
-        colorPrimary: '#059669',
-        colorSuccess: '#059669',
+        colorPrimary: '#0077b6',
+        colorSuccess: '#0077b6',
         colorInfo: '#0284c7',
         colorWarning: '#d97706',
         colorError: '#dc2626',

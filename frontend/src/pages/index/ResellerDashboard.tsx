@@ -184,9 +184,9 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
       title: tr.activeClients,
       value: activeCount,
       icon: <CheckCircleOutlined />,
-      color: '#10b981',
-      bgGlow: 'rgba(16, 185, 129, 0.12)',
-      borderColor: 'rgba(16, 185, 129, 0.25)',
+      color: '#00b4d8',
+      bgGlow: 'rgba(0, 180, 216, 0.12)',
+      borderColor: 'rgba(0, 180, 216, 0.25)',
     },
     {
       id: 'online',
@@ -253,14 +253,14 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
           <div className="reseller-quota-card">
             <div className="quota-header">
               <div className="quota-title-wrap">
-                <CloudUploadOutlined style={{ color: '#10b981' }} />
+                <CloudUploadOutlined style={{ color: '#00b4d8' }} />
                 <span>{tr.trafficQuota}</span>
               </div>
               <span
                 className="quota-pill"
                 style={{
-                  background: isUnlimitedVolume ? 'rgba(16, 185, 129, 0.15)' : 'rgba(6, 182, 212, 0.15)',
-                  color: isUnlimitedVolume ? '#10b981' : '#06b6d4',
+                  background: isUnlimitedVolume ? 'rgba(0, 180, 216, 0.15)' : 'rgba(6, 182, 212, 0.15)',
+                  color: isUnlimitedVolume ? '#00b4d8' : '#06b6d4',
                 }}
               >
                 {isUnlimitedVolume ? tr.unlimited : `${volumePercent.toFixed(1)}%`}
@@ -271,7 +271,7 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
               percent={isUnlimitedVolume ? 100 : Number(volumePercent.toFixed(1))}
               showInfo={false}
               strokeColor={{
-                '0%': '#10b981',
+                '0%': '#00b4d8',
                 '100%': volumePercent > 85 ? '#ef4444' : volumePercent > 70 ? '#f59e0b' : '#06b6d4',
               }}
               trailColor="rgba(255, 255, 255, 0.08)"
@@ -294,8 +294,8 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
               <span
                 className="quota-pill"
                 style={{
-                  background: isUnlimitedTime ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                  color: isUnlimitedTime ? '#10b981' : '#f59e0b',
+                  background: isUnlimitedTime ? 'rgba(0, 180, 216, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                  color: isUnlimitedTime ? '#00b4d8' : '#f59e0b',
                 }}
               >
                 {isUnlimitedTime ? tr.unlimited : `${daysRemaining} ${tr.daysLeft}`}
@@ -306,15 +306,15 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
               percent={isUnlimitedTime ? 100 : Number(timePercent.toFixed(1))}
               showInfo={false}
               strokeColor={{
-                '0%': '#10b981',
-                '100%': daysRemaining <= 3 ? '#ef4444' : daysRemaining <= 7 ? '#f59e0b' : '#10b981',
+                '0%': '#00b4d8',
+                '100%': daysRemaining <= 3 ? '#ef4444' : daysRemaining <= 7 ? '#f59e0b' : '#00b4d8',
               }}
               trailColor="rgba(255, 255, 255, 0.08)"
               size={['100%', isMobile ? 6 : 8]}
             />
 
             <div className="quota-details">
-              <span>{tr.status} <b className="quota-val-highlight" style={{ color: daysRemaining <= 3 && !isUnlimitedTime ? '#ef4444' : '#10b981' }}>{isUnlimitedTime ? tr.permanent : (daysRemaining > 0 ? tr.active : tr.expired)}</b></span>
+              <span>{tr.status} <b className="quota-val-highlight" style={{ color: daysRemaining <= 3 && !isUnlimitedTime ? '#ef4444' : '#00b4d8' }}>{isUnlimitedTime ? tr.permanent : (daysRemaining > 0 ? tr.active : tr.expired)}</b></span>
               <span>{tr.expiry} <b>{isUnlimitedTime ? tr.noExpiry : `${daysRemaining} ${tr.days}`}</b></span>
             </div>
           </div>
