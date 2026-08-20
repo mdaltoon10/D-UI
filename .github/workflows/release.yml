@@ -63,7 +63,7 @@ jobs:
             mkdir -p "dist/d-ui/bin"
             
             # Build backend
-            GOOS=${GOOS} GOARCH=${GOARCH} go build -o "dist/d-ui/d-ui" main.go
+            CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -trimpath -ldflags="-s -w" -o "dist/d-ui/d-ui" main.go
             
             # Download Xray
             XRAY_ARCH=${GOARCH}
