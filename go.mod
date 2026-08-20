@@ -1,6 +1,6 @@
 module github.com/mdaltoon10/D-UI/v3
 
-go 1.26
+go 1.23
 
 require (
 	github.com/gin-contrib/gzip v1.2.6
