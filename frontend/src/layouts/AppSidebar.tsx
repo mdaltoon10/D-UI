@@ -515,7 +515,7 @@ export default function AppSidebar() {
         size="min(86vw, 340px)"
         styles={{
           wrapper: { padding: 0 },
-          body: { padding: 0, display: 'flex', flexDirection: 'column', height: '100%', background: '#0d0f14' },
+          body: { padding: 0, display: 'flex', flexDirection: 'column', height: '100%', background: isDark ? '#0d0f14' : '#ffffff' },
           header: { display: 'none' },
         }}
         onClose={() => setDrawerOpen(false)}

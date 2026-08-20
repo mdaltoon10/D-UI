@@ -15,6 +15,7 @@ import { keys } from '@/api/queryKeys';
 import { useInboundOptions } from '@/api/queries/useInboundOptions';
 import { useNodesQuery } from '@/api/queries/useNodesQuery';
 import { getStatTranslations } from '@/utils/overviewI18n';
+import { useTheme } from '@/hooks/useTheme';
 import './OverviewStatsCard.css';
 
 interface OverviewStatsCardProps {
@@ -23,6 +24,7 @@ interface OverviewStatsCardProps {
 
 export default function OverviewStatsCard({ isMobile: _isMobile }: OverviewStatsCardProps) {
   const { i18n } = useTranslation();
+  const { isDark } = useTheme();
   const tr = useMemo(() => getStatTranslations(i18n.language), [i18n.language]);
 
   // 0. Inbounds count
@@ -113,27 +115,27 @@ export default function OverviewStatsCard({ isMobile: _isMobile }: OverviewStats
       title: tr.inbounds,
       value: inboundsCount,
       icon: <ApartmentOutlined />,
-      color: '#38bdf8',
-      bgGlow: 'rgba(56, 189, 248, 0.12)',
-      borderColor: 'rgba(56, 189, 248, 0.25)',
+      color: isDark ? '#38bdf8' : '#0284c7',
+      bgGlow: isDark ? 'rgba(56, 189, 248, 0.12)' : 'rgba(2, 132, 199, 0.08)',
+      borderColor: isDark ? 'rgba(56, 189, 248, 0.25)' : 'rgba(2, 132, 199, 0.22)',
     },
     {
       id: 'active',
       title: tr.activeClients,
       value: activeCount,
       icon: <CheckCircleOutlined />,
-      color: '#14b8a6',
-      bgGlow: 'rgba(20, 184, 166, 0.12)',
-      borderColor: 'rgba(20, 184, 166, 0.25)',
+      color: isDark ? '#14b8a6' : '#0d9488',
+      bgGlow: isDark ? 'rgba(20, 184, 166, 0.12)' : 'rgba(13, 148, 136, 0.08)',
+      borderColor: isDark ? 'rgba(20, 184, 166, 0.25)' : 'rgba(13, 148, 136, 0.22)',
     },
     {
       id: 'online',
       title: tr.onlineClients,
       value: onlineCount,
       icon: <ThunderboltOutlined />,
-      color: '#22c55e',
-      bgGlow: 'rgba(34, 197, 94, 0.12)',
-      borderColor: 'rgba(34, 197, 94, 0.25)',
+      color: isDark ? '#22c55e' : '#16a34a',
+      bgGlow: isDark ? 'rgba(34, 197, 94, 0.12)' : 'rgba(22, 163, 74, 0.08)',
+      borderColor: isDark ? 'rgba(34, 197, 94, 0.25)' : 'rgba(22, 163, 74, 0.22)',
       isLive: true,
     },
     {
@@ -141,27 +143,27 @@ export default function OverviewStatsCard({ isMobile: _isMobile }: OverviewStats
       title: tr.groups,
       value: groupsCount,
       icon: <TagsOutlined />,
-      color: '#f59e0b',
-      bgGlow: 'rgba(245, 158, 11, 0.12)',
-      borderColor: 'rgba(245, 158, 11, 0.25)',
+      color: isDark ? '#f59e0b' : '#d97706',
+      bgGlow: isDark ? 'rgba(245, 158, 11, 0.12)' : 'rgba(217, 119, 6, 0.08)',
+      borderColor: isDark ? 'rgba(245, 158, 11, 0.25)' : 'rgba(217, 119, 6, 0.22)',
     },
     {
       id: 'nodes',
       title: tr.nodes,
       value: nodesCount,
       icon: <CloudServerOutlined />,
-      color: '#8b5cf6',
-      bgGlow: 'rgba(139, 92, 246, 0.12)',
-      borderColor: 'rgba(139, 92, 246, 0.25)',
+      color: isDark ? '#8b5cf6' : '#7c3aed',
+      bgGlow: isDark ? 'rgba(139, 92, 246, 0.12)' : 'rgba(124, 58, 237, 0.08)',
+      borderColor: isDark ? 'rgba(139, 92, 246, 0.25)' : 'rgba(124, 58, 237, 0.22)',
     },
     {
       id: 'admins',
       title: tr.adminsResellers,
       value: adminsCount,
       icon: <CrownOutlined />,
-      color: '#ec4899',
-      bgGlow: 'rgba(236, 72, 153, 0.12)',
-      borderColor: 'rgba(236, 72, 153, 0.25)',
+      color: isDark ? '#ec4899' : '#db2777',
+      bgGlow: isDark ? 'rgba(236, 72, 153, 0.12)' : 'rgba(219, 39, 119, 0.08)',
+      borderColor: isDark ? 'rgba(236, 72, 153, 0.25)' : 'rgba(219, 39, 119, 0.22)',
     },
   ];
 
