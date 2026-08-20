@@ -6,8 +6,8 @@ import (
 
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
 
+	"github.com/glebarez/sqlite"
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
