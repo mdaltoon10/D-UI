@@ -12,6 +12,7 @@
 # Ignore temporary files
 tmp/
 *.tar.gz
+*.zip
 
 # Ignore build and distribution directories
 backup/
