@@ -168,19 +168,34 @@ func (a *IndexController) login(c *gin.Context) {
 	}
 
 	user, checkErr := a.userService.CheckUser(form.Username, form.Password, form.TwoFactorCode)
-		if user != nil && checkErr == nil {
-			// Check if we are on the main base path
-			settingService := service.SettingService{}
-			mainBasePath, err := settingService.GetBasePath()
-			if err != nil || mainBasePath == "" {
-				mainBasePath = "/"
-			}
-			currentBasePath := c.GetString("base_path")
-			if currentBasePath != mainBasePath || strings.Contains(c.Request.Referer(), "/portal/") {
-				pureJsonMsg(c, http.StatusOK, false, "Master admin cannot login from a reseller portal")
-				return
-			}
+	if user != nil && checkErr == nil {
+		// Check if we are on a reseller context
+		settingService := service.SettingService{}
+		mainBasePath, err := settingService.GetBasePath()
+		if err != nil || mainBasePath == "" {
+			mainBasePath = "/"
 		}
+		if !strings.HasSuffix(mainBasePath, "/") {
+			mainBasePath += "/"
+		}
+		currentBasePath := c.GetString("base_path")
+		if !strings.HasSuffix(currentBasePath, "/") {
+			currentBasePath += "/"
+		}
+		
+		portalCookie, _ := c.Cookie("reseller_portal")
+		referer := strings.ToLower(c.Request.Referer())
+		
+		isResellerContext := (currentBasePath != mainBasePath) || 
+			portalCookie != "" || 
+			strings.Contains(referer, "/portal/") || 
+			c.GetBool("is_reseller")
+		
+		if isResellerContext {
+			pureJsonMsg(c, http.StatusOK, false, "امکان ورود به پنل اصلی از طریق پورتال نمایندگان وجود ندارد / Master admin cannot login from a reseller portal")
+			return
+		}
+	}
 
 	if user == nil {
 		// Try Reseller Admin
