@@ -1,5 +1,6 @@
 // Package main is the entry point for the d-ui web panel application.
 // It initializes the database, web server, and handles command-line operations for managing the panel.
+// Trigger CI.
 package main
 
 import (
