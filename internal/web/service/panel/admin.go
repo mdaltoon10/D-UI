@@ -151,6 +151,7 @@ func (s *AdminService) UpdateAdmin(admin *model.ResellerAdmin) error {
 	existing.Inbounds = admin.Inbounds
 	existing.Enable = admin.Enable
 	existing.ExpiryTime = admin.ExpiryTime
+	existing.ClientLimit = admin.ClientLimit
 
 	return db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(&existing).Error; err != nil {

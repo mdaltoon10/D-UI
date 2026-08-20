@@ -840,7 +840,7 @@ export default function AdminAccessPage() {
           </Row>
 
           <Row gutter={16}>
-            <Col span={12}>
+            <Col xs={24} sm={8}>
               <Form.Item
                 name="volumeGB"
                 label={dict.labelQuota}
@@ -853,7 +853,7 @@ export default function AdminAccessPage() {
                 />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={8}>
               <Form.Item
                 name="days"
                 label={dict.labelDays}
@@ -866,13 +866,10 @@ export default function AdminAccessPage() {
                 />
               </Form.Item>
             </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={24}>
+            <Col xs={24} sm={8}>
               <Form.Item
                 name="clientLimit"
-                label={isFa ? "سقف تعداد کلاینت (کاربر)" : "Client Limit"}
+                label={isFa ? "سقف کلاینت (کاربر)" : "Client Limit"}
                 tooltip={isFa ? "حداکثر تعداد کلاینت‌هایی که این نماینده مجاز به ساخت آنهاست (۰ یعنی نامحدود)" : "Maximum number of clients this reseller is allowed to create (0 for unlimited)"}
               >
                 <InputNumber

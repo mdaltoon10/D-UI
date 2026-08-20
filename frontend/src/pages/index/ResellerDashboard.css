@@ -36,12 +36,12 @@
 
 .reseller-quota-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   padding: 12px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .reseller-quota-grid {
     grid-template-columns: 1fr;
     gap: 8px;

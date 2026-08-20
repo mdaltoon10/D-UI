@@ -8,6 +8,7 @@ import {
   CloudUploadOutlined,
   TeamOutlined,
   ThunderboltOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { HttpUtil, SizeFormatter } from '@/utils';
@@ -27,6 +28,7 @@ interface ResellerAdmin {
   days: number;
   trafficUsedBytes: number;
   clientsCount: number;
+  clientLimit?: number;
   createdAt: number;
   expiryTime: number;
   enable: boolean;
@@ -214,6 +216,10 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
     timePercent = Math.min(100, (daysUsed / totalDays) * 100);
   }
 
+  const clientLimit = adminInfo?.clientLimit || 0;
+  const isUnlimitedClient = clientLimit <= 0;
+  const clientLimitPercent = isUnlimitedClient ? 100 : Math.min(100, (totalCount / clientLimit) * 100);
+
   const statCards = [
     {
       id: 'inbounds',
@@ -361,6 +367,41 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
             <div className="quota-details">
               <span>{tr.status} <b className="quota-val-highlight" style={{ color: daysRemaining <= 3 && !isUnlimitedTime ? '#ef4444' : '#00b4d8' }}>{isUnlimitedTime ? tr.permanent : (daysRemaining > 0 ? tr.active : tr.expired)}</b></span>
               <span>{tr.expiry} <b>{isUnlimitedTime ? tr.noExpiry : `${daysRemaining} ${tr.days}`}</b></span>
+            </div>
+          </div>
+
+          {/* Client Limit Quota */}
+          <div className="reseller-quota-card">
+            <div className="quota-header">
+              <div className="quota-title-wrap">
+                <UserOutlined style={{ color: '#a855f7' }} />
+                <span>{tr.clientLimitQuota}</span>
+              </div>
+              <span
+                className="quota-pill"
+                style={{
+                  background: isUnlimitedClient ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.15)',
+                  color: '#a855f7',
+                }}
+              >
+                {isUnlimitedClient ? tr.unlimited : `${clientLimitPercent.toFixed(0)}%`}
+              </span>
+            </div>
+
+            <Progress
+              percent={isUnlimitedClient ? 100 : Number(clientLimitPercent.toFixed(1))}
+              showInfo={false}
+              strokeColor={{
+                '0%': '#a855f7',
+                '100%': clientLimitPercent >= 90 ? '#ef4444' : clientLimitPercent >= 75 ? '#f59e0b' : '#a855f7',
+              }}
+              trailColor="rgba(255, 255, 255, 0.08)"
+              size={['100%', isMobile ? 6 : 8]}
+            />
+
+            <div className="quota-details">
+              <span>{tr.used} <b className="quota-val-highlight">{totalCount}</b></span>
+              <span>{tr.total} <b>{isUnlimitedClient ? tr.unlimited : `${clientLimit} ${tr.clientCount}`}</b></span>
             </div>
           </div>
         </div>

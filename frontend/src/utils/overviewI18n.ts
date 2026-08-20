@@ -20,6 +20,8 @@ export interface StatTranslations {
   expiry: string;
   noExpiry: string;
   days: string;
+  clientLimitQuota: string;
+  clientCount: string;
 }
 
 const translationsMap: Record<string, StatTranslations> = {
@@ -45,6 +47,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: 'Expiry:',
     noExpiry: 'No Expiry',
     days: 'Days',
+    clientLimitQuota: 'Client Limit',
+    clientCount: 'Clients',
   },
   'fa': {
     inbounds: 'اینباندها',
@@ -68,6 +72,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: 'مهلت انقضا:',
     noExpiry: 'بدون انقضا',
     days: 'روز',
+    clientLimitQuota: 'سقف کاربر (کلاینت)',
+    clientCount: 'کاربر',
   },
   'zh': {
     inbounds: '入站',
@@ -91,6 +97,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: '到期时间：',
     noExpiry: '无过期',
     days: '天',
+    clientLimitQuota: '客户端上限',
+    clientCount: '客户端',
   },
   'zh-CN': {
     inbounds: '入站',
@@ -114,6 +122,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: '到期时间：',
     noExpiry: '无过期',
     days: '天',
+    clientLimitQuota: '客户端上限',
+    clientCount: '客户端',
   },
   'zh-TW': {
     inbounds: '入站',
@@ -137,6 +147,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: '到期時間：',
     noExpiry: '無過期',
     days: '天',
+    clientLimitQuota: '用戶上限',
+    clientCount: '用戶',
   },
   'ar': {
     inbounds: 'المنافذ الواردة',
@@ -160,6 +172,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: 'تاريخ الانتهاء:',
     noExpiry: 'بدون انتهاء',
     days: 'أيام',
+    clientLimitQuota: 'حد العملاء',
+    clientCount: 'عميل',
   },
   'ru': {
     inbounds: 'Входящие',
@@ -183,6 +197,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: 'Истечение:',
     noExpiry: 'Без срока',
     days: 'дней',
+    clientLimitQuota: 'Лимит клиентов',
+    clientCount: 'клиентов',
   },
   'tr': {
     inbounds: 'Gelenler',
@@ -206,6 +222,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: 'Son Kullanma:',
     noExpiry: 'Süresiz',
     days: 'Gün',
+    clientLimitQuota: 'Kullanıcı Limiti',
+    clientCount: 'Kullanıcı',
   },
   'es': {
     inbounds: 'Inbounds',
@@ -229,6 +247,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: 'Vencimiento:',
     noExpiry: 'Sin Vencimiento',
     days: 'Días',
+    clientLimitQuota: 'Límite de Clientes',
+    clientCount: 'Clientes',
   },
   'pt': {
     inbounds: 'Inbounds',
@@ -252,6 +272,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: 'Expiração:',
     noExpiry: 'Sem Expiração',
     days: 'Dias',
+    clientLimitQuota: 'Limite de Clientes',
+    clientCount: 'Clientes',
   },
   'uk': {
     inbounds: 'Вхідні',
@@ -275,6 +297,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: 'Термін:',
     noExpiry: 'Безстроково',
     days: 'Днів',
+    clientLimitQuota: 'Ліміт клієнтів',
+    clientCount: 'клієнтів',
   },
   'vi': {
     inbounds: 'Inbound',
@@ -298,6 +322,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: 'Hạn chót:',
     noExpiry: 'Không thời hạn',
     days: 'Ngày',
+    clientLimitQuota: 'Giới hạn người dùng',
+    clientCount: 'Người dùng',
   },
   'ja': {
     inbounds: 'インバウンド',
@@ -321,6 +347,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: '期限:',
     noExpiry: '期限なし',
     days: '日',
+    clientLimitQuota: 'ユーザー上限',
+    clientCount: 'ユーザー',
   },
   'id': {
     inbounds: 'Inbound',
@@ -344,6 +372,8 @@ const translationsMap: Record<string, StatTranslations> = {
     expiry: 'Kedaluwarsa:',
     noExpiry: 'Tanpa Kedaluwarsa',
     days: 'Hari',
+    clientLimitQuota: 'Batas Klien',
+    clientCount: 'Klien',
   },
 };
 
