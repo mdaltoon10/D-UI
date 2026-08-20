@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mdaltoon10/D-UI/v3/internal/common"
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
+	"github.com/mdaltoon10/D-UI/v3/internal/util/common"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/runtime"
 	"github.com/mdaltoon10/D-UI/v3/internal/xray"
 )
