@@ -40,7 +40,6 @@ import { useAllSettings } from '@/api/queries/useAllSettings';
 import { useQuery } from '@tanstack/react-query';
 import { useHostsQuery } from '@/api/queries/useHostsQuery';
 import { useNodesQuery } from '@/api/queries/useNodesQuery';
-import { useInboundOptions } from '@/api/queries/useInboundOptions';
 import { keys } from '@/api/queryKeys';
 import { getAdminTranslations } from '@/utils/adminI18n';
 import './AppSidebar.css';
@@ -296,8 +295,15 @@ export default function AppSidebar() {
   const { nodes } = useNodesQuery();
   const nodesCount = nodes?.length ?? 0;
 
-  const { data: inboundsData } = useInboundOptions();
-  const inboundsCount = Array.isArray(inboundsData) ? inboundsData.length : 0;
+  const { data: slimInboundsData } = useQuery({
+    queryKey: keys.inbounds.slim(),
+    queryFn: async () => {
+      const msg = await HttpUtil.get<unknown[]>('/panel/api/inbounds/list/slim', undefined, { silent: true });
+      return Array.isArray(msg?.obj) ? msg.obj : [];
+    },
+    staleTime: 15000,
+  });
+  const inboundsCount = Array.isArray(slimInboundsData) ? slimInboundsData.length : 0;
 
   const { data: groupsData } = useQuery({
     queryKey: keys.clients.groups(),
