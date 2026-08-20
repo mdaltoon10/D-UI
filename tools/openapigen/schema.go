@@ -66,7 +66,7 @@ func parseStructTag(raw string) (json string, validate string, example string, g
 	validate = tag.Get("validate")
 	example = tag.Get("example")
 	if g := tag.Get("gorm"); g != "" {
-		for part := range strings.SplitSeq(g, ";") {
+		for _, part := range strings.Split(g, ";") {
 			if strings.TrimSpace(part) == "-" {
 				gormHasDash = true
 			}
@@ -97,7 +97,7 @@ func parseValidateTag(tag string) []ValidateRule {
 		return nil
 	}
 	var rules []ValidateRule
-	for part := range strings.SplitSeq(tag, ",") {
+	for _, part := range strings.Split(tag, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
