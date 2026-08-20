@@ -586,11 +586,10 @@ export default function AppSidebar() {
         <button
           className="drawer-handle"
           type="button"
-          aria-label={t('menu.openMenu')}
+          aria-label={t('menu.openMenu') || 'Menu'}
           onClick={() => setDrawerOpen(true)}
         >
-          <MenuOutlined style={{ fontSize: 14 }} />
-          <span>{i18n.language?.startsWith('fa') ? 'منو' : (t('menu.openMenu') || 'Menu')}</span>
+          <MenuOutlined style={{ fontSize: 16 }} />
         </button>
       )}
     </div>
