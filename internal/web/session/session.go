@@ -231,6 +231,9 @@ func GetLoginReseller(c *gin.Context) string {
 	s := sessions.Default(c)
 	obj := s.Get(getContextKey(c, loginResellerKey))
 	if obj == nil {
+		obj = s.Get(loginResellerKey)
+	}
+	if obj == nil {
 		return ""
 	}
 	if str, ok := obj.(string); ok {
@@ -264,8 +267,16 @@ func GetLoginResellerUsername(c *gin.Context) string {
 
 	s := sessions.Default(c)
 	obj := s.Get(getContextKey(c, loginResellerUsernameKey))
-	if str, ok := obj.(string); ok {
-		return str
+	if obj != nil {
+		if str, ok := obj.(string); ok && str != "" {
+			return str
+		}
+	}
+	obj = s.Get(loginResellerUsernameKey)
+	if obj != nil {
+		if str, ok := obj.(string); ok && str != "" {
+			return str
+		}
 	}
 	return ""
 }

@@ -33,6 +33,16 @@ interface ResellerAdmin {
   inbounds?: number[];
 }
 
+function formatTrafficQuota(volumeGB?: number | null, unlimitedText = 'Unlimited'): string {
+  if (!volumeGB || volumeGB <= 0) return unlimitedText;
+  if (volumeGB >= 1000) {
+    const tb = volumeGB / 1000;
+    const tbStr = Number.isInteger(tb) ? `${tb}` : Number(tb.toFixed(2)).toString();
+    return `${tbStr} TB`;
+  }
+  return `${volumeGB} GB`;
+}
+
 export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw: string; status: Status }) {
   const { i18n } = useTranslation();
   const tr = useMemo(() => getStatTranslations(i18n.language), [i18n.language]);
@@ -79,7 +89,17 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
     queryFn: async () => {
       const msg = await HttpUtil.get<{
         total?: number;
-        items?: Array<{ enable?: boolean; expiryTime?: number; total?: number; totalGB?: number; up?: number; down?: number; traffic?: { up: number; down: number }; createdBy?: string }>;
+        items?: Array<{
+          email?: string;
+          enable?: boolean;
+          expiryTime?: number;
+          total?: number;
+          totalGB?: number;
+          up?: number;
+          down?: number;
+          traffic?: { up: number; down: number };
+          createdBy?: string;
+        }>;
         summary?: { active?: number; total?: number };
       }>(
         '/panel/api/clients/list/paged?page=1&pageSize=1000',
@@ -134,7 +154,7 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
     return { activeCount: act, totalCount: tot || adminInfo?.clientsCount || 0 };
   }, [clientsData, adminInfo]);
 
-  // 3. Online clients
+  // 3. Online clients: strictly count only online clients that belong to this reseller
   const { data: onlineList } = useQuery({
     queryKey: keys.clients.onlines(),
     queryFn: async () => {
@@ -143,7 +163,32 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
     },
     refetchInterval: 5000,
   });
-  const onlineCount = onlineList?.length ?? 0;
+
+  const onlineCount = useMemo(() => {
+    if (!onlineList || !Array.isArray(onlineList) || onlineList.length === 0) return 0;
+
+    if (clientsData?.items && Array.isArray(clientsData.items)) {
+      const resellerEmails = new Set<string>();
+      clientsData.items.forEach((c) => {
+        if (adminInfo?.username && c.createdBy && c.createdBy !== adminInfo.username) {
+          return;
+        }
+        if (c.email) {
+          resellerEmails.add(c.email.trim().toLowerCase());
+        }
+      });
+
+      let count = 0;
+      for (const email of onlineList) {
+        if (email && resellerEmails.has(email.trim().toLowerCase())) {
+          count++;
+        }
+      }
+      return count;
+    }
+
+    return 0;
+  }, [onlineList, clientsData, adminInfo]);
 
   // Quota & Expiry Calculations
   const volumeTotal = adminInfo?.volumeGB ? adminInfo.volumeGB * 1073741824 : 0;
@@ -280,7 +325,7 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
 
             <div className="quota-details">
               <span>{tr.used} <b className="quota-val-highlight">{SizeFormatter.sizeFormat(volumeUsed)}</b></span>
-              <span>{tr.total} <b>{isUnlimitedVolume ? tr.unlimited : SizeFormatter.sizeFormat(volumeTotal)}</b></span>
+              <span>{tr.total} <b>{isUnlimitedVolume ? tr.unlimited : formatTrafficQuota(adminInfo?.volumeGB, tr.unlimited)}</b></span>
             </div>
           </div>
 
