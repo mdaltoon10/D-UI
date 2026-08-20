@@ -535,6 +535,7 @@ export default function GroupsPage() {
                         size="small"
                         pagination={false}
                         loading={loading}
+                        scroll={{ x: 'max-content' }}
                         locale={{
                           emptyText: (
                             <div className="card-empty">

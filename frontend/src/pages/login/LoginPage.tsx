@@ -44,9 +44,9 @@ export default function LoginPage() {
   const isFa = useMemo(() => i18n.language?.startsWith('fa'), [i18n.language]);
 
   const isResellerPortal = useMemo(() => {
+    if ((window as unknown as { X_UI_IS_RESELLER?: boolean }).X_UI_IS_RESELLER) return true;
     const path = window.location.pathname.toLowerCase();
-    const storedAdmin = localStorage.getItem('daltoon_current_admin');
-    return path.includes('/portal/') || path.includes('/reseller') || !!storedAdmin;
+    return path.includes('/portal/') || path.includes('/reseller');
   }, []);
 
   useEffect(() => {
@@ -97,10 +97,10 @@ export default function LoginPage() {
           const cleanBase = basePath.endsWith('/') ? basePath : basePath + '/';
           const webPathLower = obj.webPath.toLowerCase();
           const cleanBaseLower = cleanBase.toLowerCase();
-          if (cleanBaseLower.endsWith('/' + webPathLower + '/')) {
+          if (cleanBaseLower.endsWith('/portal/' + webPathLower + '/') || cleanBaseLower.endsWith('/' + webPathLower + '/')) {
             window.location.href = cleanBase + 'panel/';
           } else {
-            window.location.href = cleanBase + obj.webPath + '/panel/';
+            window.location.href = cleanBase + 'portal/' + obj.webPath + '/panel/';
           }
         } else {
           localStorage.removeItem('daltoon_current_admin');
@@ -212,7 +212,7 @@ export default function LoginPage() {
                   ) : (
                     <div className="portal-tag">
                       <UserOutlined />
-                      <span>{isFa ? 'پنل مدیریت' : 'Admin Panel'}</span>
+                      <span>{isFa ? 'مالک پنل' : 'Panel Owner'}</span>
                     </div>
                   )}
                   <span className="brand-accent" aria-hidden="true" />

@@ -104,11 +104,13 @@ func (s *ClientService) ListPaged(inboundSvc *InboundService, settingSvc *Settin
 	}
 
 	if adminUsername == "" {
-		// Master Admin: filter by CreatedBy if provided, otherwise filter out reseller clients by default
-		if params.CreatedBy != "" {
+		// Master Admin: filter by CreatedBy if provided ("all" or "*" returns clients from both master admin and resellers)
+		if strings.EqualFold(params.CreatedBy, "all") || params.CreatedBy == "*" {
+			// Include ALL clients across master admin and resellers
+		} else if params.CreatedBy != "" {
 			var filtered []ClientWithAttachments
 			for _, c := range all {
-				if c.CreatedBy == params.CreatedBy {
+				if strings.EqualFold(c.CreatedBy, params.CreatedBy) {
 					filtered = append(filtered, c)
 				}
 			}

@@ -42,16 +42,27 @@ export default function OverviewStatsCard({ isMobile: _isMobile }: OverviewStats
   });
   const onlineCount = onlineList?.length ?? 0;
 
-  // 2. Active clients count (strictly non-expired clients)
+  // 5. Admins / Resellers count
+  const { data: adminsData } = useQuery({
+    queryKey: ['admins', 'overviewList'],
+    queryFn: async () => {
+      const msg = await HttpUtil.get<Array<{ enable?: boolean; expiryTime?: number }>>('/panel/api/admins/list', undefined, { silent: true });
+      return Array.isArray(msg?.obj) ? msg.obj : [];
+    },
+    staleTime: 15000,
+  });
+  const adminsCount = adminsData?.length ?? 0;
+
+  // 2. Active clients count across ALL clients (Master Admin + ALL Reseller Admin clients)
   const { data: clientsData } = useQuery({
-    queryKey: ['clients', 'overviewStatsSummary'],
+    queryKey: ['clients', 'overviewStatsSummaryAll'],
     queryFn: async () => {
       const msg = await HttpUtil.get<{
         total?: number;
         items?: Array<{ enable?: boolean; expiryTime?: number; total?: number; totalGB?: number; up?: number; down?: number; traffic?: { up: number; down: number } }>;
         summary?: { active?: number; total?: number };
       }>(
-        '/panel/api/clients/list/paged?page=1&pageSize=1000',
+        '/panel/api/clients/list/paged?page=1&pageSize=10000&createdBy=all',
         undefined,
         { silent: true }
       );
@@ -63,12 +74,9 @@ export default function OverviewStatsCard({ isMobile: _isMobile }: OverviewStats
 
   const activeCount = useMemo(() => {
     if (!clientsData) return 0;
-    if (typeof clientsData.summary?.active === 'number') {
-      return clientsData.summary.active;
-    }
     if (Array.isArray(clientsData.items)) {
       const now = Date.now();
-      const active = clientsData.items.filter((c) => {
+      return clientsData.items.filter((c) => {
         if (c.enable === false) return false;
         // Non-expired: expiryTime is 0 (unlimited) or > now
         if (c.expiryTime && c.expiryTime > 0 && c.expiryTime <= now) return false;
@@ -77,8 +85,10 @@ export default function OverviewStatsCard({ isMobile: _isMobile }: OverviewStats
         const limit = c.total || c.totalGB || 0;
         if (limit > 0 && used >= limit) return false;
         return true;
-      });
-      return active.length;
+      }).length;
+    }
+    if (typeof clientsData.summary?.active === 'number') {
+      return clientsData.summary.active;
     }
     return clientsData.total ?? 0;
   }, [clientsData]);
@@ -97,17 +107,6 @@ export default function OverviewStatsCard({ isMobile: _isMobile }: OverviewStats
   // 4. Nodes count
   const { nodes } = useNodesQuery();
   const nodesCount = nodes?.length ?? 0;
-
-  // 5. Admins / Resellers count
-  const { data: adminsData } = useQuery({
-    queryKey: ['admins', 'overviewList'],
-    queryFn: async () => {
-      const msg = await HttpUtil.get<unknown[]>('/panel/api/admins/list', undefined, { silent: true });
-      return Array.isArray(msg?.obj) ? msg.obj : [];
-    },
-    staleTime: 15000,
-  });
-  const adminsCount = adminsData?.length ?? 0;
 
   const stats = [
     {

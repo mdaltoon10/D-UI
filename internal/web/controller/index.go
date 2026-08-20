@@ -63,6 +63,7 @@ func (a *IndexController) portalLogin(c *gin.Context) {
 				c.String(http.StatusNotFound, "404 Not Found")
 				return
 			}
+			c.Set("is_reseller", true)
 			// Set a short-lived cookie to verify the portal during login POST
 			c.SetCookie("reseller_portal", admin.WebPath, 300, "/", "", false, true)
 		}
@@ -76,7 +77,14 @@ func (a *IndexController) portalLogin(c *gin.Context) {
 				var admin model.ResellerAdmin
 				if err := db.Where("id = ?", resellerId).First(&admin).Error; err == nil {
 					if strings.EqualFold(admin.WebPath, webPath) {
-						c.Redirect(http.StatusTemporaryRedirect, c.GetString("base_path")+admin.WebPath+"/panel/")
+						basePath := c.GetString("base_path")
+						if basePath == "" {
+							basePath = "/"
+						}
+						if !strings.HasSuffix(basePath, "/") {
+							basePath += "/"
+						}
+						c.Redirect(http.StatusTemporaryRedirect, basePath+"panel/")
 						return
 					}
 					// If they are logged in as a DIFFERENT reseller, we let them see the login page to switch

@@ -140,18 +140,22 @@ func (a *DUIController) HandleNoRoutePanelSPA(c *gin.Context) bool {
 				if mainBasePath == "" {
 					mainBasePath = "/"
 				}
-				correctBasePath := "/"
+				portalBasePath := "/"
+				directBasePath := "/"
 				trimmedMain := strings.Trim(mainBasePath, "/")
 				if trimmedMain != "" {
-					correctBasePath += trimmedMain + "/"
+					portalBasePath += trimmedMain + "/"
+					directBasePath += trimmedMain + "/"
 				}
-				correctBasePath += admin.WebPath + "/"
-				if basePath != correctBasePath {
+				portalBasePath += "portal/" + admin.WebPath + "/"
+				directBasePath += admin.WebPath + "/"
+
+				if basePath != portalBasePath && basePath != directBasePath {
 					suffix := ""
 					if strings.HasPrefix(reqPath, "/panel") {
 						suffix = strings.TrimPrefix(reqPath, "/panel")
 					}
-					c.Redirect(http.StatusTemporaryRedirect, correctBasePath+"panel"+suffix)
+					c.Redirect(http.StatusTemporaryRedirect, portalBasePath+"panel"+suffix)
 					return true
 				}
 			}
@@ -164,7 +168,9 @@ func (a *DUIController) HandleNoRoutePanelSPA(c *gin.Context) bool {
 		if db != nil {
 			var admin model.ResellerAdmin
 			webPath := strings.Trim(basePath, "/")
-			if err := db.Where("web_path = ?", webPath).First(&admin).Error; err == nil {
+			parts := strings.Split(webPath, "/")
+			webPath = parts[len(parts)-1]
+			if err := db.Where("LOWER(web_path) = LOWER(?)", webPath).First(&admin).Error; err == nil {
 				c.Set("IMPERSONATE_RESELLER_ID", admin.Id)
 				c.Set("IMPERSONATE_RESELLER_USERNAME", admin.Username)
 			}
@@ -203,6 +209,11 @@ func (a *DUIController) isResellerSubPath(c *gin.Context) (string, bool) {
 
 	// Check if segment at startIndex is a reseller
 	webPath := segments[startIndex]
+	isPortalPrefix := false
+	if strings.EqualFold(webPath, "portal") && len(segments) > startIndex+1 {
+		webPath = segments[startIndex+1]
+		isPortalPrefix = true
+	}
 	admin, err := a.adminService.GetAdminByWebPath(webPath)
 	if err != nil || admin == nil {
 		return "", false
@@ -212,7 +223,11 @@ func (a *DUIController) isResellerSubPath(c *gin.Context) (string, bool) {
 	if trimmedMain != "" {
 		resellerBasePath += trimmedMain + "/"
 	}
-	resellerBasePath += admin.WebPath + "/"
+	if isPortalPrefix {
+		resellerBasePath += "portal/" + admin.WebPath + "/"
+	} else {
+		resellerBasePath += admin.WebPath + "/"
+	}
 
 	return resellerBasePath, true
 }

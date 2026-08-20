@@ -124,21 +124,6 @@ function DocsButton({ ariaLabel }: { ariaLabel: string }) {
   );
 }
 
-function GithubButton({ ariaLabel }: { ariaLabel: string }) {
-  return (
-    <a
-      href={REPO_URL}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="sidebar-docs"
-      aria-label={ariaLabel}
-      title={ariaLabel}
-    >
-      <GithubOutlined style={{ fontSize: 16 }} />
-    </a>
-  );
-}
-
 function VersionBadge({ version, collapsed }: { version: string; collapsed?: boolean }) {
   if (!version) return null;
   const label = formatPanelVersion(version);
@@ -422,13 +407,37 @@ export default function AppSidebar() {
   const openLink = useCallback(async (key: string) => {
     if (key === LOGOUT_KEY) {
       const currentAdminRaw = localStorage.getItem('daltoon_current_admin');
+      let logoutRedirect = window.X_UI_BASE_PATH || '/';
       if (currentAdminRaw) {
+        try {
+          const parsed = JSON.parse(currentAdminRaw);
+          if (parsed && parsed.webPath) {
+            const cleanBase = logoutRedirect.endsWith('/') ? logoutRedirect : logoutRedirect + '/';
+            const cleanBaseLower = cleanBase.toLowerCase();
+            const webPathLower = String(parsed.webPath).toLowerCase();
+            if (cleanBaseLower.endsWith('/portal/' + webPathLower + '/') || cleanBaseLower.endsWith('/' + webPathLower + '/')) {
+              let rootBase = '/';
+              if (cleanBaseLower.includes('/portal/' + webPathLower + '/')) {
+                rootBase = cleanBase.substring(0, cleanBaseLower.indexOf('/portal/' + webPathLower + '/')) + '/';
+              } else if (cleanBaseLower.includes('/' + webPathLower + '/')) {
+                rootBase = cleanBase.substring(0, cleanBaseLower.indexOf('/' + webPathLower + '/')) + '/';
+              }
+              logoutRedirect = `${rootBase}portal/${parsed.webPath}`;
+            } else {
+              logoutRedirect = `${cleanBase}portal/${parsed.webPath}`;
+            }
+          }
+        } catch {
+          // ignore parse error
+        }
         localStorage.removeItem('daltoon_current_admin');
-        window.location.href = window.X_UI_BASE_PATH || '/';
-        return;
       }
-      await HttpUtil.post('/logout');
-      window.location.href = window.X_UI_BASE_PATH || '/';
+      try {
+        await HttpUtil.post('/logout');
+      } catch {
+        // ignore network error on logout
+      }
+      window.location.href = logoutRedirect;
       return;
     }
     navigate(key);
@@ -474,7 +483,6 @@ export default function AppSidebar() {
           </div>
           {!collapsed && (
             <div className="brand-actions">
-              <GithubButton ariaLabel="GitHub Repository" />
               <DocsButton ariaLabel={t('menu.docs') || 'Documentation'} />
               <DonateButton ariaLabel={t('menu.donate') || 'Donate'} />
               <ThemeCycleButton
@@ -541,7 +549,6 @@ export default function AppSidebar() {
             <span className="drawer-brand">{brandName}</span>
           </div>
           <div className="drawer-header-actions">
-            <GithubButton ariaLabel="GitHub Repository" />
             <DocsButton ariaLabel={t('menu.docs') || 'Documentation'} />
             <DonateButton ariaLabel={t('menu.donate') || 'Donate'} />
             <ThemeCycleButton
