@@ -2,8 +2,12 @@ name: Release
 
 on:
   push:
+    branches:
+      - main
+      - dev
     tags:
       - 'v*'
+      - 'dev-latest'
 
 permissions:
   contents: write
@@ -15,15 +19,38 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set Release Version from Tag
+      - name: Set Release Version and Metadata
+        id: prep
         run: |
-          CLEAN_VER=$(echo "${{ github.ref_name }}" | sed 's/^v//')
-          echo "Setting version to: $CLEAN_VER"
-          echo -n "$CLEAN_VER" > internal/config/version
-          sed -i 's/"version": "[^"]*"/"version": "'"$CLEAN_VER"'"/' frontend/package.json
-          sed -i 's/"version": "[^"]*"/"version": "'"$CLEAN_VER"'"/' package.json
-          sed -i 's/"version": "[^"]*"/"version": "'"$CLEAN_VER"'"/' package-lock.json || true
+          BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          echo "build_date=${BUILD_DATE}" >> $GITHUB_OUTPUT
+          echo "build_commit=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            CLEAN_VER=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+            echo "Setting version to: $CLEAN_VER"
+            echo -n "$CLEAN_VER" > internal/config/version
+            sed -i 's/"version": "[^"]*"/"version": "'"$CLEAN_VER"'"/' frontend/package.json
+            sed -i 's/"version": "[^"]*"/"version": "'"$CLEAN_VER"'"/' package.json
+            echo "tag_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "release_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "release_body=Release ${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "make_latest=true" >> $GITHUB_OUTPUT
+            echo "ldflags=-s -w" >> $GITHUB_OUTPUT
+          else
+            CLEAN_VER=$(cat internal/config/version | tr -d '\r\n')
+            echo "Setting dev version for: $CLEAN_VER"
+            echo "tag_name=dev-latest" >> $GITHUB_OUTPUT
+            echo "release_name=Dev Latest (Rolling Release)" >> $GITHUB_OUTPUT
+            echo "release_body=commit=${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "make_latest=false" >> $GITHUB_OUTPUT
+            echo "ldflags=-s -w -X 'github.com/mdaltoon10/D-UI/v3/internal/config.buildCommit=${{ github.sha }}' -X 'github.com/mdaltoon10/D-UI/v3/internal/config.buildDate=${BUILD_DATE}'" >> $GITHUB_OUTPUT
+          fi
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -48,6 +75,7 @@ jobs:
       - name: Build and Package
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GO_LDFLAGS: ${{ steps.prep.outputs.ldflags }}
         run: |
           platforms=("linux/amd64" "linux/arm64" "linux/s390x")
           XRAY_VERSION=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/XTLS/Xray-core/releases/tags/v26.6.27 | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
@@ -66,7 +94,7 @@ jobs:
             mkdir -p "dist/d-ui/bin"
             
             # Build backend
-            CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -trimpath -ldflags="-s -w" -o "dist/d-ui/d-ui" main.go
+            eval "CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -trimpath -ldflags=\"${GO_LDFLAGS}\" -o \"dist/d-ui/d-ui\" main.go"
             
             # Download Xray
             XRAY_ARCH=${GOARCH}
@@ -95,12 +123,26 @@ jobs:
             rm -rf dist/d-ui
           done
 
-      - name: Create Release
+      - name: Create or Update Tag for Dev
+        if: ${{ steps.prep.outputs.tag_name == 'dev-latest' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f dev-latest ${{ github.sha }}
+          git push origin dev-latest --force || true
+
+      - name: Create or Update Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.prep.outputs.tag_name }}
+          name: ${{ steps.prep.outputs.release_name }}
+          body: ${{ steps.prep.outputs.release_body }}
+          prerelease: ${{ steps.prep.outputs.is_prerelease }}
+          make_latest: ${{ steps.prep.outputs.make_latest }}
           files: |
             d-ui-linux-amd64.tar.gz
             d-ui-linux-arm64.tar.gz
             d-ui-linux-s390x.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
