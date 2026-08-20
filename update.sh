@@ -803,8 +803,47 @@ config_after_update() {
     ${dui_folder}/d-ui setting -show true
     ${dui_folder}/d-ui migrate
 
+    # Properly detect empty cert by checking if cert: line exists and has content after it
+    local existing_cert=$(${dui_folder}/d-ui setting -getCert true 2> /dev/null | grep 'cert:' | awk -F': ' '{print $2}' | tr -d '[:space:]')
     local existing_port=$(${dui_folder}/d-ui setting -show true | grep -Eo 'port: .+' | awk '{print $2}')
     local existing_webBasePath=$(${dui_folder}/d-ui setting -show true | grep -Eo 'webBasePath: .+' | awk '{print $2}' | sed 's#^/##')
+
+    # Get server IP
+    local URL_lists=(
+        "https://api4.ipify.org"
+        "https://ipv4.icanhazip.com"
+        "https://v4.api.ipinfo.io/ip"
+        "https://ipv4.myexternalip.com/raw"
+        "https://4.ident.me"
+        "https://check-host.net/ip"
+    )
+    local server_ip=""
+    for ip_address in "${URL_lists[@]}"; do
+        local response=$(curl -s -w "\n%{http_code}" --max-time 3 "${ip_address}" 2> /dev/null)
+        local http_code=$(echo "$response" | tail -n1)
+        local ip_result=$(echo "$response" | head -n-1 | tr -d '[:space:]"')
+        if [[ "${http_code}" == "200" && "${ip_result}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            server_ip="${ip_result}"
+            break
+        fi
+    done
+
+    if [[ -z "$server_ip" ]]; then
+        echo -e "${yellow}Could not auto-detect server IP from any provider.${plain}"
+        if [[ "${dui_update_run_id}" -ne "0" ]]; then
+            echo -e "${yellow}Non-interactive update detected, using fallback server IP 127.0.0.1.${plain}"
+            server_ip="127.0.0.1"
+        else
+            while [[ -z "$server_ip" ]]; do
+                read -rp "Please enter your server's public IPv4 address: " server_ip
+                server_ip="${server_ip// /}"
+                if [[ ! "$server_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                    echo -e "${red}Invalid IPv4 address. Please try again.${plain}"
+                    server_ip=""
+                fi
+            done
+        fi
+    fi
 
     # Handle missing/short webBasePath
     if [[ ${#existing_webBasePath} -lt 4 ]]; then
@@ -816,12 +855,45 @@ config_after_update() {
         echo -e "${green}New WebBasePath: ${config_webBasePath}${plain}"
     fi
 
-    # Do not prompt for SSL or server IP during update. Simply restart the panel service.
-    echo -e "${green}Restarting panel to apply updates...${plain}"
-    if [[ $release == "alpine" ]]; then
-        rc-service d-ui restart 2> /dev/null
+    # Check and prompt for SSL if missing
+    if [[ -z "$existing_cert" ]]; then
+        if [[ "${dui_update_run_id}" -ne "0" ]]; then
+            echo -e "${yellow}No SSL certificate detected. Skipping SSL setup during non-interactive dashboard update.${plain}"
+        else
+            echo ""
+            echo -e "${red}═══════════════════════════════════════════${plain}"
+            echo -e "${red}      ⚠ NO SSL CERTIFICATE DETECTED ⚠     ${plain}"
+            echo -e "${red}═══════════════════════════════════════════${plain}"
+            echo -e "${yellow}For security, SSL certificate is MANDATORY for all panels.${plain}"
+            echo -e "${yellow}Let's Encrypt now supports both domains and IP addresses!${plain}"
+            echo ""
+
+            # Prompt and setup SSL (domain or IP)
+            prompt_and_setup_ssl "${existing_port}" "${existing_webBasePath}" "${server_ip}"
+
+            echo ""
+            echo -e "${green}═══════════════════════════════════════════${plain}"
+            echo -e "${green}     Panel Access Information              ${plain}"
+            echo -e "${green}═══════════════════════════════════════════${plain}"
+            echo -e "${green}Access URL: https://${SSL_HOST}:${existing_port}/${existing_webBasePath}${plain}"
+            echo -e "${green}═══════════════════════════════════════════${plain}"
+            echo -e "${yellow}⚠ SSL Certificate: Enabled and configured${plain}"
+        fi
     else
-        systemctl restart d-ui 2> /dev/null
+        echo -e "${green}SSL certificate is already configured${plain}"
+        # Show access URL with existing certificate
+        local cert_domain=$(basename "$(dirname "$existing_cert")")
+        echo ""
+        echo -e "${green}═══════════════════════════════════════════${plain}"
+        echo -e "${green}     Panel Access Information              ${plain}"
+        echo -e "${green}═══════════════════════════════════════════${plain}"
+        echo -e "${green}Access URL: https://${cert_domain}:${existing_port}/${existing_webBasePath}${plain}"
+        echo -e "${green}═══════════════════════════════════════════${plain}"
+    fi
+
+    if [[ "$panel_needs_restart" -eq 1 ]]; then
+        echo -e "${yellow}Restarting panel to apply the new web base path...${plain}"
+        systemctl restart d-ui 2> /dev/null || rc-service d-ui restart 2> /dev/null
     fi
 }
 
@@ -1138,4 +1210,5 @@ update_d-ui() {
 }
 
 echo -e "${green}Running...${plain}"
+install_base
 update_d-ui $1
