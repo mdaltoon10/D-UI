@@ -63,8 +63,7 @@ export type RowAction =
   | 'attachClients'
   | 'attachExisting'
   | 'detachClients'
-  | 'addToGroup'
-  | 'addToInboundGroup';
+  | 'addToGroup';
 
 export type GeneralAction = 'import' | 'export' | 'subs' | 'resetInbounds';
 

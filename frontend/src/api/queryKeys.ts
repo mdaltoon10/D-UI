@@ -7,10 +7,6 @@ export const keys = {
     root: () => ['nodes'] as const,
     list: () => ['nodes', 'list'] as const,
   },
-  inboundGroups: {
-    root: () => ['inboundGroups'] as const,
-    list: () => ['inboundGroups', 'list'] as const,
-  },
   hosts: {
     root: () => ['hosts'] as const,
     list: () => ['hosts', 'list'] as const,

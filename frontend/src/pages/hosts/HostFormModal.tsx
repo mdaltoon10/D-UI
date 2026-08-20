@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Form, Input, InputNumber, Modal, Select, Space, Switch, Tabs, message } from 'antd';
+import { Form, Input, InputNumber, Modal, Select, Switch, Tabs, message } from 'antd';
 import {
   ProfileOutlined,
   SafetyCertificateOutlined,
@@ -10,7 +10,6 @@ import {
   PartitionOutlined,
   DeploymentUnitOutlined,
   RocketOutlined,
-  ForkOutlined,
 } from '@ant-design/icons';
 
 import type { HostRecord } from '@/api/queries/useHostsQuery';
@@ -18,7 +17,6 @@ import type { HostFormValues } from '@/schemas/api/host';
 import type { InboundOption } from '@/schemas/client';
 import { ALPN_OPTION, UTLS_FINGERPRINT } from '@/schemas/primitives';
 import { useNodesQuery } from '@/api/queries/useNodesQuery';
-import { useInboundGroupsQuery } from '@/api/queries/useInboundGroupsQuery';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { catTabLabel } from '@/pages/settings/catTabLabel';
 import { HostFinalMaskForm, HostMuxForm, HostSockoptForm } from './json-forms';
@@ -67,7 +65,6 @@ function defaultsFor(host: HostRecord | null): FormShape {
     vlessRoute: host?.vlessRoute ?? '',
     excludeFromSubTypes: (host?.excludeFromSubTypes as HostFormValues['excludeFromSubTypes']) ?? [],
     nodeGuids: host?.nodeGuids ?? [],
-    inboundGroups: host?.inboundGroups ?? [],
     mihomoIpVersion: host?.mihomoIpVersion as HostFormValues['mihomoIpVersion'],
     mihomoX25519: host?.mihomoX25519 ?? false,
     shuffleHost: host?.shuffleHost ?? false,
@@ -92,7 +89,6 @@ export default function HostFormModal({ open, mode, host, inboundOptions, save, 
   }, [open, host, form]);
 
   const { nodes } = useNodesQuery();
-  const { inboundGroups } = useInboundGroupsQuery();
 
   const inboundSelectOptions = useMemo(
     () => inboundOptions.map((ib) => ({
@@ -100,14 +96,6 @@ export default function HostFormModal({ open, mode, host, inboundOptions, save, 
       label: ib.remark || ib.tag || `#${ib.id}`,
     })),
     [inboundOptions],
-  );
-
-  const inboundGroupSelectOptions = useMemo(
-    () => (inboundGroups || []).map((g) => ({
-      value: g.name,
-      label: `${g.name}${g.remark ? ` (${g.remark})` : ''}`,
-    })),
-    [inboundGroups],
   );
 
   const nodeSelectOptions = useMemo(
@@ -174,7 +162,7 @@ export default function HostFormModal({ open, mode, host, inboundOptions, save, 
                   <Form.Item name="serverDescription" label={t('pages.hosts.fields.serverDescription')} tooltip={t('pages.hosts.hints.serverDescription')}>
                     <Input maxLength={64} />
                   </Form.Item>
-                  <Form.Item name="inboundId" label={t('pages.hosts.fields.inbound')} rules={[{ required: mode === 'edit' || (form.getFieldValue('inboundGroups') || []).length === 0 }]}>
+                  <Form.Item name="inboundId" label={t('pages.hosts.fields.inbound')} rules={[{ required: true }]}>
                     <Select
                       options={inboundSelectOptions}
                       showSearch
@@ -182,23 +170,6 @@ export default function HostFormModal({ open, mode, host, inboundOptions, save, 
                       optionFilterProp="label"
                       disabled={mode === 'edit'}
                       placeholder={t('pages.hosts.selectInbound')}
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    name="inboundGroups"
-                    label={
-                      <Space size={4}>
-                        <ForkOutlined className="text-primary" />
-                        <span>{t('pages.hosts.fields.inboundGroups')}</span>
-                      </Space>
-                    }
-                    tooltip={t('pages.hosts.hints.inboundGroups')}
-                  >
-                    <Select
-                      mode="multiple"
-                      allowClear
-                      options={inboundGroupSelectOptions}
-                      placeholder={t('pages.hosts.selectInboundGroups')}
                     />
                   </Form.Item>
                   <Form.Item name="address" label={t('pages.hosts.fields.address')} tooltip={t('pages.hosts.hints.address')}>

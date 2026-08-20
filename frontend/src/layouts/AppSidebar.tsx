@@ -13,7 +13,6 @@ import {
   CodeOutlined,
   DatabaseOutlined,
   ExportOutlined,
-  ForkOutlined,
   GithubOutlined,
   GlobalOutlined,
   HeartOutlined,
@@ -52,14 +51,13 @@ const DOCS_URL = 'https://docs.mDaltoon.dev/';
 const REPO_URL = 'https://github.com/mdaltoon10/D-UI';
 const LOGOUT_KEY = '__logout__';
 
-type IconName = 'dashboard' | 'inbound' | 'team' | 'groups' | 'inboundGroups' | 'setting' | 'tool' | 'cluster' | 'hosts' | 'logout' | 'apidocs' | 'outbound' | 'routing' | 'security';
+type IconName = 'dashboard' | 'inbound' | 'team' | 'groups' | 'setting' | 'tool' | 'cluster' | 'hosts' | 'logout' | 'apidocs' | 'outbound' | 'routing' | 'security';
 
 const iconByName: Record<IconName, ComponentType<{ style?: React.CSSProperties }>> = {
   dashboard: AppstoreOutlined,
   inbound: ApartmentOutlined,
   team: TeamOutlined,
   groups: TagsOutlined,
-  inboundGroups: ForkOutlined,
   setting: SettingOutlined,
   tool: ToolOutlined,
   cluster: DatabaseOutlined,
@@ -243,7 +241,6 @@ export default function AppSidebar() {
       { key: '/inbounds', icon: 'inbound' as IconName, title: t('menu.inbounds') },
       { key: '/clients', icon: 'team' as IconName, title: t('menu.clients') },
       { key: '/groups', icon: 'groups' as IconName, title: t('menu.groups') },
-      { key: '/inbound-groups', icon: 'inboundGroups' as IconName, title: t('menu.inboundGroups') },
       { key: '/nodes', icon: 'cluster' as IconName, title: t('menu.nodes') },
       { key: '/hosts', icon: 'hosts' as IconName, title: t('menu.hosts') },
       { key: 'admin-access-parent', icon: 'security' as IconName, title: adminTranslations.adminAccess },
@@ -312,16 +309,6 @@ export default function AppSidebar() {
   });
   const groupsCount = groupsData ? groupsData.length : 0;
 
-  const { data: inboundGroupsData } = useQuery({
-    queryKey: ['inbound-groups', 'badgeCount'],
-    queryFn: async () => {
-      const msg = await HttpUtil.get<unknown[]>('/panel/api/inbound-groups/list', undefined, { silent: true });
-      return Array.isArray(msg?.obj) ? msg.obj : [];
-    },
-    staleTime: 15000,
-  });
-  const inboundGroupsCount = inboundGroupsData ? inboundGroupsData.length : 0;
-
   const { data: clientsTotalData } = useQuery({
     queryKey: ['clients', 'totalBadgeCount'],
     queryFn: async () => {
@@ -389,7 +376,6 @@ export default function AppSidebar() {
       if (tab.key === '/inbounds') pillBadge = <span className="menu-pill pill-cyan">{inboundsCount}</span>;
       if (tab.key === '/clients') pillBadge = <span className="menu-pill pill-amber">{clientsCount}</span>;
       if (tab.key === '/groups') pillBadge = <span className="menu-pill pill-teal">{groupsCount}</span>;
-      if (tab.key === '/inbound-groups') pillBadge = <span className="menu-pill pill-indigo">{inboundGroupsCount}</span>;
       if (tab.key === '/nodes') pillBadge = <span className="menu-pill pill-purple">{nodesCount}</span>;
       if (tab.key === '/hosts') pillBadge = <span className="menu-pill pill-orange">{hostsCount}</span>;
       if (tab.key === 'admin-access-parent') pillBadge = <span className="menu-pill pill-green">{adminsCount}</span>;
@@ -417,7 +403,7 @@ export default function AppSidebar() {
       }
       return { key: tab.key, icon: <Icon style={{ color: iconColor }} />, label: labelNode };
     }),
-  [settingsChildren, xrayChildren, adminChildren, inboundsCount, clientsCount, groupsCount, inboundGroupsCount, nodesCount, hostsCount, adminsCount]);
+  [settingsChildren, xrayChildren, adminChildren, inboundsCount, clientsCount, groupsCount, nodesCount, hostsCount, adminsCount]);
 
   const openLink = useCallback(async (key: string) => {
     if (key === LOGOUT_KEY) {

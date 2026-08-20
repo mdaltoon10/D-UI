@@ -15,14 +15,13 @@ import {
   Switch,
   message,
 } from 'antd';
-import { ForkOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { NodeRecord } from '@/api/queries/useNodesQuery';
 import type { RemoteInboundOption } from '@/api/queries/useNodeMutations';
 import type { Msg } from '@/utils';
 import { NodeFormSchema, type NodeFormValues, type ProbeResult } from '@/schemas/node';
 import { antdRule } from '@/utils/zodForm';
 import { useOutboundTagGroups } from '@/api/queries/useOutboundTags';
-import { useInboundGroupsQuery } from '@/api/queries/useInboundGroupsQuery';
 import { useInboundOptions } from '@/api/queries/useInboundOptions';
 import './NodeFormModal.css';
 
@@ -55,7 +54,6 @@ function defaultValues(): NodeFormValues {
     pinnedCertSha256: '',
     inboundSyncMode: 'all',
     inboundTags: [],
-    inboundGroups: [],
     inboundOverrides: [],
     outboundTag: '',
     publicAddress: '',
@@ -86,15 +84,7 @@ export default function NodeFormModal({
   const tlsVerifyMode = Form.useWatch('tlsVerifyMode', form) ?? 'verify';
   const inboundSyncMode = Form.useWatch('inboundSyncMode', form) ?? 'all';
   const { data: outboundGroups } = useOutboundTagGroups({ excludeBlackhole: true });
-  const { inboundGroups: availableInboundGroups } = useInboundGroupsQuery();
   const { data: mainInbounds = [] } = useInboundOptions();
-
-  const inboundGroupOptions = useMemo(() => {
-    return availableInboundGroups.map((g) => ({
-      value: g.name,
-      label: `${g.name}${g.remark ? ` (${g.remark})` : ''}`,
-    }));
-  }, [availableInboundGroups]);
 
   const combinedInboundOptions = useMemo(() => {
     const map = new Map<string, { value: string; label: string }>();
@@ -102,9 +92,7 @@ export default function NodeFormModal({
     // Add from mainInbounds
     for (const ib of mainInbounds || []) {
       const val = ib.tag || ib.remark || String(ib.id);
-      const matchingGroups = availableInboundGroups.filter((g) => g.inboundIds?.includes(ib.id));
-      const groupNames = matchingGroups.map((g) => g.name).join(', ');
-      const label = `${ib.remark || ib.tag}${groupNames ? ` [${groupNames}]` : ''}${ib.port ? ` (Port ${ib.port})` : ''}`;
+      const label = `${ib.remark || ib.tag}${ib.port ? ` (Port ${ib.port})` : ''}`;
       map.set(val, { value: val, label });
     }
 
@@ -117,14 +105,9 @@ export default function NodeFormModal({
     }
 
     return Array.from(map.values());
-  }, [mainInbounds, inboundOptions, availableInboundGroups]);
+  }, [mainInbounds, inboundOptions]);
 
   const overrideSelectOptions = useMemo(() => {
-    const groupOptions = availableInboundGroups.map((g) => ({
-      value: `group:${g.name}`,
-      label: `📁 ${g.name}${g.remark ? ` (${g.remark})` : ''} (${g.inboundIds?.length || 0} inbounds)`,
-    }));
-
     const inboundOptionsList = combinedInboundOptions.map((ib) => ({
       value: `inbound:${ib.value}`,
       label: `⚡ ${ib.label}`,
@@ -137,14 +120,8 @@ export default function NodeFormModal({
         options: inboundOptionsList,
       });
     }
-    if (groupOptions.length > 0) {
-      result.push({
-        label: t('pages.nodes.typeGroup'),
-        options: groupOptions,
-      });
-    }
     return result;
-  }, [availableInboundGroups, combinedInboundOptions, t]);
+  }, [combinedInboundOptions, t]);
   // when balancers exist they get a labeled group so it's clear the selection
   // routes through a balancer. Empty falls back to the placeholder ("Direct
   // connection") rather than a synthetic option, so it can't read as a second
@@ -169,9 +146,8 @@ export default function NodeFormModal({
         ...(node as unknown as Partial<NodeFormValues>),
         id: node.id,
         scheme: (node.scheme as 'http' | 'https') || base.scheme,
-        inboundSyncMode: (node.inboundSyncMode as 'all' | 'group' | 'selected') || base.inboundSyncMode,
+        inboundSyncMode: (node.inboundSyncMode as 'all' | 'selected') || base.inboundSyncMode,
         inboundTags: node.inboundTags ?? [],
-        inboundGroups: node.inboundGroups ?? [],
         inboundOverrides: node.inboundOverrides ?? [],
       }
       : base;
@@ -203,7 +179,6 @@ export default function NodeFormModal({
       pinnedCertSha256: values.tlsVerifyMode === 'pin' ? values.pinnedCertSha256.trim() : '',
       inboundSyncMode: values.inboundSyncMode,
       inboundTags: values.inboundSyncMode === 'selected' ? values.inboundTags : [],
-      inboundGroups: values.inboundSyncMode === 'group' ? values.inboundGroups : [],
       inboundOverrides: values.inboundOverrides || [],
       outboundTag: values.outboundTag || '',
       publicAddress: values.publicAddress?.trim() || '',
@@ -478,7 +453,7 @@ export default function NodeFormModal({
             />
           </Form.Item>
 
-          <Form.Item
+           <Form.Item
             label={t('pages.nodes.inboundSyncMode')}
             name="inboundSyncMode"
             tooltip={t('pages.nodes.inboundSyncModeHint')}
@@ -486,31 +461,10 @@ export default function NodeFormModal({
             <Select
               options={[
                 { value: 'all', label: t('pages.nodes.allInbounds') },
-                { value: 'group', label: t('pages.nodes.groupInbounds') },
                 { value: 'selected', label: t('pages.nodes.selectedInbounds') },
               ]}
             />
           </Form.Item>
-
-          {inboundSyncMode === 'group' && (
-            <Form.Item
-              label={
-                <Space size={4}>
-                  <ForkOutlined className="text-primary" />
-                  <span>{t('pages.nodes.inboundGroups')}</span>
-                </Space>
-              }
-              name="inboundGroups"
-              tooltip={t('pages.nodes.inboundGroupsHint')}
-            >
-              <Select
-                mode="multiple"
-                allowClear
-                placeholder={t('pages.nodes.inboundGroupsPlaceholder')}
-                options={inboundGroupOptions}
-              />
-            </Form.Item>
-          )}
 
           {inboundSyncMode === 'selected' && (
             <Form.Item

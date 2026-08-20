@@ -74,15 +74,6 @@ export interface Node {
   status: string;
 }
 
-export interface InboundGroup {
-  id: number;
-  name: string;
-  remark: string;
-  inboundIds: number[];
-  nodeIds: number[];
-  enable: boolean;
-}
-
 export interface InboundClient {
   id: string;
   uuid?: string;
@@ -281,17 +272,6 @@ const DEFAULT_NODES: Node[] = [
   { id: 1, remark: 'Daltoon Germany Primary', address: 'de.daltoon.com', port: 2053, enable: true, status: 'online' }
 ];
 
-const DEFAULT_INBOUND_GROUPS: InboundGroup[] = [
-  {
-    id: 1,
-    name: 'VIP Core Group',
-    remark: 'Main VIP traffic routed across Germany nodes',
-    inboundIds: [1],
-    nodeIds: [1],
-    enable: true,
-  },
-];
-
 // --- Database Engine ---
 class MockDatabase {
   getInbounds(): Inbound[] {
@@ -309,23 +289,6 @@ class MockDatabase {
 
   saveInbounds(inbounds: Inbound[]) {
     localStorage.setItem('daltoon_ui_inbounds', JSON.stringify(inbounds));
-  }
-
-  getInboundGroups(): InboundGroup[] {
-    const raw = localStorage.getItem('daltoon_ui_inbound_groups');
-    if (!raw) {
-      this.saveInboundGroups(DEFAULT_INBOUND_GROUPS);
-      return DEFAULT_INBOUND_GROUPS;
-    }
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return DEFAULT_INBOUND_GROUPS;
-    }
-  }
-
-  saveInboundGroups(groups: InboundGroup[]) {
-    localStorage.setItem('daltoon_ui_inbound_groups', JSON.stringify(groups));
   }
 
   getSettings() {
@@ -901,157 +864,6 @@ export function handleMockRequest(url: string, _method: string, requestData: unk
   }
   if (path === '/panel/api/nodes/test') {
     return { success: true, obj: 'Latency: 42ms' };
-  }
-
-  // 21.5 Inbound Groups API
-  if (path === '/panel/api/inbound-groups/list') {
-    const rawGroups = db.getInboundGroups();
-    const inbounds = db.getInbounds();
-
-    const result = rawGroups.map((g) => {
-      const inboundIds = g.inboundIds || [];
-      const nodeIds = g.nodeIds || [];
-      const matchedInbounds = inboundIds.length > 0
-        ? inbounds.filter((ib) => inboundIds.includes(ib.id))
-        : inbounds;
-
-      const inboundTags = matchedInbounds.map((ib) => ib.tag).filter(Boolean);
-      let up = 0;
-      let down = 0;
-      const clientEmailSet = new Set<string>();
-      const onlineClientSet = new Set<string>();
-
-      matchedInbounds.forEach((ib) => {
-        up += ib.up || 0;
-        down += ib.down || 0;
-        try {
-          const settings = JSON.parse(ib.settings);
-          const clients = settings.clients || [];
-          clients.forEach((c: { email: string; enable?: boolean }) => {
-            if (c.email) {
-              clientEmailSet.add(c.email);
-              if (ib.enable && c.enable !== false) {
-                onlineClientSet.add(c.email);
-              }
-            }
-          });
-        } catch {}
-      });
-
-      return {
-        id: g.id,
-        name: g.name,
-        remark: g.remark || '',
-        inboundIds,
-        inboundTags,
-        nodeIds,
-        enable: g.enable !== false,
-        inboundCount: inboundIds.length,
-        nodeCount: nodeIds.length,
-        clientCount: clientEmailSet.size,
-        onlineCount: onlineClientSet.size,
-        trafficUsed: up + down,
-        up,
-        down,
-      };
-    });
-
-    return { success: true, obj: result };
-  }
-
-  if (path === '/panel/api/inbound-groups/create') {
-    const body = typeof requestData === 'string' ? JSON.parse(requestData) : requestData;
-    const groups = db.getInboundGroups();
-    const newId = groups.reduce((max, g) => (g.id > max ? g.id : max), 0) + 1;
-    const newGroup: InboundGroup = {
-      id: newId,
-      name: body.name || `Group ${newId}`,
-      remark: body.remark || '',
-      inboundIds: Array.isArray(body.inboundIds) ? body.inboundIds : [],
-      nodeIds: Array.isArray(body.nodeIds) ? body.nodeIds : [],
-      enable: body.enable !== false,
-    };
-    groups.push(newGroup);
-    db.saveInboundGroups(groups);
-    return { success: true, msg: 'Inbound group created successfully', obj: newGroup };
-  }
-
-  if (path.startsWith('/panel/api/inbound-groups/update/')) {
-    const id = parseInt(path.split('/').pop() || '0');
-    const groups = db.getInboundGroups();
-    const idx = groups.findIndex((g) => g.id === id);
-    if (idx !== -1) {
-      const body = typeof requestData === 'string' ? JSON.parse(requestData) : requestData;
-      groups[idx] = {
-        ...groups[idx],
-        name: body.name !== undefined ? body.name : groups[idx].name,
-        remark: body.remark !== undefined ? body.remark : groups[idx].remark,
-        inboundIds: Array.isArray(body.inboundIds) ? body.inboundIds : groups[idx].inboundIds,
-        nodeIds: Array.isArray(body.nodeIds) ? body.nodeIds : groups[idx].nodeIds,
-        enable: body.enable !== undefined ? body.enable !== false : groups[idx].enable,
-      };
-      db.saveInboundGroups(groups);
-      return { success: true, msg: 'Inbound group updated successfully', obj: groups[idx] };
-    }
-    return { success: false, msg: 'Group not found' };
-  }
-
-  if (path.startsWith('/panel/api/inbound-groups/setEnable/')) {
-    const id = parseInt(path.split('/').pop() || '0');
-    const groups = db.getInboundGroups();
-    const group = groups.find((g) => g.id === id);
-    if (group) {
-      const body = typeof requestData === 'string' ? JSON.parse(requestData) : requestData;
-      group.enable = body.enable !== false;
-      db.saveInboundGroups(groups);
-      return { success: true, msg: 'Status updated', obj: group };
-    }
-    return { success: false, msg: 'Group not found' };
-  }
-
-  if (path.startsWith('/panel/api/inbound-groups/delete/')) {
-    const id = parseInt(path.split('/').pop() || '0');
-    let groups = db.getInboundGroups();
-    groups = groups.filter((g) => g.id !== id);
-    db.saveInboundGroups(groups);
-    return { success: true, msg: 'Inbound group deleted successfully' };
-  }
-
-  if (path === '/panel/api/inbound-groups/addInbounds') {
-    const body = typeof requestData === 'string' ? JSON.parse(requestData) : requestData;
-    const inboundIds: number[] = Array.isArray(body.inboundIds) ? body.inboundIds : [];
-    const groupIds: number[] = Array.isArray(body.groupIds) ? body.groupIds : [];
-    const groups = db.getInboundGroups();
-    let affected = 0;
-    groups.forEach((g) => {
-      if (groupIds.includes(g.id)) {
-        const current = new Set(g.inboundIds || []);
-        let changed = false;
-        inboundIds.forEach((id) => {
-          if (!current.has(id)) {
-            current.add(id);
-            changed = true;
-          }
-        });
-        if (changed) {
-          g.inboundIds = Array.from(current);
-          affected++;
-        }
-      }
-    });
-    db.saveInboundGroups(groups);
-    return { success: true, msg: 'Added to groups successfully', obj: { affected } };
-  }
-
-  if (path.startsWith('/panel/api/inbound-groups/sync/')) {
-    const id = parseInt(path.split('/').pop() || '0');
-    const groups = db.getInboundGroups();
-    const group = groups.find((g) => g.id === id);
-    return {
-      success: true,
-      msg: 'Synced successfully to nodes',
-      obj: { syncedNodes: group?.nodeIds?.length || 0 },
-    };
   }
 
   // 22. Clients API Group

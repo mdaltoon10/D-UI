@@ -7,7 +7,6 @@ const IndexPage = lazy(() => import('@/pages/index/IndexPage'));
 const InboundsPage = lazy(() => import('@/pages/inbounds/InboundsPage'));
 const ClientsPage = lazy(() => import('@/pages/clients/ClientsPage'));
 const GroupsPage = lazy(() => import('@/pages/groups/GroupsPage'));
-const InboundGroupsPage = lazy(() => import('@/pages/inbound-groups/InboundGroupsPage'));
 const NodesPage = lazy(() => import('@/pages/nodes/NodesPage'));
 const HostsPage = lazy(() => import('@/pages/hosts/HostsPage'));
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
@@ -54,8 +53,6 @@ const routes: RouteObject[] = [
       { path: 'panel/clients', element: withSuspense(<ClientsPage />) },
       { path: 'groups', element: withSuspense(<ResellerGuard>{withSuspense(<GroupsPage />)}</ResellerGuard>) },
       { path: 'panel/groups', element: withSuspense(<ResellerGuard>{withSuspense(<GroupsPage />)}</ResellerGuard>) },
-      { path: 'inbound-groups', element: withSuspense(<ResellerGuard>{withSuspense(<InboundGroupsPage />)}</ResellerGuard>) },
-      { path: 'panel/inbound-groups', element: withSuspense(<ResellerGuard>{withSuspense(<InboundGroupsPage />)}</ResellerGuard>) },
       { path: 'nodes', element: withSuspense(<ResellerGuard>{withSuspense(<NodesPage />)}</ResellerGuard>) },
       { path: 'panel/nodes', element: withSuspense(<ResellerGuard>{withSuspense(<NodesPage />)}</ResellerGuard>) },
       { path: 'hosts', element: withSuspense(<ResellerGuard>{withSuspense(<HostsPage />)}</ResellerGuard>) },

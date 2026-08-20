@@ -13,7 +13,6 @@ import {
   TagsOutlined,
   UsergroupAddOutlined,
   UsergroupDeleteOutlined,
-  ForkOutlined,
 } from '@ant-design/icons';
 
 import { isInboundMultiUser, showQrCodeMenu } from './helpers';
@@ -58,7 +57,6 @@ export function buildRowActionsMenu({ record, subEnable, t, isMobile, hasClients
     items.push({ key: 'detachClients', icon: <UsergroupDeleteOutlined />, label: t('pages.inbounds.detachClients') });
     items.push({ key: 'addToGroup', icon: <TagsOutlined />, label: t('pages.inbounds.addClientsToGroup') });
   }
-  items.push({ key: 'addToInboundGroup', icon: <ForkOutlined />, label: t('pages.inbounds.addToInboundGroup') });
   if (isInboundMultiUser(record) && hasClients) {
     items.push({ type: 'divider' });
     items.push({ key: 'delAllClients', icon: <UsergroupDeleteOutlined />, danger: true, label: t('pages.inbounds.delAllClients') });
