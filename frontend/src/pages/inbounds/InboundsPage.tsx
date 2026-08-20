@@ -45,6 +45,7 @@ const AttachClientsModal = lazy(() => import('./clients/AttachClientsModal'));
 const AttachExistingClientsModal = lazy(() => import('./clients/AttachExistingClientsModal'));
 const DetachClientsModal = lazy(() => import('./clients/DetachClientsModal'));
 const AddClientsToGroupModal = lazy(() => import('./clients/AddClientsToGroupModal'));
+const AddInboundToGroupsModal = lazy(() => import('./groups/AddInboundToGroupsModal'));
 
 type RowAction =
   | 'edit'
@@ -60,6 +61,7 @@ type RowAction =
   | 'attachExisting'
   | 'detachClients'
   | 'addToGroup'
+  | 'addToInboundGroup'
   | 'clone';
 
 type GeneralAction = 'import' | 'export' | 'subs' | 'resetInbounds';
@@ -142,6 +144,9 @@ export default function InboundsPage() {
 
   const [groupOpen, setGroupOpen] = useState(false);
   const [groupSource, setGroupSource] = useState<DBInbound | null>(null);
+
+  const [inboundGroupOpen, setInboundGroupOpen] = useState(false);
+  const [inboundGroupSource, setInboundGroupSource] = useState<DBInbound | null>(null);
 
   const [textOpen, setTextOpen] = useState(false);
   const [textTitle, setTextTitle] = useState('');
@@ -485,7 +490,7 @@ export default function InboundsPage() {
     // Actions that touch per-client secrets (uuid, password, flow, ...) need
     // the full payload that the slim list view does not ship. Hydrate first
     // and then operate on the rehydrated record.
-    const hydratingKeys: RowAction[] = ['edit', 'showInfo', 'qrcode', 'export', 'subs', 'clipboard', 'clone', 'attachClients', 'addToGroup'];
+    const hydratingKeys: RowAction[] = ['edit', 'showInfo', 'qrcode', 'export', 'subs', 'clipboard', 'clone', 'attachClients', 'addToGroup', 'addToInboundGroup'];
     let target = dbInbound;
     if (hydratingKeys.includes(key)) {
       const hydrated = await hydrateInbound(dbInbound.id);
@@ -537,6 +542,10 @@ export default function InboundsPage() {
       case 'addToGroup':
         setGroupSource(target);
         setGroupOpen(true);
+        break;
+      case 'addToInboundGroup':
+        setInboundGroupSource(target);
+        setInboundGroupOpen(true);
         break;
       case 'clone':
         confirmClone(target);
@@ -695,6 +704,14 @@ export default function InboundsPage() {
             onClose={() => setGroupOpen(false)}
             onAdded={refresh}
             source={groupSource}
+          />
+        </LazyMount>
+        <LazyMount when={inboundGroupOpen}>
+          <AddInboundToGroupsModal
+            open={inboundGroupOpen}
+            onClose={() => setInboundGroupOpen(false)}
+            onAdded={refresh}
+            inbound={inboundGroupSource}
           />
         </LazyMount>
 

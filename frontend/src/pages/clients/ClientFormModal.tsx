@@ -19,7 +19,7 @@ import {
   Typography,
   message,
 } from 'antd';
-import { DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RetweetOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EyeOutlined, ForkOutlined, PlusOutlined, ReloadOutlined, RetweetOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { HttpUtil, RandomUtil, Wireguard } from '@/utils';
@@ -29,6 +29,7 @@ import { DateTimePicker, SelectAllClearButtons } from '@/components/form';
 import { TLS_FLOW_CONTROL } from '@/schemas/primitives';
 import type { ClientRecord, InboundOption, ExternalLink, ExternalLinkInput } from '@/hooks/useClients';
 import { useFail2banStatusQuery, getLimitIpNotice } from '@/api/queries/useFail2banStatusQuery';
+import { useInboundGroupsQuery } from '@/api/queries/useInboundGroupsQuery';
 import { ClientFormSchema, ClientCreateFormSchema } from '@/schemas/client';
 import { getSpeedTranslations } from '@/utils/speedI18n';
 
@@ -231,9 +232,48 @@ export default function ClientFormModal({
   const fail2ban = useFail2banStatusQuery();
   const limitIpDisabled = !fail2ban.usable;
   const limitIpNotice = getLimitIpNotice(fail2ban, t);
+  const { inboundGroups } = useInboundGroupsQuery();
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  const inboundGroupOptions = useMemo(() => {
+    return (inboundGroups || []).map((g) => ({
+      value: g.id,
+      label: `${g.name}${g.remark ? ` (${g.remark})` : ''}`,
+    }));
+  }, [inboundGroups]);
+
+  const selectedInboundGroupIds = useMemo(() => {
+    if (!inboundGroups) return [];
+    return inboundGroups
+      .filter((g) => g.inboundIds && g.inboundIds.length > 0 && g.inboundIds.every((id) => form.inboundIds.includes(id)))
+      .map((g) => g.id);
+  }, [inboundGroups, form.inboundIds]);
+
+  function handleInboundGroupsChange(newGroupIds: number[]) {
+    if (!inboundGroups) return;
+    const addedGroupIds = newGroupIds.filter((id) => !selectedInboundGroupIds.includes(id));
+    const removedGroupIds = selectedInboundGroupIds.filter((id) => !newGroupIds.includes(id));
+
+    let nextInboundIds = [...form.inboundIds];
+
+    addedGroupIds.forEach((gid) => {
+      const group = inboundGroups.find((g) => g.id === gid);
+      if (group?.inboundIds) {
+        nextInboundIds = Array.from(new Set([...nextInboundIds, ...group.inboundIds]));
+      }
+    });
+
+    removedGroupIds.forEach((gid) => {
+      const group = inboundGroups.find((g) => g.id === gid);
+      if (group?.inboundIds) {
+        nextInboundIds = nextInboundIds.filter((id) => !group.inboundIds.includes(id));
+      }
+    });
+
+    update('inboundIds', nextInboundIds);
   }
 
   function addExternalLinkRow(kind: 'link' | 'subscription') {
@@ -760,26 +800,51 @@ export default function ClientFormModal({
                     )}
 
                     {!isReseller && (
-                      <Form.Item label={t('pages.clients.attachedInbounds')} required={!isEdit}>
-                        <SelectAllClearButtons
-                          options={inboundOptions}
-                          value={form.inboundIds}
-                          onChange={(v) => update('inboundIds', v)}
-                        />
-                        <Select
-                          mode="multiple"
-                          value={form.inboundIds}
-                          onChange={(v) => update('inboundIds', v)}
-                          options={inboundOptions}
-                          placeholder={t('pages.clients.selectInbound')}
-                          maxTagCount="responsive"
-                          placement="topLeft"
-                          listHeight={220}
-                          showSearch={{
-                            filterOption: (input, option) => ((option?.label as string) || '').toLowerCase().includes(input.toLowerCase()),
-                          }}
-                        />
-                      </Form.Item>
+                      <>
+                        {inboundGroups && inboundGroups.length > 0 && (
+                          <Form.Item
+                            label={
+                              <Space size={4}>
+                                <ForkOutlined className="text-primary" />
+                                <span>{t('pages.clients.inboundGroups')}</span>
+                              </Space>
+                            }
+                            tooltip={t('pages.clients.inboundGroupsTooltip')}
+                          >
+                            <Select
+                              mode="multiple"
+                              allowClear
+                              value={selectedInboundGroupIds}
+                              onChange={handleInboundGroupsChange}
+                              options={inboundGroupOptions}
+                              placeholder={t('pages.clients.inboundGroupsPlaceholder')}
+                              optionFilterProp="label"
+                              maxTagCount="responsive"
+                            />
+                          </Form.Item>
+                        )}
+
+                        <Form.Item label={t('pages.clients.attachedInbounds')} required={!isEdit}>
+                          <SelectAllClearButtons
+                            options={inboundOptions}
+                            value={form.inboundIds}
+                            onChange={(v) => update('inboundIds', v)}
+                          />
+                          <Select
+                            mode="multiple"
+                            value={form.inboundIds}
+                            onChange={(v) => update('inboundIds', v)}
+                            options={inboundOptions}
+                            placeholder={t('pages.clients.selectInbound')}
+                            maxTagCount="responsive"
+                            placement="topLeft"
+                            listHeight={220}
+                            showSearch={{
+                              filterOption: (input, option) => ((option?.label as string) || '').toLowerCase().includes(input.toLowerCase()),
+                            }}
+                          />
+                        </Form.Item>
+                      </>
                     )}
 
                     <Form.Item>

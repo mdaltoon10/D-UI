@@ -72,6 +72,7 @@ export const HostFormSchema = z.object({
   // Visual-only assignment of nodes that resolve from this host (stored, not yet
   // wired into routing).
   nodeGuids: z.array(z.string()).default([]),
+  inboundGroups: z.array(z.string()).default([]),
 
   mihomoIpVersion: z.preprocess(
     (val) => (val === '' ? undefined : val),
@@ -116,6 +117,7 @@ export const HostRecordSchema = z.object({
   vlessRoute: z.string().optional(),
   excludeFromSubTypes: z.array(z.string()).nullish(),
   nodeGuids: z.array(z.string()).nullish(),
+  inboundGroups: z.array(z.string()).nullish(),
   mihomoIpVersion: z.string().optional(),
   mihomoX25519: z.boolean().optional(),
   shuffleHost: z.boolean().optional(),

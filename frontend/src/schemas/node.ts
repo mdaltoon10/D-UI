@@ -33,10 +33,12 @@ export const NodeRecordSchema = z.object({
   allowPrivateAddress: z.boolean().optional(),
   tlsVerifyMode: z.enum(['verify', 'skip', 'pin', 'mtls']).optional(),
   pinnedCertSha256: z.string().optional(),
-  inboundSyncMode: z.enum(['all', 'selected']).optional(),
+  inboundSyncMode: z.enum(['all', 'group', 'selected']).optional(),
   // Backend serializes a nil []string as null for nodes saved before #5178.
   inboundTags: z.array(z.string()).nullish(),
+  inboundGroups: z.array(z.string()).nullish(),
   outboundTag: z.string().optional(),
+  publicAddress: z.string().optional(),
   // Multi-hop node tree (#4983): a node's stable GUID, its parent's GUID, and
   // whether it's a read-only transitive sub-node surfaced from a downstream node.
   guid: z.string().optional(),
@@ -56,6 +58,16 @@ export const ProbeResultSchema = z.object({
   xrayError: z.string().optional(),
 }).loose();
 
+export const InboundOverrideSchema = z.object({
+  id: z.string().optional(),
+  targetType: z.enum(['inbound', 'group']),
+  targetValue: z.string(),
+  host: z.string().optional(),
+  port: z.number().int().min(1).max(65535).optional(),
+});
+
+export type InboundOverride = z.infer<typeof InboundOverrideSchema>;
+
 export const NodeFormSchema = z.object({
   id: z.number().optional(),
   name: z.string().trim().min(1, 'pages.nodes.toasts.fillRequired'),
@@ -71,11 +83,14 @@ export const NodeFormSchema = z.object({
   allowPrivateAddress: z.boolean(),
   tlsVerifyMode: z.enum(['verify', 'skip', 'pin', 'mtls']),
   pinnedCertSha256: z.string().optional().default(''),
-  inboundSyncMode: z.enum(['all', 'selected']).optional().default('all'),
+  inboundSyncMode: z.enum(['all', 'group', 'selected']).optional().default('all'),
   // Unmounted when sync mode is "all" (absent from antd onFinish values) and
   // serialized as null by the backend for a nil slice — tolerate both.
   inboundTags: z.array(z.string()).nullish().transform((tags) => tags ?? []),
+  inboundGroups: z.array(z.string()).nullish().transform((groups) => groups ?? []),
+  inboundOverrides: z.array(InboundOverrideSchema).optional().default([]),
   outboundTag: z.string().optional(),
+  publicAddress: z.string().optional().default(''),
 }).superRefine((val, ctx) => {
   if (val.tlsVerifyMode !== 'mtls' && val.apiToken.length === 0) {
     ctx.addIssue({

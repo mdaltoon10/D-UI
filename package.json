@@ -10,5 +10,5 @@
     "start": "cd frontend && npm run dev",
     "lint": "cd frontend && npm run lint"
   },
-  "version": "1.9.3"
+  "version": "2.0.4"
 }

@@ -73,6 +73,7 @@ func initModels() error {
 		&model.ClientInbound{},
 		&model.ClientExternalLink{},
 		&model.ClientGroup{},
+		&model.InboundGroup{},
 		&model.InboundFallback{},
 		&model.Host{},
 		&model.NodeClientTraffic{},

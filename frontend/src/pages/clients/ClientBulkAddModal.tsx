@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AutoComplete, Button, Form, Input, InputNumber, Modal, Select, Space, Switch, Tooltip, message } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import { ForkOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 
@@ -11,6 +11,7 @@ import { TLS_FLOW_CONTROL } from '@/schemas/primitives';
 import { DateTimePicker, SelectAllClearButtons } from '@/components/form';
 import { useClients, type InboundOption } from '@/hooks/useClients';
 import { useFail2banStatusQuery, getLimitIpNotice } from '@/api/queries/useFail2banStatusQuery';
+import { useInboundGroupsQuery } from '@/api/queries/useInboundGroupsQuery';
 import { ClientBulkAddFormSchema, type ClientBulkAddFormValues } from '@/schemas/client';
 import { getSpeedTranslations } from '@/utils/speedI18n';
 
@@ -77,6 +78,7 @@ export default function ClientBulkAddModal({
   const fail2ban = useFail2banStatusQuery();
   const limitIpDisabled = !fail2ban.usable;
   const limitIpNotice = getLimitIpNotice(fail2ban, t);
+  const { inboundGroups } = useInboundGroupsQuery();
 
   useEffect(() => {
     if (!open) return;
@@ -88,6 +90,44 @@ export default function ClientBulkAddModal({
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  const inboundGroupOptions = useMemo(() => {
+    return (inboundGroups || []).map((g) => ({
+      value: g.id,
+      label: `${g.name}${g.remark ? ` (${g.remark})` : ''}`,
+    }));
+  }, [inboundGroups]);
+
+  const selectedInboundGroupIds = useMemo(() => {
+    if (!inboundGroups) return [];
+    return inboundGroups
+      .filter((g) => g.inboundIds && g.inboundIds.length > 0 && g.inboundIds.every((id) => form.inboundIds.includes(id)))
+      .map((g) => g.id);
+  }, [inboundGroups, form.inboundIds]);
+
+  function handleInboundGroupsChange(newGroupIds: number[]) {
+    if (!inboundGroups) return;
+    const addedGroupIds = newGroupIds.filter((id) => !selectedInboundGroupIds.includes(id));
+    const removedGroupIds = selectedInboundGroupIds.filter((id) => !newGroupIds.includes(id));
+
+    let nextInboundIds = [...form.inboundIds];
+
+    addedGroupIds.forEach((gid) => {
+      const group = inboundGroups.find((g) => g.id === gid);
+      if (group?.inboundIds) {
+        nextInboundIds = Array.from(new Set([...nextInboundIds, ...group.inboundIds]));
+      }
+    });
+
+    removedGroupIds.forEach((gid) => {
+      const group = inboundGroups.find((g) => g.id === gid);
+      if (group?.inboundIds) {
+        nextInboundIds = nextInboundIds.filter((id) => !group.inboundIds.includes(id));
+      }
+    });
+
+    update('inboundIds', nextInboundIds);
   }
 
   const flowCapableIds = useMemo(() => {
@@ -244,23 +284,48 @@ export default function ClientBulkAddModal({
       >
         <Form colon={false} labelCol={{ sm: { span: 8 } }} wrapperCol={{ sm: { span: 14 } }}>
           {!isReseller && (
-            <Form.Item label={t('pages.clients.attachedInbounds')} required>
-              <SelectAllClearButtons
-                options={inboundOptions}
-                value={form.inboundIds}
-                onChange={(v) => update('inboundIds', v)}
-              />
-              <Select
-                mode="multiple"
-                value={form.inboundIds}
-                onChange={(v) => update('inboundIds', v)}
-                options={inboundOptions}
-                placeholder={t('pages.clients.selectInbound')}
-                showSearch={{
-                  filterOption: (input, option) => ((option?.label as string) || '').toLowerCase().includes(input.toLowerCase()),
-                }}
-              />
-            </Form.Item>
+            <>
+              {inboundGroups && inboundGroups.length > 0 && (
+                <Form.Item
+                  label={
+                    <Space size={4}>
+                      <ForkOutlined className="text-primary" />
+                      <span>{t('pages.clients.inboundGroups')}</span>
+                    </Space>
+                  }
+                  tooltip={t('pages.clients.inboundGroupsTooltip')}
+                >
+                  <Select
+                    mode="multiple"
+                    allowClear
+                    value={selectedInboundGroupIds}
+                    onChange={handleInboundGroupsChange}
+                    options={inboundGroupOptions}
+                    placeholder={t('pages.clients.inboundGroupsPlaceholder')}
+                    optionFilterProp="label"
+                    maxTagCount="responsive"
+                  />
+                </Form.Item>
+              )}
+
+              <Form.Item label={t('pages.clients.attachedInbounds')} required>
+                <SelectAllClearButtons
+                  options={inboundOptions}
+                  value={form.inboundIds}
+                  onChange={(v) => update('inboundIds', v)}
+                />
+                <Select
+                  mode="multiple"
+                  value={form.inboundIds}
+                  onChange={(v) => update('inboundIds', v)}
+                  options={inboundOptions}
+                  placeholder={t('pages.clients.selectInbound')}
+                  showSearch={{
+                    filterOption: (input, option) => ((option?.label as string) || '').toLowerCase().includes(input.toLowerCase()),
+                  }}
+                />
+              </Form.Item>
+            </>
           )}
 
           <Form.Item label={t('pages.clients.method')}>
