@@ -137,6 +137,8 @@ const adminTranslationsMap: Record<string, AdminTranslations> = {
     btnGenerate: 'Randomize',
     btnCancel: 'Cancel',
     btnSubmit: 'Submit',
+    btnDelete: 'Delete',
+    btnReset: 'Reset',
     accountStatus: 'Account Status',
 
     toastCopied: 'Portal link copied successfully!',
@@ -234,6 +236,8 @@ const adminTranslationsMap: Record<string, AdminTranslations> = {
     btnGenerate: 'تصادفی',
     btnCancel: 'لغو',
     btnSubmit: 'ثبت',
+    btnDelete: 'حذف',
+    btnReset: 'بازنشانی',
     accountStatus: 'وضعیت فعال بودن',
 
     toastCopied: 'لینک پورتال با موفقیت کپی شد!',

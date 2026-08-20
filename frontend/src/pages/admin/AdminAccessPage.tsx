@@ -79,7 +79,7 @@ interface InboundOption {
 }
 
 export default function AdminAccessPage() {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const isFa = i18n.language?.startsWith('fa');
   const { isDark, isUltra, antdThemeConfig } = useTheme();
   const dict = useMemo(() => getAdminTranslations(i18n.language), [i18n.language]);
@@ -179,7 +179,9 @@ export default function AdminAccessPage() {
     });
   };
 
-  const handleDeleteAdmin = async (id: string) => {
+  const handleDeleteAdmin = async (target: ResellerAdmin | string) => {
+    const id = typeof target === 'string' ? target : (target.id || target.username);
+    if (!id) return;
     try {
       const res = await HttpUtil.post('/panel/api/admins/delete', { id }, { headers: { 'Content-Type': 'application/json' } });
       if (res.success) {
@@ -197,7 +199,9 @@ export default function AdminAccessPage() {
 
   const [resettingTrafficId, setResettingTrafficId] = useState<string | null>(null);
 
-  const handleResetTraffic = async (id: string) => {
+  const handleResetTraffic = async (target: ResellerAdmin | string) => {
+    const id = typeof target === 'string' ? target : (target.id || target.username);
+    if (!id) return;
     setResettingTrafficId(id);
     try {
       const res = await HttpUtil.post('/panel/api/admins/resetTraffic', { id }, { headers: { 'Content-Type': 'application/json' } });
@@ -319,7 +323,7 @@ export default function AdminAccessPage() {
       title: dict.bulkDelete,
       icon: <ExclamationCircleFilled style={{ color: '#faad14' }} />,
       content: dict.confirmDelete,
-      okText: t('delete'),
+      okText: dict.btnDelete || (isFa ? 'حذف' : 'Delete'),
       okType: 'danger',
       cancelText: dict.btnCancel,
       onOk: async () => {
@@ -328,7 +332,7 @@ export default function AdminAccessPage() {
           await HttpUtil.post('/panel/api/admins/delete', { id }, { headers: { 'Content-Type': 'application/json' } });
         }
         setSelectedRowKeys([]);
-        messageApi.success(dict.deleteSelectedSuccess);
+        messageApi.success(dict.deleteSelectedSuccess || (isFa ? 'موارد با موفقیت حذف شدند' : 'Selected items deleted successfully'));
         fetchAdmins();
       }
     });
@@ -657,10 +661,10 @@ export default function AdminAccessPage() {
                                   title: `${dict.resetTraffic}: ${row.remark || row.username}`,
                                   icon: <ExclamationCircleFilled style={{ color: '#faad14' }} />,
                                   content: dict.resetTrafficConfirm,
-                                  okText: t('reset'),
+                                  okText: dict.btnReset || (isFa ? 'بازنشانی' : 'Reset'),
                                   okType: 'danger',
                                   cancelText: dict.btnCancel,
-                                  onOk: () => handleResetTraffic(row.id)
+                                  onOk: () => handleResetTraffic(row)
                                 });
                               }
                             },
@@ -689,10 +693,10 @@ export default function AdminAccessPage() {
                                   title: `${dict.deleteReseller}: ${row.remark || row.username}`,
                                   icon: <ExclamationCircleFilled style={{ color: '#faad14' }} />,
                                   content: dict.deleteResellerConfirm,
-                                  okText: t('delete'),
+                                  okText: dict.btnDelete || (isFa ? 'حذف' : 'Delete'),
                                   okType: 'danger',
                                   cancelText: dict.btnCancel,
-                                  onOk: () => handleDeleteAdmin(row.id)
+                                  onOk: () => handleDeleteAdmin(row)
                                 });
                               }
                             }
