@@ -125,8 +125,6 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	NewClientController(clients)
 	NewGroupController(clients)
 
-	NewInboundGroupController(api)
-
 	// Server API
 	server := api.Group("/server")
 	a.serverController = NewServerController(server)
