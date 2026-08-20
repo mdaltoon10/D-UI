@@ -1,0 +1,114 @@
+.reseller-dashboard-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reseller-overview-card {
+  border-radius: var(--ov-radius, 12px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--ov-tile-bg, rgba(17, 24, 39, 0.5));
+  backdrop-filter: blur(10px);
+}
+
+.reseller-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+@media (max-width: 1024px) {
+  .reseller-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .reseller-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px;
+  }
+}
+
+.reseller-quota-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+@media (max-width: 640px) {
+  .reseller-quota-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 8px;
+  }
+}
+
+.reseller-stat-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 68px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid;
+  transition: all 0.15s ease;
+  overflow: hidden;
+}
+
+.reseller-stat-tile:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.reseller-quota-card {
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quota-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.quota-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ov-title, rgba(255, 255, 255, 0.9));
+}
+
+.quota-pill {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.quota-details {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ov-label, rgba(255, 255, 255, 0.65));
+}
+
+.quota-val-highlight {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ov-title, rgba(255, 255, 255, 0.95));
+}

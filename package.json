@@ -1,0 +1,14 @@
+{
+  "name": "d-ui",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "cd frontend && npm run dev",
+    "lint": "cd frontend && npm run lint"
+  },
+  "version": "1.9.3"
+}
