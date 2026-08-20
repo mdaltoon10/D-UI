@@ -87,6 +87,7 @@
   "emptyBalancersDesc": "No added balancers.",
   "emptyReverseDesc": "No added reverse proxies.",
   "somethingWentWrong": "Something went wrong",
+  "clientLimitReached": "You have reached your allowed client limit. You cannot create new clients.",
   "subscription": {
     "title": "Subscription info",
     "subId": "Subscription ID",

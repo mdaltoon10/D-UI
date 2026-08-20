@@ -69,6 +69,7 @@ interface ResellerAdmin {
   enable?: boolean;
   clientsCount?: number;
   trafficUsedBytes?: number;
+  clientLimit?: number;
 }
 
 interface InboundOption {
@@ -154,6 +155,7 @@ export default function AdminAccessPage() {
       webPath: Math.random().toString(36).substring(2, 10),
       inbounds: inboundOptions.map(ib => ib.id),
       enable: true,
+      clientLimit: 0,
     });
     setIsModalOpen(true);
   };
@@ -169,6 +171,7 @@ export default function AdminAccessPage() {
       webPath: admin.webPath,
       inbounds: admin.inbounds,
       enable: admin.enable !== false,
+      clientLimit: admin.clientLimit || 0,
     });
     setIsModalOpen(true);
   };
@@ -741,7 +744,7 @@ export default function AdminAccessPage() {
                     {/* Meta stats below the bar */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 8, fontSize: '11px', opacity: 0.6 }}>
                       <span>
-                        👤 {row.clientsCount || 0} {dict.clientCountSuffix}
+                        👤 {row.clientsCount || 0}{row.clientLimit ? ` / ${row.clientLimit}` : ''} {dict.clientCountSuffix}
                       </span>
                       <span>•</span>
                       <span>
@@ -865,6 +868,22 @@ export default function AdminAccessPage() {
             </Col>
           </Row>
 
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item
+                name="clientLimit"
+                label={isFa ? "سقف تعداد کلاینت (کاربر)" : "Client Limit"}
+                tooltip={isFa ? "حداکثر تعداد کلاینت‌هایی که این نماینده مجاز به ساخت آنهاست (۰ یعنی نامحدود)" : "Maximum number of clients this reseller is allowed to create (0 for unlimited)"}
+              >
+                <InputNumber
+                  style={{ width: '100%', borderRadius: 6 }}
+                  min={0}
+                  placeholder="0 (Unlimited)"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
           <Form.Item
             name="webPath"
             label={dict.labelWebPath}
@@ -954,6 +973,11 @@ export default function AdminAccessPage() {
               </Descriptions.Item>
               <Descriptions.Item label={dict.totalClients}>
                 <Tag color="cyan">{infoAdmin.clientsCount || 0}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label={isFa ? "سقف تعداد کاربر" : "Client Limit"}>
+                <Tag color={infoAdmin.clientLimit ? 'orange' : 'green'}>
+                  {infoAdmin.clientLimit ? `${infoAdmin.clientLimit} ${dict.clientCountSuffix}` : dict.unlimited}
+                </Tag>
               </Descriptions.Item>
               <Descriptions.Item label={dict.trafficUsed}>
                 <Tag color="blue">{SizeFormatter.sizeFormat(infoAdmin.trafficUsedBytes || 0)}</Tag>

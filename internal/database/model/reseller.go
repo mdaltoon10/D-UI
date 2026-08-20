@@ -16,4 +16,5 @@ type ResellerAdmin struct {
 	DeletedTrafficBytes int64  `json:"deletedTrafficBytes" gorm:"default:0"`
 	ClientsCount        int    `json:"clientsCount" gorm:"-"`
 	TrafficUsedBytes    int64  `json:"trafficUsedBytes" gorm:"-"`
+	ClientLimit         int    `json:"clientLimit" gorm:"column:client_limit;default:0"`
 }

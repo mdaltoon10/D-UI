@@ -82,6 +82,7 @@ func (a *AdminController) list(c *gin.Context) {
 		Enable           bool     `json:"enable"`
 		ClientsCount     int      `json:"clientsCount"`
 		TrafficUsedBytes int64    `json:"trafficUsedBytes"`
+		ClientLimit      int      `json:"clientLimit"`
 	}
 
 	resp := make([]AdminResp, len(admins))
@@ -106,6 +107,7 @@ func (a *AdminController) list(c *gin.Context) {
 			Enable: ad.Enable,
 			ClientsCount: ad.ClientsCount,
 			TrafficUsedBytes: ad.TrafficUsedBytes,
+			ClientLimit: ad.ClientLimit,
 		}
 	}
 	
@@ -113,15 +115,16 @@ func (a *AdminController) list(c *gin.Context) {
 }
 
 type adminForm struct {
-	Id         string  `json:"id"`
-	Remark     string  `json:"remark"`
-	Username   string  `json:"username"`
-	Password   string  `json:"password"`
-	VolumeGB   int64   `json:"volumeGB"`
-	Days       int     `json:"days"`
-	WebPath    string  `json:"webPath"`
-	Inbounds   []int   `json:"inbounds"`
-	Enable     bool    `json:"enable"`
+	Id          string  `json:"id"`
+	Remark      string  `json:"remark"`
+	Username    string  `json:"username"`
+	Password    string  `json:"password"`
+	VolumeGB    int64   `json:"volumeGB"`
+	Days        int     `json:"days"`
+	WebPath     string  `json:"webPath"`
+	Inbounds    []int   `json:"inbounds"`
+	Enable      bool    `json:"enable"`
+	ClientLimit int     `json:"clientLimit"`
 }
 
 func (a *AdminController) add(c *gin.Context) {
@@ -163,11 +166,12 @@ func (a *AdminController) add(c *gin.Context) {
 		RawPassword: form.Password,
 		VolumeGB:    form.VolumeGB,
 		Days:        form.Days,
-		WebPath:    webPath,
-		Inbounds:   string(inbBytes),
-		CreatedAt:  time.Now().UnixMilli(),
-		ExpiryTime: expiry,
-		Enable:     form.Enable,
+		WebPath:     webPath,
+		Inbounds:    string(inbBytes),
+		CreatedAt:   time.Now().UnixMilli(),
+		ExpiryTime:  expiry,
+		Enable:      form.Enable,
+		ClientLimit: form.ClientLimit,
 	}
 	
 	err = a.adminService.AddAdmin(admin)
@@ -222,10 +226,11 @@ func (a *AdminController) update(c *gin.Context) {
 		RawPassword: form.Password,
 		VolumeGB:    form.VolumeGB,
 		Days:        form.Days,
-		WebPath:    webPath,
-		Inbounds:   string(inbBytes),
-		ExpiryTime: expiry,
-		Enable:     form.Enable,
+		WebPath:     webPath,
+		Inbounds:    string(inbBytes),
+		ExpiryTime:  expiry,
+		Enable:      form.Enable,
+		ClientLimit: form.ClientLimit,
 	}
 	
 	err := a.adminService.UpdateAdmin(admin)

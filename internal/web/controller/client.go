@@ -240,6 +240,18 @@ func (a *ClientController) create(c *gin.Context) {
 	}
 	if session.IsResellerLogin(c) {
 		payload.Client.CreatedBy = session.GetLoginResellerUsername(c)
+		resellerId := session.GetLoginReseller(c)
+		var reseller model.ResellerAdmin
+		if err := database.GetDB().Where("id = ?", resellerId).First(&reseller).Error; err == nil {
+			if reseller.ClientLimit > 0 {
+				var count int64
+				database.GetDB().Model(&model.ClientRecord{}).Where("created_by = ?", reseller.Username).Count(&count)
+				if int(count) >= reseller.ClientLimit {
+					jsonMsg(c, I18nWeb(c, "clientLimitReached"), fmt.Errorf("client limit reached"))
+					return
+				}
+			}
+		}
 	}
 	var err error
 	payload.InboundIds, err = a.filterResellerInbounds(c, payload.InboundIds)
@@ -514,6 +526,22 @@ func (a *ClientController) bulkCreate(c *gin.Context) {
 	}
 	if session.IsResellerLogin(c) {
 		resellerUsername := session.GetLoginResellerUsername(c)
+		resellerId := session.GetLoginReseller(c)
+		var reseller model.ResellerAdmin
+		var clientLimit int
+		if err := database.GetDB().Where("id = ?", resellerId).First(&reseller).Error; err == nil {
+			clientLimit = reseller.ClientLimit
+		}
+
+		if clientLimit > 0 {
+			var count int64
+			database.GetDB().Model(&model.ClientRecord{}).Where("created_by = ?", resellerUsername).Count(&count)
+			if int(count)+len(payloads) > clientLimit {
+				jsonMsg(c, I18nWeb(c, "clientLimitReached"), fmt.Errorf("client limit reached"))
+				return
+			}
+		}
+
 		for i := range payloads {
 			payloads[i].Client.CreatedBy = resellerUsername
 			var err error

@@ -87,6 +87,7 @@
   "emptyBalancersDesc": "هیچ بالانسر اضافه نشده است.",
   "emptyReverseDesc": "هیچ پروکسی معکوس اضافه نشده است.",
   "somethingWentWrong": "مشکلی پیش آمد",
+  "clientLimitReached": "سقف تعداد کاربر مجاز شما به پایان رسیده است. شما مجاز به ایجاد کلاینت جدید نیستید.",
   "subscription": {
     "title": "اطلاعات سابسکریپشن",
     "subId": "شناسه اشتراک",
