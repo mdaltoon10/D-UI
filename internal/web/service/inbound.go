@@ -336,7 +336,7 @@ func (s *InboundService) GetInboundOptions(userId int) ([]InboundOption, error) 
 	err := db.Table("inbounds").
 		Select("inbounds.id, inbounds.remark, inbounds.tag, inbounds.protocol, inbounds.port, inbounds.stream_settings, inbounds.settings, inbounds.listen, inbounds.share_addr, inbounds.share_addr_strategy, inbounds.node_id, COALESCE(nodes.address, '') AS node_address").
 		Joins("LEFT JOIN nodes ON nodes.id = inbounds.node_id").
-		Where("inbounds.user_id = ? AND (inbounds.node_id IS NULL OR inbounds.node_id = 0)", userId).
+		Where("inbounds.user_id = ?", userId).
 		Order("inbounds.id ASC").
 		Scan(&rows).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
