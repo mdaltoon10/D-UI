@@ -141,6 +141,7 @@ export default function InboundGroupModal({
       <Form
         form={form}
         layout="vertical"
+        initialValues={{ enable: true }}
         onFinish={handleFinish}
         className="mt-2"
       >

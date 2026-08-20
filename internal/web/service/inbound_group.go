@@ -192,6 +192,11 @@ func (s *InboundGroupService) Create(name, remark string, inboundIds, nodeIds []
 	if err := db.Create(g).Error; err != nil {
 		return nil, err
 	}
+	if g.Enable && len(nodeIds) > 0 {
+		go func(gid int) {
+			_, _ = s.SyncToNodes(gid)
+		}(g.Id)
+	}
 	return g, nil
 }
 
@@ -313,8 +318,12 @@ func (s *InboundGroupService) SyncToNodes(id int) (int, error) {
 		}
 
 		for _, ib := range inbounds {
-			_, exists := remoteTagSet[ib.Tag]
-			if _, err := remoteRt.ReconcileInbound(ctx, ib, exists); err == nil {
+			clonedIb := *ib
+			if strings.TrimSpace(g.Name) != "" {
+				clonedIb.Remark = strings.TrimSpace(g.Name)
+			}
+			_, exists := remoteTagSet[clonedIb.Tag]
+			if _, err := remoteRt.ReconcileInbound(ctx, &clonedIb, exists); err == nil {
 				// Synced successfully
 			}
 		}
