@@ -1693,7 +1693,8 @@ export function handleMockRequest(url: string, _method: string, requestData: unk
   if (path === '/panel/api/admins/delete') {
     const body = typeof requestData === 'string' ? JSON.parse(requestData) : requestData;
     let admins = db.getAdmins();
-    const adminToDelete = admins.find((a) => a.id === body.id);
+    const targetId = body?.id;
+    const adminToDelete = admins.find((a) => a.id === targetId || a.username === targetId);
     if (adminToDelete) {
       const username = adminToDelete.username;
       // Get all inbounds to clean up clients created by this admin, matching real backend behavior
@@ -1717,8 +1718,10 @@ export function handleMockRequest(url: string, _method: string, requestData: unk
         } catch {}
       });
       db.saveInbounds(inbounds);
+      admins = admins.filter((a) => a.id !== adminToDelete.id && a.username !== adminToDelete.username);
+    } else {
+      admins = admins.filter((a) => a.id !== targetId && a.username !== targetId);
     }
-    admins = admins.filter((a) => a.id !== body.id);
     db.saveAdmins(admins);
     return { success: true, msg: 'Admin deleted successfully' };
   }

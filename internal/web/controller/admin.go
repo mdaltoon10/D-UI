@@ -264,10 +264,16 @@ func (a *AdminController) delete(c *gin.Context) {
 		return
 	}
 	
+	form.Id = strings.TrimSpace(form.Id)
+	if form.Id == "" {
+		jsonMsg(c, "ID cannot be empty", errors.New("empty id"))
+		return
+	}
+
 	// Get the admin username before deleting to clean up their clients
 	db := database.GetDB()
 	var admin model.ResellerAdmin
-	if err := db.Where("id = ?", form.Id).First(&admin).Error; err == nil {
+	if err := db.Where("id = ? OR username = ?", form.Id, form.Id).First(&admin).Error; err == nil {
 		var clients []model.ClientRecord
 		if err := db.Where("created_by = ?", admin.Username).Find(&clients).Error; err == nil && len(clients) > 0 {
 			emails := make([]string, 0, len(clients))
@@ -283,10 +289,17 @@ func (a *AdminController) delete(c *gin.Context) {
 				}
 			}
 		}
+		if err := a.adminService.DeleteAdmin(admin.Id); err != nil {
+			_ = a.adminService.DeleteAdmin(admin.Username)
+		}
+	} else {
+		if err := a.adminService.DeleteAdmin(form.Id); err != nil {
+			jsonMsg(c, "Failed to delete reseller admin", err)
+			return
+		}
 	}
 
-	err := a.adminService.DeleteAdmin(form.Id)
-	jsonMsg(c, "Success", err)
+	jsonMsg(c, "Success", nil)
 }
 
 func (a *AdminController) resetTraffic(c *gin.Context) {

@@ -179,6 +179,7 @@ const adminTranslationsMap: Record<string, AdminTranslations> = {
     detachClientsIb: 'Detach Clients from Inbounds',
     deleteReseller: 'Delete Reseller',
     deleteResellerConfirm: 'Are you sure you want to delete this reseller? Their access link will be revoked. This cannot be undone.',
+    deleteResellerSuccess: 'Reseller deleted successfully',
     totalClientsConsumed: 'Total Clients Consumed: ',
 
     detailsTitle: 'Reseller Admin Details',
@@ -275,6 +276,7 @@ const adminTranslationsMap: Record<string, AdminTranslations> = {
     detachClientsIb: 'جداسازی کلاینت‌ها از اینباند',
     deleteReseller: 'حذف ادمین همکار',
     deleteResellerConfirm: 'آیا از حذف این ادمین همکار اطمینان دارید؟ تمامی دسترسی‌های پورتال او لغو خواهند شد. این عمل غیرقابل بازگشت است.',
+    deleteResellerSuccess: 'ادمین همکار با موفقیت حذف شد',
     totalClientsConsumed: 'حجم مصرفی کل کلاینت‌ها: ',
 
     detailsTitle: 'جزئیات ادمین همکار',

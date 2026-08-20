@@ -180,10 +180,17 @@ export default function AdminAccessPage() {
   };
 
   const handleDeleteAdmin = async (id: string) => {
-    const res = await HttpUtil.post('/panel/api/admins/delete', { id }, { headers: { 'Content-Type': 'application/json' } });
-    if (res.success) {
-      fetchAdmins();
-      setSelectedRowKeys(prev => prev.filter(k => k !== id));
+    try {
+      const res = await HttpUtil.post('/panel/api/admins/delete', { id }, { headers: { 'Content-Type': 'application/json' } });
+      if (res.success) {
+        messageApi.success(dict.deleteResellerSuccess || (isFa ? 'ادمین همکار با موفقیت حذف شد' : 'Reseller deleted successfully'));
+        setSelectedRowKeys(prev => prev.filter(k => k !== id));
+        fetchAdmins();
+      } else {
+        messageApi.error(res.msg || (isFa ? 'خطا در حذف همکار' : 'Failed to delete reseller'));
+      }
+    } catch (err: unknown) {
+      messageApi.error((err as { message?: string })?.message || (isFa ? 'خطا در حذف همکار' : 'Failed to delete reseller'));
     }
   };
 

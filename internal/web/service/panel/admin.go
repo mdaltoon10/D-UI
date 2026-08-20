@@ -20,6 +20,10 @@ func (s *AdminService) GetAllAdmins() ([]model.ResellerAdmin, error) {
 	if err == nil {
 		for i := range admins {
 			admin := &admins[i]
+			if admin.Id == "" {
+				admin.Id = uuid.NewString()
+				db.Model(&model.ResellerAdmin{}).Where("username = ?", admin.Username).Update("id", admin.Id)
+			}
 			var clientsCount int64
 			db.Model(&model.ClientRecord{}).Where("created_by = ?", admin.Username).Count(&clientsCount)
 			admin.ClientsCount = int(clientsCount)
@@ -163,7 +167,10 @@ func (s *AdminService) UpdateAdmin(admin *model.ResellerAdmin) error {
 
 func (s *AdminService) DeleteAdmin(id string) error {
 	db := database.GetDB()
-	return db.Delete(&model.ResellerAdmin{}, "id = ?", id).Error
+	if strings.TrimSpace(id) == "" {
+		return errors.New("id cannot be empty")
+	}
+	return db.Where("id = ? OR username = ?", id, id).Delete(&model.ResellerAdmin{}).Error
 }
 
 func (s *AdminService) GetAdminByWebPath(webPath string) (*model.ResellerAdmin, error) {
