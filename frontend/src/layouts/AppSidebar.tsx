@@ -124,6 +124,21 @@ function DocsButton({ ariaLabel }: { ariaLabel: string }) {
   );
 }
 
+function GithubButton({ ariaLabel }: { ariaLabel: string }) {
+  return (
+    <a
+      href={REPO_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="sidebar-docs"
+      aria-label={ariaLabel}
+      title={ariaLabel}
+    >
+      <GithubOutlined style={{ fontSize: 16 }} />
+    </a>
+  );
+}
+
 function VersionBadge({ version, collapsed }: { version: string; collapsed?: boolean }) {
   if (!version) return null;
   const label = formatPanelVersion(version);
@@ -133,10 +148,10 @@ function VersionBadge({ version, collapsed }: { version: string; collapsed?: boo
       target="_blank"
       rel="noopener noreferrer"
       className={`sider-version${collapsed ? ' is-collapsed' : ''}`}
-      aria-label={`GitHub ${label}`}
-      title={label}
+      aria-label={`GitHub D-UI ${label}`}
+      title={`GitHub D-UI ${label}`}
     >
-      <GithubOutlined />
+      <GithubOutlined style={{ fontSize: 16 }} />
       {!collapsed && <span className="sider-version-text">{label}</span>}
     </a>
   );
@@ -459,6 +474,7 @@ export default function AppSidebar() {
           </div>
           {!collapsed && (
             <div className="brand-actions">
+              <GithubButton ariaLabel="GitHub Repository" />
               <DocsButton ariaLabel={t('menu.docs') || 'Documentation'} />
               <DonateButton ariaLabel={t('menu.donate') || 'Donate'} />
               <ThemeCycleButton
@@ -525,6 +541,7 @@ export default function AppSidebar() {
             <span className="drawer-brand">{brandName}</span>
           </div>
           <div className="drawer-header-actions">
+            <GithubButton ariaLabel="GitHub Repository" />
             <DocsButton ariaLabel={t('menu.docs') || 'Documentation'} />
             <DonateButton ariaLabel={t('menu.donate') || 'Donate'} />
             <ThemeCycleButton

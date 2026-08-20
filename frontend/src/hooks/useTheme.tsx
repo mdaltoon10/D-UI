@@ -97,6 +97,16 @@ export function buildAntdThemeConfig(isDark: boolean, isUltra: boolean): ThemeCo
   if (!isDark) {
     return {
       algorithm: antdTheme.defaultAlgorithm,
+      token: {
+        colorPrimary: '#059669',
+        colorSuccess: '#059669',
+        colorInfo: '#0284c7',
+        colorWarning: '#d97706',
+        colorError: '#dc2626',
+        colorBgLayout: '#f8fafc',
+        borderRadius: 10,
+        fontFamily: "'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+      },
       components: {
         Statistic: STATISTIC_TOKENS,
       },

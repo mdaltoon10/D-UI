@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Spin } from 'antd';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function AdminPortalRedirect() {
   const { webPath } = useParams();
   const navigate = useNavigate();
+  const { isDark } = useTheme();
 
   useEffect(() => {
     if (!webPath) {
@@ -26,8 +28,9 @@ export default function AdminPortalRedirect() {
       justifyContent: 'center',
       height: '100vh',
       gap: 16,
-      background: '#080e0c',
-      color: '#10b981'
+      background: isDark ? '#080e0c' : '#f0fdf4',
+      color: isDark ? '#10b981' : '#059669',
+      transition: 'all 0.2s ease'
     }}>
       <Spin size="large" />
       <div style={{ fontSize: '1.2rem', fontWeight: '600', letterSpacing: '0.5px' }}>

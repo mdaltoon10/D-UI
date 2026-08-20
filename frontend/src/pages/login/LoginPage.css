@@ -263,9 +263,9 @@
   padding: 1px;
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.5),
+    rgba(16, 185, 129, 0.45),
     rgba(255, 255, 255, 0) 40%,
-    rgba(99, 102, 241, 0.25) 80%
+    rgba(5, 150, 105, 0.30) 80%
   );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
@@ -324,16 +324,24 @@
   font-weight: 600;
   margin-top: 2px;
   background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
+  color: #059669;
   border: 1px solid rgba(16, 185, 129, 0.25);
   box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
 }
 
 .portal-tag.reseller {
   background: rgba(236, 72, 153, 0.12);
-  color: #ec4899;
+  color: #be185d;
   border: 1px solid rgba(236, 72, 153, 0.25);
   box-shadow: 0 0 10px rgba(236, 72, 153, 0.15);
+}
+
+.login-app.is-dark .portal-tag {
+  color: #10b981;
+}
+
+.login-app.is-dark .portal-tag.reseller {
+  color: #ec4899;
 }
 
 .brand-accent {
