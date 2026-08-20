@@ -292,12 +292,11 @@ func buildClientsSummary(all []ClientWithAttachments, onlineSet map[string]struc
 			s.Deactive = append(s.Deactive, c.Email)
 			continue
 		}
+		s.Active++
 		nearExpiry := c.ExpiryTime > 0 && c.ExpiryTime-nowMs < expireDiffMs
 		nearLimit := c.TotalGB > 0 && c.TotalGB-used < trafficDiffBytes
 		if nearExpiry || nearLimit {
 			s.Expiring = append(s.Expiring, c.Email)
-		} else {
-			s.Active++
 		}
 	}
 	return s

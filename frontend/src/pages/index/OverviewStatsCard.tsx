@@ -74,6 +74,9 @@ export default function OverviewStatsCard({ isMobile: _isMobile }: OverviewStats
 
   const activeCount = useMemo(() => {
     if (!clientsData) return 0;
+    if (typeof clientsData.summary?.active === 'number') {
+      return clientsData.summary.active;
+    }
     if (Array.isArray(clientsData.items)) {
       const now = Date.now();
       return clientsData.items.filter((c) => {
@@ -86,9 +89,6 @@ export default function OverviewStatsCard({ isMobile: _isMobile }: OverviewStats
         if (limit > 0 && used >= limit) return false;
         return true;
       }).length;
-    }
-    if (typeof clientsData.summary?.active === 'number') {
-      return clientsData.summary.active;
     }
     return clientsData.total ?? 0;
   }, [clientsData]);

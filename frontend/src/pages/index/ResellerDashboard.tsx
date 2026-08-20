@@ -94,6 +94,13 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
 
   // Calculate active clients (strictly non-expired and enabled)
   const { activeCount, totalCount } = useMemo(() => {
+    if (typeof clientsData?.summary?.active === 'number') {
+      return {
+        activeCount: clientsData.summary.active,
+        totalCount: clientsData.total ?? adminInfo?.clientsCount ?? 0,
+      };
+    }
+
     if (!clientsData?.items) {
       return {
         activeCount: adminInfo?.clientsCount || 0,
