@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"sort"
@@ -621,10 +623,11 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 					banIpDirectly(ipTime.IP)
 				}
 			}
-			banned = true
+			banned = false
 		} else {
 			for _, ipTime := range bannedLive {
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
+				banIpDirectly(ipTime.IP)
 			}
 			banned = true
 		}
@@ -816,21 +819,46 @@ func (j *CheckClientIpJob) getInboundsByEmail(clientEmail string) ([]*model.Inbo
 	return nil, err
 }
 
+// getIPv6Subnet64 returns the /64 CIDR string for an IPv6 address (e.g. "2a12:bec4:16f3:5ccf::/64")
+func getIPv6Subnet64(ipStr string) string {
+	parsedIP := net.ParseIP(ipStr)
+	if parsedIP == nil || parsedIP.To4() != nil {
+		return ""
+	}
+	mask := net.CIDRMask(64, 128)
+	network := parsedIP.Mask(mask)
+	if network == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s/64", network.String())
+}
+
 // banIpDirectly immediately bans an IP using fail2ban-client and iptables/ip6tables for 0ms latency enforcement.
 func banIpDirectly(ip string) {
 	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	// 1. Instantly trigger fail2ban CLI
-	_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
-
-	// 2. Direct iptables / ip6tables fallback for instant kernel-level packet dropping
 	if strings.Contains(ip, ":") {
+		// IPv6 address: drop specific IP
 		_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "-s", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "-s", ip, "-j", "DROP").Run()
+
+		// Drop the /64 IPv6 subnet prefix (essential for mobile carriers using dynamic IPv6 addresses)
+		subnet64 := getIPv6Subnet64(ip)
+		if subnet64 != "" {
+			_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "-s", subnet64, "-j", "DROP").Run()
+			_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "-s", subnet64, "-j", "DROP").Run()
+		}
+
+		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl-v6", "banip", ip).Run()
+		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
 	} else {
+		// IPv4 address
 		_ = exec.CommandContext(ctx, "iptables", "-I", "INPUT", "-s", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "iptables", "-I", "FORWARD", "-s", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
 	}
 }

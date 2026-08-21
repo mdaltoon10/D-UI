@@ -18,6 +18,16 @@ logpath=$LOG_FOLDER/duiipl.log
 maxretry=1
 findtime=32
 bantime=30m
+
+[dui-ipl-v6]
+enabled=true
+backend=auto
+filter=dui-ipl
+action=dui-ipl-v6
+logpath=$LOG_FOLDER/duiipl.log
+maxretry=1
+findtime=32
+bantime=30m
 EOF
 
     cat > /etc/fail2ban/filter.d/dui-ipl.conf << 'EOF'
@@ -59,6 +69,35 @@ actionban = <iptables> -I f2b-<name> 1 -s <ip> -p tcp -m multiport ! --dports <e
 actionunban = <iptables> -D f2b-<name> -s <ip> -p tcp -m multiport ! --dports <exemptports> -j <blocktype>
               <iptables> -D f2b-<name> -s <ip> -p udp -m multiport ! --dports <exemptports> -j <blocktype>
               echo "\$(date +"%%Y/%%m/%%d %%H:%%M:%%S")   UNBAN   [Email] = <F-USER> [IP] = <ip> unbanned." >> $LOG_FOLDER/duiipl-banned.log
+
+[Init]
+name = default
+chain = INPUT
+exemptports = $EXEMPT_PORTS
+EOF
+
+    cat > /etc/fail2ban/action.d/dui-ipl-v6.conf << EOF
+[INCLUDES]
+before = ip6tables-allports.conf
+
+[Definition]
+actionstart = <ip6tables> -N f2b-<name>
+              <ip6tables> -A f2b-<name> -j <returntype>
+              <ip6tables> -I <chain> -j f2b-<name>
+
+actionstop = <ip6tables> -D <chain> -j f2b-<name>
+             <actionflush>
+             <ip6tables> -X f2b-<name>
+
+actioncheck = <ip6tables> -n -L <chain> | grep -q 'f2b-<name>[ \t]'
+
+actionban = <ip6tables> -I f2b-<name> 1 -s <ip> -p tcp -m multiport ! --dports <exemptports> -j <blocktype>
+            <ip6tables> -I f2b-<name> 1 -s <ip> -p udp -m multiport ! --dports <exemptports> -j <blocktype>
+            echo "\$(date +"%%Y/%%m/%%d %%H:%%M:%%S")   BAN_V6   [Email] = <F-USER> [IP] = <ip> banned for <bantime> seconds." >> $LOG_FOLDER/duiipl-banned.log
+
+actionunban = <ip6tables> -D f2b-<name> -s <ip> -p tcp -m multiport ! --dports <exemptports> -j <blocktype>
+              <ip6tables> -D f2b-<name> -s <ip> -p udp -m multiport ! --dports <exemptports> -j <blocktype>
+              echo "\$(date +"%%Y/%%m/%%d %%H:%%M:%%S")   UNBAN_V6   [Email] = <F-USER> [IP] = <ip> unbanned." >> $LOG_FOLDER/duiipl-banned.log
 
 [Init]
 name = default
