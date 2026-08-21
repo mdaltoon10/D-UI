@@ -39,6 +39,8 @@ func ResellerPathMiddleware(mainBasePath string) gin.HandlerFunc {
 		reserved := map[string]bool{
 			"panel": true, "assets": true, "api": true, "login": true, "logout": true, 
 			"portal": true, "csrf-token": true, "getTwoFactorEnable": true,
+			"sub": true, "json": true, "ws": true, "docs": true, "favicon.ico": true,
+			"robots.txt": true, ".well-known": true, "xui": true,
 		}
 		if reserved[webPath] {
 			return
@@ -52,6 +54,8 @@ func ResellerPathMiddleware(mainBasePath string) gin.HandlerFunc {
 
 		if err := db.Where("LOWER(web_path) = LOWER(?)", webPath).First(&admin).Error; err == nil {
 			if !admin.Enable {
+				c.String(404, "404 Not Found")
+				c.Abort()
 				return
 			}
 			// Found a reseller! 
@@ -66,6 +70,11 @@ func ResellerPathMiddleware(mainBasePath string) gin.HandlerFunc {
 			c.Set("is_reseller", true)
 			c.Set("IMPERSONATE_RESELLER_ID", admin.Id)
 			c.Set("IMPERSONATE_RESELLER_USERNAME", admin.Username)
+		} else {
+			// Path was specified as a reseller segment but is deleted or does not exist
+			c.String(404, "404 Not Found")
+			c.Abort()
+			return
 		}
 	}
 }

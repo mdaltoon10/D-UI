@@ -135,6 +135,11 @@ func (a *DUIController) HandleNoRoutePanelSPA(c *gin.Context) bool {
 		if db != nil {
 			var admin model.ResellerAdmin
 			if err := db.Where("id = ?", resellerId).First(&admin).Error; err == nil {
+				if !admin.Enable {
+					c.String(http.StatusNotFound, "404 Not Found")
+					c.Abort()
+					return true
+				}
 				settingService := service.SettingService{}
 				mainBasePath, _ := settingService.GetBasePath()
 				if mainBasePath == "" {
@@ -155,6 +160,10 @@ func (a *DUIController) HandleNoRoutePanelSPA(c *gin.Context) bool {
 					c.Redirect(http.StatusTemporaryRedirect, correctBasePath+"panel"+suffix)
 					return true
 				}
+			} else {
+				c.String(http.StatusNotFound, "404 Not Found")
+				c.Abort()
+				return true
 			}
 		}
 	}

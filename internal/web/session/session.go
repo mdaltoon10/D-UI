@@ -236,20 +236,44 @@ func GetLoginReseller(c *gin.Context) string {
 	if obj == nil {
 		return ""
 	}
+	var resellerId string
 	if str, ok := obj.(string); ok {
-		return str
+		resellerId = str
+	} else {
+		switch v := obj.(type) {
+		case int:
+			resellerId = strconv.Itoa(v)
+		case int64:
+			resellerId = strconv.FormatInt(v, 10)
+		case int32:
+			resellerId = strconv.FormatInt(int64(v), 10)
+		case float64:
+			resellerId = strconv.FormatInt(int64(v), 10)
+		}
 	}
-	switch v := obj.(type) {
-	case int:
-		return strconv.Itoa(v)
-	case int64:
-		return strconv.FormatInt(v, 10)
-	case int32:
-		return strconv.FormatInt(int64(v), 10)
-	case float64:
-		return strconv.FormatInt(int64(v), 10)
+	if resellerId == "" {
+		return ""
 	}
-	return ""
+
+	db := database.GetDB()
+	if db != nil {
+		var admin model.ResellerAdmin
+		if err := db.Where("id = ?", resellerId).First(&admin).Error; err != nil || !admin.Enable {
+			// Reseller was deleted or disabled - purge stale session!
+			_ = ClearResellerSession(c)
+			return ""
+		}
+	}
+	return resellerId
+}
+
+func ClearResellerSession(c *gin.Context) error {
+	s := sessions.Default(c)
+	s.Delete(getContextKey(c, loginResellerKey))
+	s.Delete(getContextKey(c, loginResellerUsernameKey))
+	s.Delete(loginResellerKey)
+	s.Delete(loginResellerUsernameKey)
+	return s.Save()
 }
 
 func IsResellerLogin(c *gin.Context) bool {

@@ -71,21 +71,28 @@ export default function LoginPage() {
     return () => window.clearInterval(timer);
   }, [headlineWords.length]);
 
+  const cleanBase = useMemo(() => {
+    if (!basePath || basePath === '/') return '/';
+    return basePath.endsWith('/') ? basePath : basePath + '/';
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const msg = await HttpUtil.post('getTwoFactorEnable');
+      const endpoint = cleanBase === '/' ? 'getTwoFactorEnable' : `${cleanBase}getTwoFactorEnable`;
+      const msg = await HttpUtil.post(endpoint);
       if (cancelled) return;
       if (msg.success) setTwoFactorEnable(!!msg.obj);
       setFetched(true);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [cleanBase]);
 
   const onSubmit = useCallback(async (values: LoginForm) => {
     setSubmitting(true);
     try {
-      const msg = await HttpUtil.post('login', values);
+      const endpoint = cleanBase === '/' ? 'login' : `${cleanBase}login`;
+      const msg = await HttpUtil.post(endpoint, values);
       if (msg.success) {
         const obj = msg.obj as { isReseller?: boolean; webPath?: string; username?: string; remark?: string } | null;
         if (obj?.isReseller && obj?.webPath) {
@@ -94,24 +101,24 @@ export default function LoginPage() {
             remark: obj.remark,
             webPath: obj.webPath
           }));
-          const cleanBase = basePath.endsWith('/') ? basePath : basePath + '/';
+          const targetBase = basePath.endsWith('/') ? basePath : basePath + '/';
           const webPathLower = obj.webPath.toLowerCase();
-          const cleanBaseLower = cleanBase.toLowerCase();
-          if (cleanBaseLower.endsWith('/' + webPathLower + '/')) {
-            window.location.href = cleanBase + 'panel/';
+          const targetBaseLower = targetBase.toLowerCase();
+          if (targetBaseLower.endsWith('/' + webPathLower + '/')) {
+            window.location.href = targetBase + 'panel/';
           } else {
-            window.location.href = cleanBase + obj.webPath + '/panel/';
+            window.location.href = targetBase + obj.webPath + '/panel/';
           }
         } else {
           localStorage.removeItem('daltoon_current_admin');
-          const cleanBase = basePath.endsWith('/') ? basePath : basePath + '/';
-          window.location.href = cleanBase + 'panel/';
+          const targetBase = basePath.endsWith('/') ? basePath : basePath + '/';
+          window.location.href = targetBase + 'panel/';
         }
       }
     } finally {
       setSubmitting(false);
     }
-  }, []);
+  }, [cleanBase]);
 
   const onLangChange = useCallback((next: string) => {
     setLang(next);

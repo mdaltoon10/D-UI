@@ -49,8 +49,15 @@ func (a *IndexController) initRouter(g *gin.RouterGroup) {
 	g.GET("/csrf-token", a.csrfToken)
 
 	g.POST("/login", middleware.CSRFMiddleware(), a.login)
+	g.POST("/:webPath/login", middleware.CSRFMiddleware(), a.login)
+	g.POST("/portal/login", middleware.CSRFMiddleware(), a.login)
+	g.POST("/portal/:webPath/login", middleware.CSRFMiddleware(), a.login)
+
 	g.POST("/logout", middleware.CSRFMiddleware(), a.logout)
 	g.POST("/getTwoFactorEnable", middleware.CSRFMiddleware(), a.getTwoFactorEnable)
+	g.POST("/:webPath/getTwoFactorEnable", middleware.CSRFMiddleware(), a.getTwoFactorEnable)
+	g.POST("/portal/getTwoFactorEnable", middleware.CSRFMiddleware(), a.getTwoFactorEnable)
+	g.POST("/portal/:webPath/getTwoFactorEnable", middleware.CSRFMiddleware(), a.getTwoFactorEnable)
 }
 
 func (a *IndexController) portalLogin(c *gin.Context) {
@@ -61,9 +68,22 @@ func (a *IndexController) portalLogin(c *gin.Context) {
 			var admin model.ResellerAdmin
 			if err := db.Where("LOWER(web_path) = LOWER(?)", webPath).First(&admin).Error; err != nil || !admin.Enable {
 				c.String(http.StatusNotFound, "404 Not Found")
+				c.Abort()
 				return
 			}
 			c.Set("is_reseller", true)
+			settingService := service.SettingService{}
+			mainBasePath, _ := settingService.GetBasePath()
+			if mainBasePath == "" {
+				mainBasePath = "/"
+			}
+			resellerBasePath := "/"
+			trimmedMain := strings.Trim(mainBasePath, "/")
+			if trimmedMain != "" {
+				resellerBasePath += trimmedMain + "/"
+			}
+			resellerBasePath += admin.WebPath + "/"
+			c.Set("base_path", resellerBasePath)
 			// Set a short-lived cookie to verify the portal during login POST
 			c.SetCookie("reseller_portal", admin.WebPath, 300, "/", "", false, true)
 		}
@@ -217,10 +237,13 @@ func (a *IndexController) login(c *gin.Context) {
 			currentBasePath := strings.ToLower(strings.Trim(c.GetString("base_path"), "/"))
 			adminWebPath := strings.ToLower(strings.Trim(admin.WebPath, "/"))
 			isBasePathMatch := currentBasePath != "" && (currentBasePath == adminWebPath || strings.HasSuffix(currentBasePath, "/"+adminWebPath))
-			isValidPortal := strings.EqualFold(portalCookie, admin.WebPath) || strings.Contains(referer, portalPath) || isBasePathMatch
+			urlWebPathParam := strings.ToLower(c.Param("webPath"))
+			isParamMatch := urlWebPathParam != "" && urlWebPathParam == adminWebPath
+
+			isValidPortal := strings.EqualFold(portalCookie, admin.WebPath) || strings.Contains(referer, portalPath) || isBasePathMatch || isParamMatch
 
 			if !isValidPortal {
-				pureJsonMsg(c, http.StatusOK, false, "Invalid login URL for this reseller")
+				pureJsonMsg(c, http.StatusOK, false, "لطفا از طریق لینک اختصاصی پورتال خود وارد شوید / Please login via your dedicated reseller portal URL")
 				return
 			}
 			
