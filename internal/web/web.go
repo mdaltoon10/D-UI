@@ -327,23 +327,10 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	// non-SPA miss still returns a hard 404.
 	engine.NoRoute(func(c *gin.Context) {
 		basePathAttr := c.GetString("base_path")
-		if basePathAttr != "" && basePathAttr != "/" && c.GetHeader("X-Reseller-Redirected") != "true" {
+		if c.GetBool("is_reseller") && c.GetHeader("X-Reseller-Redirected") != "true" {
 			prefix := strings.Trim(basePathAttr, "/")
-			db := database.GetDB()
-			if db != nil {
-				var admin model.ResellerAdmin
-				resellerWebPath := prefix
-				parts := strings.Split(prefix, "/")
-				if len(parts) > 0 {
-					resellerWebPath = parts[len(parts)-1]
-				}
-				if err := db.Where("LOWER(web_path) = LOWER(?)", resellerWebPath).First(&admin).Error; err != nil || !admin.Enable {
-					c.String(http.StatusNotFound, "404 Not Found")
-					c.Abort()
-					return
-				}
-			}
 			reqPath := c.Request.URL.Path
+
 			// If the path was not already rewritten by the middleware and starts with /<prefix>
 			if strings.HasPrefix(reqPath, "/"+prefix+"/") || reqPath == "/"+prefix {
 				newPath := strings.TrimPrefix(reqPath, "/"+prefix)

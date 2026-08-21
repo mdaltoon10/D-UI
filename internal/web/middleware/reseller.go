@@ -40,7 +40,7 @@ func ResellerPathMiddleware(mainBasePath string) gin.HandlerFunc {
 			"panel": true, "assets": true, "api": true, "login": true, "logout": true, 
 			"portal": true, "csrf-token": true, "getTwoFactorEnable": true,
 			"sub": true, "json": true, "ws": true, "docs": true, "favicon.ico": true,
-			"robots.txt": true, ".well-known": true, "xui": true,
+			"robots.txt": true, ".well-known": true, "xui": true, "inbounds": true, "clients": true, "groups": true, "nodes": true, "hosts": true, "settings": true, "xray": true, "outbound": true, "routing": true, "api-docs": true, "admin-access": true, "clients-admin": true, "authentication": true,
 		}
 		if reserved[webPath] {
 			return
