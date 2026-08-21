@@ -59,7 +59,7 @@ func (a *IndexController) portalLogin(c *gin.Context) {
 		db := database.GetDB()
 		if db != nil {
 			var admin model.ResellerAdmin
-			if err := db.Where("LOWER(web_path) = LOWER(?)", webPath).First(&admin).Error; err != nil {
+			if err := db.Where("LOWER(web_path) = LOWER(?)", webPath).First(&admin).Error; err != nil || !admin.Enable {
 				c.String(http.StatusNotFound, "404 Not Found")
 				return
 			}
@@ -214,7 +214,10 @@ func (a *IndexController) login(c *gin.Context) {
 			
 			// Check cookie as a fallback for missing/unreliable referer
 			portalCookie, _ := c.Cookie("reseller_portal")
-			isValidPortal := strings.EqualFold(portalCookie, admin.WebPath) || strings.Contains(referer, portalPath)
+			currentBasePath := strings.ToLower(strings.Trim(c.GetString("base_path"), "/"))
+			adminWebPath := strings.ToLower(strings.Trim(admin.WebPath, "/"))
+			isBasePathMatch := currentBasePath != "" && (currentBasePath == adminWebPath || strings.HasSuffix(currentBasePath, "/"+adminWebPath))
+			isValidPortal := strings.EqualFold(portalCookie, admin.WebPath) || strings.Contains(referer, portalPath) || isBasePathMatch
 
 			if !isValidPortal {
 				pureJsonMsg(c, http.StatusOK, false, "Invalid login URL for this reseller")
