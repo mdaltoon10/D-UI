@@ -97,10 +97,27 @@ export default function LoginPage() {
     return () => { cancelled = true; };
   }, []);
 
+  const resellerWebPath = useMemo(() => {
+    if ((window as unknown as { X_UI_RESELLER_WEB_PATH?: string }).X_UI_RESELLER_WEB_PATH) {
+      return (window as unknown as { X_UI_RESELLER_WEB_PATH?: string }).X_UI_RESELLER_WEB_PATH;
+    }
+    const path = window.location.pathname;
+    const match = path.match(/\/portal\/([^/]+)/i);
+    if (match && match[1]) {
+      return match[1];
+    }
+    return undefined;
+  }, []);
+
   const onSubmit = useCallback(async (values: LoginForm) => {
     setSubmitting(true);
     try {
-      const msg = await HttpUtil.post('login', values);
+      const payload: LoginForm = {
+        ...values,
+        isResellerPortal: isResellerPortal,
+        portalWebPath: resellerWebPath,
+      };
+      const msg = await HttpUtil.post('login', payload);
       if (msg.success) {
         const obj = msg.obj as { isReseller?: boolean; webPath?: string; username?: string; remark?: string } | null;
         if (obj?.isReseller && obj?.webPath) {
@@ -126,7 +143,7 @@ export default function LoginPage() {
     } finally {
       setSubmitting(false);
     }
-  }, []);
+  }, [isResellerPortal, resellerWebPath]);
 
   const onLangChange = useCallback((next: string) => {
     setLang(next);

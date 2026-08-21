@@ -21,9 +21,11 @@ import (
 
 // LoginForm represents the login request structure.
 type LoginForm struct {
-	Username      string `json:"username" form:"username"`
-	Password      string `json:"password" form:"password"`
-	TwoFactorCode string `json:"twoFactorCode" form:"twoFactorCode"`
+	Username         string `json:"username" form:"username"`
+	Password         string `json:"password" form:"password"`
+	TwoFactorCode    string `json:"twoFactorCode" form:"twoFactorCode"`
+	IsResellerPortal *bool  `json:"isResellerPortal" form:"isResellerPortal"`
+	PortalWebPath    string `json:"portalWebPath" form:"portalWebPath"`
 }
 
 // IndexController handles the main index and login-related routes.
@@ -166,60 +168,98 @@ func (a *IndexController) login(c *gin.Context) {
 		return
 	}
 
+	// Check context: is the user logging in from a reseller portal or the master panel?
+	isResellerContext := c.GetBool("is_reseller") ||
+		c.GetHeader("X-Reseller-Base-Path") != "" ||
+		(form.IsResellerPortal != nil && *form.IsResellerPortal)
+
 	user, checkErr := a.userService.CheckUser(form.Username, form.Password, form.TwoFactorCode)
-	if user != nil && checkErr == nil {
-		c.SetCookie("reseller_portal", "", -1, "/", "", false, true)
+
+	if isResellerContext {
+		// Context: Reseller Portal (must only authenticate reseller credentials)
+		if user != nil && checkErr == nil {
+			// Master admin attempted to log in on a reseller portal
+			pureJsonMsg(c, http.StatusOK, false, "امکان ورود به پنل اصلی از طریق پورتال نمایندگان وجود ندارد")
+			return
+		}
+
+		var admin model.ResellerAdmin
+		db := database.GetDB()
+		if err := db.Where("LOWER(username) = LOWER(?)", form.Username).First(&admin).Error; err != nil || (!crypto.CheckPasswordHash(admin.Password, form.Password) && admin.Password != form.Password) {
+			reason := "invalid credentials"
+			if blockedUntil, blocked := defaultLoginLimiter.registerFailure(remoteIP, form.Username); blocked {
+				logger.Warningf("failed login: username=%q, IP=%q, reason=%q, blocked_until=%s", safeUser, remoteIP, reason, blockedUntil.Format(time.RFC3339))
+			} else {
+				logger.Warningf("failed login: username=%q, IP=%q, reason=%q", safeUser, remoteIP, reason)
+			}
+			a.tgbot.UserLoginNotify(tgbot.LoginAttempt{
+				Username: safeUser,
+				IP:       remoteIP,
+				Time:     timeStr,
+				Status:   tgbot.LoginFail,
+				Reason:   reason,
+			})
+			pureJsonMsg(c, http.StatusOK, false, I18nWeb(c, "pages.login.toasts.wrongUsernameOrPassword"))
+			return
+		}
+
+		// Check portal alignment if targeted to a specific reseller webPath
+		targetWebPath := c.GetString("reseller_web_path")
+		if form.PortalWebPath != "" {
+			targetWebPath = form.PortalWebPath
+		}
+		if targetWebPath != "" && !strings.EqualFold(targetWebPath, admin.WebPath) {
+			pureJsonMsg(c, http.StatusOK, false, I18nWeb(c, "pages.login.toasts.wrongUsernameOrPassword"))
+			return
+		}
+
+		if !admin.Enable {
+			pureJsonMsg(c, http.StatusOK, false, "حساب نماینده غیرفعال است")
+			return
+		}
+		if admin.ExpiryTime > 0 && time.Now().UnixMilli() > admin.ExpiryTime {
+			pureJsonMsg(c, http.StatusOK, false, "اعتبار حساب نماینده به پایان رسیده است")
+			return
+		}
+
+		defaultLoginLimiter.registerSuccess(remoteIP, form.Username)
+		logger.Infof("Reseller %s logged in successfully, Ip Address: %s\n", safeUser, remoteIP)
+
+		// Set session for reseller
+		settingService := service.SettingService{}
+		mainBasePath, _ := settingService.GetBasePath()
+		if mainBasePath == "" {
+			mainBasePath = "/"
+		}
+
+		resellerBasePath := "/"
+		trimmedMain := strings.Trim(mainBasePath, "/")
+		if trimmedMain != "" {
+			resellerBasePath += trimmedMain + "/"
+		}
+		resellerBasePath += admin.WebPath + "/"
+
+		c.Set("base_path", resellerBasePath)
+		if err := session.SetLoginReseller(c, admin.Id, admin.Username); err != nil {
+			logger.Warning("Unable to save reseller session:", err)
+			pureJsonMsg(c, http.StatusOK, false, "Failed to create session")
+			return
+		}
+
+		jsonMsgObj(c, I18nWeb(c, "pages.login.toasts.successLogin"), gin.H{"isReseller": true, "username": admin.Username, "remark": admin.Remark, "webPath": admin.WebPath}, nil)
+		return
 	}
 
+	// Context: Main Panel (Master Admin)
 	if user == nil {
-		// Try Reseller Admin
+		// Check if a reseller attempted to login from the main panel
 		var admin model.ResellerAdmin
 		db := database.GetDB()
 		if err := db.Where("LOWER(username) = LOWER(?)", form.Username).First(&admin).Error; err == nil {
-			// Verify password (plaintext fallback for migration if needed, but here we assume hashed)
-			if !crypto.CheckPasswordHash(admin.Password, form.Password) && admin.Password != form.Password {
-				pureJsonMsg(c, http.StatusOK, false, I18nWeb(c, "pages.login.toasts.wrongUsernameOrPassword"))
+			if crypto.CheckPasswordHash(admin.Password, form.Password) || admin.Password == form.Password {
+				pureJsonMsg(c, http.StatusOK, false, "ورود نمایندگان فقط از طریق آدرس اختصاصی پورتال نماینده امکان‌پذیر است")
 				return
 			}
-
-			// Clear any lingering portal cookie
-			c.SetCookie("reseller_portal", "", -1, "/", "", false, true)
-			
-			if !admin.Enable {
-				pureJsonMsg(c, http.StatusOK, false, "Reseller account disabled")
-				return
-			}
-			if admin.ExpiryTime > 0 && time.Now().UnixMilli() > admin.ExpiryTime {
-				pureJsonMsg(c, http.StatusOK, false, "Reseller account expired")
-				return
-			}
-			
-			defaultLoginLimiter.registerSuccess(remoteIP, form.Username)
-			logger.Infof("Reseller %s logged in successfully, Ip Address: %s\n", safeUser, remoteIP)
-			
-			// Set session for reseller
-			settingService := service.SettingService{}
-			mainBasePath, _ := settingService.GetBasePath()
-			if mainBasePath == "" {
-				mainBasePath = "/"
-			}
-
-			resellerBasePath := "/"
-			trimmedMain := strings.Trim(mainBasePath, "/")
-			if trimmedMain != "" {
-				resellerBasePath += trimmedMain + "/"
-			}
-			resellerBasePath += admin.WebPath + "/"
-			
-			c.Set("base_path", resellerBasePath)
-			if err := session.SetLoginReseller(c, admin.Id, admin.Username); err != nil {
-				logger.Warning("Unable to save reseller session:", err)
-				pureJsonMsg(c, http.StatusOK, false, "Failed to create session")
-				return
-			}
-
-			jsonMsgObj(c, I18nWeb(c, "pages.login.toasts.successLogin"), gin.H{"isReseller": true, "username": admin.Username, "remark": admin.Remark, "webPath": admin.WebPath}, nil)
-			return
 		}
 
 		reason := loginFailureReason(checkErr)
