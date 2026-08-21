@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -617,6 +618,7 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 				for _, ipTime := range bannedLive {
 					j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
 					ipLogger.Printf("[LIMIT_IP] Email = %s || Disconnecting OLD IP = %s || Timestamp = %d", clientEmail, ipTime.IP, ipTime.Timestamp)
+					banIpDirectly(ipTime.IP)
 				}
 			}
 			banned = true
@@ -812,4 +814,23 @@ func (j *CheckClientIpJob) getInboundsByEmail(clientEmail string) ([]*model.Inbo
 		return inbounds, nil
 	}
 	return nil, err
+}
+
+// banIpDirectly immediately bans an IP using fail2ban-client and iptables/ip6tables for 0ms latency enforcement.
+func banIpDirectly(ip string) {
+	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	// 1. Instantly trigger fail2ban CLI
+	_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
+
+	// 2. Direct iptables / ip6tables fallback for instant kernel-level packet dropping
+	if strings.Contains(ip, ":") {
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "-s", ip, "-j", "DROP").Run()
+	} else {
+		_ = exec.CommandContext(ctx, "iptables", "-I", "INPUT", "-s", ip, "-j", "DROP").Run()
+	}
 }
