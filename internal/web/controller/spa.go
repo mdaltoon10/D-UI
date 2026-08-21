@@ -254,9 +254,7 @@ func isPanelSPAFallbackRequest(c *gin.Context) bool {
 	}
 
 	reqPath := c.Request.URL.Path
-	isReseller := c.GetBool("is_reseller")
 
-	// If it's not a reseller path and doesn't start with /panel, don't serve SPA
 	basePath := c.GetString("base_path")
 	if basePath == "" {
 		basePath = "/"
@@ -264,15 +262,17 @@ func isPanelSPAFallbackRequest(c *gin.Context) bool {
 	if !strings.HasSuffix(basePath, "/") {
 		basePath += "/"
 	}
-	panelPrefix := basePath + "panel"
 	
-	if !isReseller && !strings.HasPrefix(reqPath, panelPrefix) {
-
+	// The request path must start with the current base_path (master or reseller)
+	if !strings.HasPrefix(reqPath, basePath) {
 		return false
 	}
 
-	// Don't serve SPA for API/WS/Assets
-	if isStaticAssetPath(reqPath) || strings.Contains(reqPath, "/api/") || strings.Contains(reqPath, "/ws/") {
+	// Don't serve SPA for API/WS/Assets or subscription links
+	if isStaticAssetPath(reqPath) || 
+		strings.Contains(reqPath, "/api/") || 
+		strings.Contains(reqPath, "/ws/") || 
+		strings.Contains(reqPath, "/sub/") {
 		return false
 	}
 
