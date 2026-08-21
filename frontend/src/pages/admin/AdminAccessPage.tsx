@@ -47,6 +47,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { HttpUtil, SizeFormatter, IntlUtil } from '@/utils';
 import { useTheme } from '@/hooks/useTheme';
+import { useDatepicker } from '@/hooks/useDatepicker';
 import { getAdminTranslations } from '@/utils/adminI18n';
 import AppSidebar from '@/layouts/AppSidebar';
 import '@/pages/clients/ClientsPage.css'; // Inherit all glorious dark theme styling!
@@ -83,6 +84,7 @@ export default function AdminAccessPage() {
   const { i18n, t } = useTranslation();
   const isFa = i18n.language?.startsWith('fa');
   const { isDark, isUltra, antdThemeConfig } = useTheme();
+  const { datepicker } = useDatepicker();
   const dict = useMemo(() => getAdminTranslations(i18n.language), [i18n.language]);
 
   const pageClass = useMemo(() => {
@@ -162,12 +164,13 @@ export default function AdminAccessPage() {
 
   const handleOpenEditModal = (admin: ResellerAdmin) => {
     setEditingAdmin(admin);
+    const remainingDays = admin.expiryTime > 0 ? Math.max(0, Math.ceil((admin.expiryTime - Date.now()) / 86400000)) : 0;
     form.setFieldsValue({
       remark: admin.remark,
       username: admin.username,
       password: admin.password,
       volumeGB: admin.volumeGB,
-      days: admin.days,
+      days: admin.expiryTime > 0 ? remainingDays : (admin.days || 0),
       webPath: admin.webPath,
       inbounds: admin.inbounds,
       enable: admin.enable !== false,
@@ -432,7 +435,7 @@ export default function AdminAccessPage() {
     const diff = admin.expiryTime - Date.now();
     if (diff <= 0) return dict.statusExpired;
     const daysLeft = Math.ceil(diff / 86400000);
-    return `${daysLeft}${dict.daysSuffix}`;
+    return `${daysLeft} ${dict.daysSuffix}`;
   };
 
   return (
@@ -751,9 +754,11 @@ export default function AdminAccessPage() {
                         🌐 {Array.isArray(row.inbounds) ? row.inbounds.length : 0} {dict.inboundCountSuffix}
                       </span>
                       <span>•</span>
-                      <span>
-                        ⏳ {getExpiryText(row)}
-                      </span>
+                      <Tooltip title={row.expiryTime > 0 ? IntlUtil.formatDate(row.expiryTime, datepicker) : undefined}>
+                        <span style={{ cursor: row.expiryTime > 0 ? 'pointer' : 'default' }}>
+                          ⏳ {getExpiryText(row)}
+                        </span>
+                      </Tooltip>
                     </div>
                   </div>
                 </div>
@@ -985,10 +990,15 @@ export default function AdminAccessPage() {
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label={dict.detailsCreated}>
-                {infoAdmin.createdAt ? IntlUtil.formatDate(infoAdmin.createdAt) : '-'}
+                {infoAdmin.createdAt ? IntlUtil.formatDate(infoAdmin.createdAt, datepicker) : '-'}
               </Descriptions.Item>
               <Descriptions.Item label={dict.detailsRemaining}>
                 <Tag color={isExpired(infoAdmin) ? 'red' : 'green'}>{getExpiryText(infoAdmin)}</Tag>
+                {infoAdmin.expiryTime > 0 && (
+                  <span style={{ fontSize: '11px', opacity: 0.7, marginInlineStart: 8 }}>
+                    ({IntlUtil.formatDate(infoAdmin.expiryTime, datepicker)})
+                  </span>
+                )}
               </Descriptions.Item>
               <Descriptions.Item label={dict.detailsAllowedIb}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>

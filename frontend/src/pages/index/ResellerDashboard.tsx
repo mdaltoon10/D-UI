@@ -11,8 +11,9 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { HttpUtil, SizeFormatter } from '@/utils';
+import { HttpUtil, SizeFormatter, IntlUtil } from '@/utils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useDatepicker } from '@/hooks/useDatepicker';
 import { keys } from '@/api/queryKeys';
 import { useInboundOptions } from '@/api/queries/useInboundOptions';
 import { getStatTranslations } from '@/utils/overviewI18n';
@@ -49,6 +50,7 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
   const { i18n } = useTranslation();
   const tr = useMemo(() => getStatTranslations(i18n.language), [i18n.language]);
   const { isMobile } = useMediaQuery();
+  const { datepicker } = useDatepicker();
   const [adminInfo, setAdminInfo] = useState<ResellerAdmin | null>(null);
 
   const parsedAdmin = useMemo(() => {
@@ -203,17 +205,18 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
   const now = Date.now();
   const isUnlimitedTime = !adminInfo || expiryTime <= 0;
 
-  let totalDays = adminInfo?.days || 30;
+  let totalDays = adminInfo?.days || 0;
   let daysRemaining = 0;
   let timePercent = 0;
 
   if (!isUnlimitedTime) {
-    daysRemaining = Math.max(0, Math.ceil((expiryTime - now) / 86400000));
-    if (totalDays <= 0) {
-      totalDays = Math.max(1, Math.ceil((expiryTime - (createdAt || now)) / 86400000));
+    const diffMs = expiryTime - now;
+    daysRemaining = diffMs > 0 ? Math.ceil(diffMs / 86400000) : 0;
+    if (totalDays <= 0 || daysRemaining > totalDays) {
+      totalDays = Math.max(daysRemaining, Math.ceil((expiryTime - (createdAt || (now - 86400000))) / 86400000));
     }
     const daysUsed = Math.max(0, totalDays - daysRemaining);
-    timePercent = Math.min(100, (daysUsed / totalDays) * 100);
+    timePercent = totalDays > 0 ? Math.min(100, (daysUsed / totalDays) * 100) : 0;
   }
 
   const clientLimit = adminInfo?.clientLimit || 0;
@@ -366,7 +369,7 @@ export default function ResellerDashboard({ currentAdminRaw }: { currentAdminRaw
 
             <div className="quota-details">
               <span>{tr.status} <b className="quota-val-highlight" style={{ color: daysRemaining <= 3 && !isUnlimitedTime ? '#ef4444' : '#00b4d8' }}>{isUnlimitedTime ? tr.permanent : (daysRemaining > 0 ? tr.active : tr.expired)}</b></span>
-              <span>{tr.expiry} <b>{isUnlimitedTime ? tr.noExpiry : `${daysRemaining} ${tr.days}`}</b></span>
+              <span>{tr.expiry} <b>{isUnlimitedTime ? tr.noExpiry : IntlUtil.formatDate(expiryTime, datepicker)}</b></span>
             </div>
           </div>
 

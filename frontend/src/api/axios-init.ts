@@ -149,12 +149,9 @@ export function setupAxios(): void {
             const cleanBase = redirectUrl.endsWith('/') ? redirectUrl : redirectUrl + '/';
             const cleanBaseLower = cleanBase.toLowerCase();
             const webPathLower = String(resellerWebPath).toLowerCase();
-            let rootBase = '/';
-            if (cleanBaseLower.includes('/' + webPathLower + '/')) {
-              rootBase = cleanBase.substring(0, cleanBaseLower.indexOf('/' + webPathLower + '/')) + '/';
-            } else {
-              rootBase = cleanBase;
-            }
+            const rootBase = cleanBaseLower.includes('/' + webPathLower + '/')
+              ? cleanBase.substring(0, cleanBaseLower.indexOf('/' + webPathLower + '/')) + '/'
+              : cleanBase;
             redirectUrl = `${rootBase}portal/${resellerWebPath}`;
           } else {
             const cleanBase = redirectUrl.endsWith('/') ? redirectUrl : redirectUrl + '/';

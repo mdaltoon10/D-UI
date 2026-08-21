@@ -438,12 +438,9 @@ export default function AppSidebar() {
         const cleanBase = logoutRedirect.endsWith('/') ? logoutRedirect : logoutRedirect + '/';
         const cleanBaseLower = cleanBase.toLowerCase();
         const webPathLower = String(webPath).toLowerCase();
-        let rootBase = '/';
-        if (cleanBaseLower.includes('/' + webPathLower + '/')) {
-          rootBase = cleanBase.substring(0, cleanBaseLower.indexOf('/' + webPathLower + '/')) + '/';
-        } else {
-          rootBase = cleanBase;
-        }
+        const rootBase = cleanBaseLower.includes('/' + webPathLower + '/')
+          ? cleanBase.substring(0, cleanBaseLower.indexOf('/' + webPathLower + '/')) + '/'
+          : cleanBase;
         logoutRedirect = `${rootBase}portal/${webPath}`;
       } else {
         const cleanBase = logoutRedirect.endsWith('/') ? logoutRedirect : logoutRedirect + '/';

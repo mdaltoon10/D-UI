@@ -95,11 +95,13 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 			ts := entry.LastSeen
 			if ts <= 0 {
 				ts = now
+			} else if ts > 1e11 {
+				ts = ts / 1000
 			}
-			// Xray's statsUserOnline keeps track of all seen IPs since startup/reload.
-			// To ensure accurate real-time IP limiting and prevent offline devices
-			// from blocking new ones, we ignore IPs that haven't been active in the last 10 seconds.
-			if now-ts > 10 {
+			// Xray's statsUserOnline keeps track of seen IPs.
+			// Ignore IPs that haven't been active in the last 180 seconds (3 minutes)
+			// so idle background connections still count, but offline devices are pruned.
+			if now-ts > 180 {
 				continue
 			}
 			if _, exists := observed[user.Email]; !exists {
@@ -113,15 +115,18 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 	return observed, true
 }
 
-// hasLimitIp reports whether any client carries an IP limit. It probes the
-// normalized clients table (limit_ip is synced there by SyncInbound and the
-// legacy seeder), replacing the old `settings LIKE '%limitIp%'` scan that
-// loaded and JSON-parsed every inbound's settings blob on each 10s run.
+// hasLimitIp reports whether any client carries an IP limit. It probes both the
+// normalized client records table and the inbounds settings JSON.
 func (j *CheckClientIpJob) hasLimitIp() bool {
 	db := database.GetDB()
 	var probe int64
 	err := db.Model(&model.ClientRecord{}).Where("limit_ip > 0").Limit(1).Count(&probe).Error
-	return err == nil && probe > 0
+	if err == nil && probe > 0 {
+		return true
+	}
+	var count int64
+	err = db.Model(&model.Inbound{}).Where("settings LIKE ?", "%\"limitIp\":%").Limit(1).Count(&count).Error
+	return err == nil && count > 0
 }
 
 const ipScanChunk = 400
@@ -467,9 +472,9 @@ func partitionLiveIps(ipMap map[string]IPWithTimestamp, observedThisScan map[str
 	now := time.Now().Unix()
 	for ip, entry := range ipMap {
 		// Consider an IP "live" if it was seen locally in this scan, OR if its
-		// timestamp from the synced database is very recent (e.g. within 10 seconds).
+		// timestamp from the synced database is very recent (within 180 seconds).
 		// This ensures cluster-wide limits work even if the IP was seen on another node.
-		if observedThisScan[ip] || now-entry.Timestamp < 10 {
+		if observedThisScan[ip] || now-entry.Timestamp < 180 {
 			live = append(live, entry)
 		} else {
 			historical = append(historical, entry)
@@ -604,26 +609,25 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 			logIpFile, err := os.OpenFile(xray.GetIPLimitLogPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 			if err != nil {
 				logger.Errorf("failed to open IP limit log file: %s", err)
-				return false, false
-			}
-			defer logIpFile.Close()
-			ipLogger := log.New(logIpFile, "", log.LstdFlags)
+			} else {
+				defer logIpFile.Close()
+				ipLogger := log.New(logIpFile, "", log.LstdFlags)
 
-			// log format is load-bearing: d-ui.sh create_iplimit_jails builds
-			// filter.d/dui-ipl.conf with
-			//   failregex = \[LIMIT_IP\]\s*Email\s*=\s*<F-USER>.+</F-USER>\s*\|\|\s*Disconnecting OLD IP\s*=\s*<ADDR>\s*\|\|\s*Timestamp\s*=\s*\d+
-			// don't change the wording.
-			for _, ipTime := range bannedLive {
-				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
-				ipLogger.Printf("[LIMIT_IP] Email = %s || Disconnecting OLD IP = %s || Timestamp = %d", clientEmail, ipTime.IP, ipTime.Timestamp)
+				// log format is load-bearing: d-ui.sh create_iplimit_jails builds
+				// filter.d/dui-ipl.conf with
+				//   failregex = \[LIMIT_IP\]\s*Email\s*=\s*<F-USER>.+</F-USER>\s*\|\|\s*Disconnecting OLD IP\s*=\s*<ADDR>\s*\|\|\s*Timestamp\s*=\s*\d+
+				// don't change the wording.
+				for _, ipTime := range bannedLive {
+					j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
+					ipLogger.Printf("[LIMIT_IP] Email = %s || Disconnecting OLD IP = %s || Timestamp = %d", clientEmail, ipTime.IP, ipTime.Timestamp)
+				}
 			}
-			banned = false
 		} else {
 			for _, ipTime := range bannedLive {
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
 			}
-			banned = true
 		}
+		banned = true
 	}
 
 	// keep kept-live + historical in the blob so the panel keeps showing
