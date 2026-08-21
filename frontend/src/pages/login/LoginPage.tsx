@@ -71,28 +71,21 @@ export default function LoginPage() {
     return () => window.clearInterval(timer);
   }, [headlineWords.length]);
 
-  const cleanBase = useMemo(() => {
-    if (!basePath || basePath === '/') return '/';
-    return basePath.endsWith('/') ? basePath : basePath + '/';
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const endpoint = cleanBase === '/' ? 'getTwoFactorEnable' : `${cleanBase}getTwoFactorEnable`;
-      const msg = await HttpUtil.post(endpoint);
+      const msg = await HttpUtil.post('getTwoFactorEnable');
       if (cancelled) return;
       if (msg.success) setTwoFactorEnable(!!msg.obj);
       setFetched(true);
     })();
     return () => { cancelled = true; };
-  }, [cleanBase]);
+  }, []);
 
   const onSubmit = useCallback(async (values: LoginForm) => {
     setSubmitting(true);
     try {
-      const endpoint = cleanBase === '/' ? 'login' : `${cleanBase}login`;
-      const msg = await HttpUtil.post(endpoint, values);
+      const msg = await HttpUtil.post('login', values);
       if (msg.success) {
         const obj = msg.obj as { isReseller?: boolean; webPath?: string; username?: string; remark?: string } | null;
         if (obj?.isReseller && obj?.webPath) {
@@ -118,7 +111,7 @@ export default function LoginPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [cleanBase]);
+  }, []);
 
   const onLangChange = useCallback((next: string) => {
     setLang(next);
