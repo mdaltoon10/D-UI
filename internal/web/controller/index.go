@@ -316,6 +316,7 @@ func (a *IndexController) logout(c *gin.Context) {
 	} else if session.IsResellerLogin(c) {
 		logger.Infof("Reseller logged out successfully")
 	}
+	c.SetCookie("reseller_portal", "", -1, "/", "", false, true)
 	if err := session.ClearSession(c); err != nil {
 		logger.Warning("Unable to clear session on logout:", err)
 	}

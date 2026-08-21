@@ -139,10 +139,10 @@ export function setupAxios(): void {
         }
         if (!sessionExpired) {
           sessionExpired = true;
-          const isReseller = (window as unknown as { X_UI_IS_RESELLER?: boolean }).X_UI_IS_RESELLER || !!localStorage.getItem('daltoon_current_admin');
-          const resellerWebPath = (window as unknown as { X_UI_RESELLER_WEB_PATH?: string }).X_UI_RESELLER_WEB_PATH ||
-            localStorage.getItem('daltoon_reseller_webpath') ||
-            sessionStorage.getItem('daltoon_reseller_webpath');
+          const isReseller = (typeof window !== 'undefined' && typeof window.X_UI_BASE_PATH !== 'undefined')
+            ? !!(window as unknown as { X_UI_IS_RESELLER?: boolean }).X_UI_IS_RESELLER
+            : !!localStorage.getItem('daltoon_current_admin');
+          const resellerWebPath = (window as unknown as { X_UI_RESELLER_WEB_PATH?: string }).X_UI_RESELLER_WEB_PATH;
           
           let redirectUrl = window.X_UI_BASE_PATH || '/';
           if (isReseller && resellerWebPath) {
@@ -152,9 +152,18 @@ export function setupAxios(): void {
             let rootBase = '/';
             if (cleanBaseLower.includes('/' + webPathLower + '/')) {
               rootBase = cleanBase.substring(0, cleanBaseLower.indexOf('/' + webPathLower + '/')) + '/';
+            } else {
+              rootBase = cleanBase;
             }
             redirectUrl = `${rootBase}portal/${resellerWebPath}`;
+          } else {
+            const cleanBase = redirectUrl.endsWith('/') ? redirectUrl : redirectUrl + '/';
+            redirectUrl = cleanBase;
           }
+          localStorage.removeItem('daltoon_current_admin');
+          sessionStorage.removeItem('daltoon_is_reseller');
+          sessionStorage.removeItem('daltoon_reseller_webpath');
+          localStorage.removeItem('daltoon_reseller_webpath');
           window.location.replace(redirectUrl);
         }
         return new Promise(() => {});

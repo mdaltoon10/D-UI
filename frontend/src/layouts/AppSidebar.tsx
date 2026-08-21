@@ -413,20 +413,18 @@ export default function AppSidebar() {
 
   const openLink = useCallback(async (key: string) => {
     if (key === LOGOUT_KEY) {
-      let webPath: string | null = null;
+      const isReseller = (typeof window !== 'undefined' && typeof window.X_UI_BASE_PATH !== 'undefined')
+        ? !!(window as unknown as { X_UI_IS_RESELLER?: boolean }).X_UI_IS_RESELLER
+        : !!localStorage.getItem('daltoon_current_admin');
 
-      // 1. Check window.X_UI_RESELLER_WEB_PATH
-      if ((window as unknown as { X_UI_RESELLER_WEB_PATH?: string }).X_UI_RESELLER_WEB_PATH) {
-        webPath = (window as unknown as { X_UI_RESELLER_WEB_PATH: string }).X_UI_RESELLER_WEB_PATH;
-      }
+      let webPath: string | null = (window as unknown as { X_UI_RESELLER_WEB_PATH?: string }).X_UI_RESELLER_WEB_PATH || null;
 
-      // 2. Check localStorage daltoon_current_admin
-      if (!webPath) {
+      if (!webPath && isReseller) {
         const currentAdminRaw = localStorage.getItem('daltoon_current_admin');
         if (currentAdminRaw) {
           try {
             const parsed = JSON.parse(currentAdminRaw);
-            if (parsed && parsed.webPath) {
+            if (parsed?.webPath) {
               webPath = parsed.webPath;
             }
           } catch {
@@ -435,45 +433,27 @@ export default function AppSidebar() {
         }
       }
 
-      // 3. Check sessionStorage or stored reseller path
-      if (!webPath) {
-        webPath = sessionStorage.getItem('daltoon_reseller_webpath') || localStorage.getItem('daltoon_reseller_webpath');
-      }
-
-      // 4. Check base path or location pathname if reseller flag is set
-      const isResellerFlag = (window as unknown as { X_UI_IS_RESELLER?: boolean }).X_UI_IS_RESELLER || !!localStorage.getItem('daltoon_current_admin');
-      if (!webPath && isResellerFlag) {
-        const curBase = window.X_UI_BASE_PATH || window.location.pathname || '';
-        const segments = curBase.replace(/^\/+|\/+$/g, '').split('/');
-        const reserved = new Set(['panel', 'assets', 'api', 'login', 'logout', 'portal', 'csrf-token']);
-        for (const seg of segments) {
-          if (seg && !reserved.has(seg.toLowerCase())) {
-            webPath = seg;
-            break;
-          }
-        }
-      }
-
       let logoutRedirect = window.X_UI_BASE_PATH || '/';
-      if (webPath) {
+      if (isReseller && webPath) {
         const cleanBase = logoutRedirect.endsWith('/') ? logoutRedirect : logoutRedirect + '/';
         const cleanBaseLower = cleanBase.toLowerCase();
         const webPathLower = String(webPath).toLowerCase();
         let rootBase = '/';
         if (cleanBaseLower.includes('/' + webPathLower + '/')) {
           rootBase = cleanBase.substring(0, cleanBaseLower.indexOf('/' + webPathLower + '/')) + '/';
+        } else {
+          rootBase = cleanBase;
         }
         logoutRedirect = `${rootBase}portal/${webPath}`;
-        sessionStorage.setItem('daltoon_is_reseller', 'true');
-        sessionStorage.setItem('daltoon_reseller_webpath', webPath);
-        localStorage.setItem('daltoon_reseller_webpath', webPath);
       } else {
-        sessionStorage.removeItem('daltoon_is_reseller');
-        sessionStorage.removeItem('daltoon_reseller_webpath');
-        localStorage.removeItem('daltoon_reseller_webpath');
+        const cleanBase = logoutRedirect.endsWith('/') ? logoutRedirect : logoutRedirect + '/';
+        logoutRedirect = cleanBase;
       }
 
       localStorage.removeItem('daltoon_current_admin');
+      sessionStorage.removeItem('daltoon_is_reseller');
+      sessionStorage.removeItem('daltoon_reseller_webpath');
+      localStorage.removeItem('daltoon_reseller_webpath');
 
       try {
         await HttpUtil.post('logout');

@@ -19,13 +19,6 @@ export default function PanelLayout() {
       sessionStorage.removeItem('daltoon_is_reseller');
       sessionStorage.removeItem('daltoon_reseller_webpath');
       localStorage.removeItem('daltoon_reseller_webpath');
-    } else if (isResellerBackend) {
-      sessionStorage.setItem('daltoon_is_reseller', 'true');
-      const resellerWebPath = (window as unknown as { X_UI_RESELLER_WEB_PATH?: string }).X_UI_RESELLER_WEB_PATH;
-      if (resellerWebPath) {
-        sessionStorage.setItem('daltoon_reseller_webpath', resellerWebPath);
-        localStorage.setItem('daltoon_reseller_webpath', resellerWebPath);
-      }
     }
   }, []);
 
