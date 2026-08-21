@@ -332,7 +332,12 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 			db := database.GetDB()
 			if db != nil {
 				var admin model.ResellerAdmin
-				if err := db.Where("LOWER(web_path) = LOWER(?)", prefix).First(&admin).Error; err != nil || !admin.Enable {
+				resellerWebPath := prefix
+				parts := strings.Split(prefix, "/")
+				if len(parts) > 0 {
+					resellerWebPath = parts[len(parts)-1]
+				}
+				if err := db.Where("LOWER(web_path) = LOWER(?)", resellerWebPath).First(&admin).Error; err != nil || !admin.Enable {
 					c.String(http.StatusNotFound, "404 Not Found")
 					c.Abort()
 					return
