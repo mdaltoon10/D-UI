@@ -218,29 +218,13 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	store.Options(sessionOptions)
 	httpMiddleware := sessions.Sessions("d-ui-session", store)
 	httpsMiddleware := sessions.Sessions("d-ui-sec", store)
-	engine.Use(func(c *gin.Context) {
-		isHTTPS := c.Request.TLS != nil || strings.ToLower(c.Request.Header.Get("X-Forwarded-Proto")) == "https"
-		if isHTTPS {
-			httpsMiddleware(c)
-		} else {
-			httpMiddleware(c)
-		}
-	})
-	engine.Use(func(c *gin.Context) {
-		s := sessions.Default(c)
-		opts := sessionOptions
+	resellerHttpMiddleware := sessions.Sessions("d-ui-reseller-session", store)
+	resellerHttpsMiddleware := sessions.Sessions("d-ui-reseller-sec", store)
 
-		isHTTPS := c.Request.TLS != nil || strings.ToLower(c.Request.Header.Get("X-Forwarded-Proto")) == "https"
-
-		if isHTTPS {
-			opts.Secure = true
-		} else {
-			opts.Secure = false
-		}
-		s.Options(opts)
-		c.Next()
-	})
+	// 1. First run the ResellerPathMiddleware so we know if this is a reseller request
 	engine.Use(middleware.ResellerPathMiddleware(basePath))
+
+	// 2. Set the fallback base_path if not already set by reseller middleware
 	engine.Use(func(c *gin.Context) {
 		if res := c.GetHeader("X-Reseller-Base-Path"); res != "" {
 			c.Set("base_path", res)
@@ -248,21 +232,45 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 			c.Set("base_path", basePath)
 		}
 	})
+
+	// 3. Register the dynamic session middleware (reseller vs master session names)
 	engine.Use(func(c *gin.Context) {
+		isHTTPS := c.Request.TLS != nil || strings.ToLower(c.Request.Header.Get("X-Forwarded-Proto")) == "https"
+		isReseller := c.GetBool("is_reseller") || strings.Contains(strings.ToLower(c.Request.URL.Path), "/portal/")
+		if isReseller {
+			if isHTTPS {
+				resellerHttpsMiddleware(c)
+			} else {
+				resellerHttpMiddleware(c)
+			}
+		} else {
+			if isHTTPS {
+				httpsMiddleware(c)
+			} else {
+				httpMiddleware(c)
+			}
+		}
+	})
+
+	// 4. Configure options for the loaded session
+	engine.Use(func(c *gin.Context) {
+		s := sessions.Default(c)
+		opts := sessionOptions
+
+		isHTTPS := c.Request.TLS != nil || strings.ToLower(c.Request.Header.Get("X-Forwarded-Proto")) == "https"
+		opts.Secure = isHTTPS
+
 		if isReseller, exists := c.Get("is_reseller"); exists {
 			if isRes, ok := isReseller.(bool); ok && isRes {
 				if basePathVal, exists2 := c.Get("base_path"); exists2 {
 					if bp, ok2 := basePathVal.(string); ok2 && bp != "" {
-						s := sessions.Default(c)
-						opts := sessionOptions
-						isHTTPS := c.Request.TLS != nil || strings.ToLower(c.Request.Header.Get("X-Forwarded-Proto")) == "https"
-						opts.Secure = isHTTPS
 						opts.Path = bp
-						s.Options(opts)
 					}
 				}
 			}
 		}
+
+		s.Options(opts)
 		c.Next()
 	})
 	engine.Use(func(c *gin.Context) {

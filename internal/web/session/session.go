@@ -303,5 +303,18 @@ func SetLoginReseller(c *gin.Context, id string, username string) error {
 	s := sessions.Default(c)
 	s.Set(getContextKey(c, loginResellerKey), id)
 	s.Set(getContextKey(c, loginResellerUsernameKey), username)
+
+	bp := c.GetString("base_path")
+	if bp != "" && bp != "/" {
+		isHTTPS := c.Request.TLS != nil || strings.ToLower(c.Request.Header.Get("X-Forwarded-Proto")) == "https"
+		s.Options(sessions.Options{
+			Path:     bp,
+			HttpOnly: true,
+			Secure:   isHTTPS,
+			SameSite: http.SameSiteLaxMode,
+			MaxAge:   3600 * 24 * 7, // 7 days expiration for reseller session
+		})
+	}
+
 	return s.Save()
 }
