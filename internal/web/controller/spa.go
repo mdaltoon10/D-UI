@@ -86,6 +86,22 @@ func (a *DUIController) HandleNoRoutePanelSPA(c *gin.Context) bool {
 	// 1. Check if it's already been redirected by a reseller middleware/NoRoute
 	if c.GetHeader("X-Reseller-Redirected") == "true" {
 		if !isStaticAssetPath(reqPath) && !strings.Contains(reqPath, "/api/") && !strings.Contains(reqPath, "/ws/") {
+			resellerBase := c.GetHeader("X-Reseller-Base-Path")
+			if resellerBase != "" && resellerBase != "/" {
+				webPath := strings.Trim(resellerBase, "/")
+				parts := strings.Split(webPath, "/")
+				webPath = parts[len(parts)-1]
+				db := database.GetDB()
+				if db != nil {
+					var admin model.ResellerAdmin
+					if err := db.Where("LOWER(web_path) = LOWER(?) AND enable = ?", webPath, true).First(&admin).Error; err != nil {
+						c.String(http.StatusNotFound, "404 Not Found")
+						c.Abort()
+						return true
+					}
+				}
+			}
+
 			if !session.IsLogin(c) {
 				serveDistPage(c, "login.html")
 			} else {
@@ -216,7 +232,7 @@ func (a *DUIController) isResellerSubPath(c *gin.Context) (string, bool) {
 	// Check if segment at startIndex is a reseller
 	webPath := segments[startIndex]
 	admin, err := a.adminService.GetAdminByWebPath(webPath)
-	if err != nil || admin == nil {
+	if err != nil || admin == nil || !admin.Enable {
 		return "", false
 	}
 

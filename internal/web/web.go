@@ -327,6 +327,15 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 		basePathAttr := c.GetString("base_path")
 		if basePathAttr != "" && basePathAttr != "/" && c.GetHeader("X-Reseller-Redirected") != "true" {
 			prefix := strings.Trim(basePathAttr, "/")
+			db := database.GetDB()
+			if db != nil {
+				var admin model.ResellerAdmin
+				if err := db.Where("LOWER(web_path) = LOWER(?)", prefix).First(&admin).Error; err != nil || !admin.Enable {
+					c.String(http.StatusNotFound, "404 Not Found")
+					c.Abort()
+					return
+				}
+			}
 			reqPath := c.Request.URL.Path
 			// If the path was not already rewritten by the middleware and starts with /<prefix>
 			if strings.HasPrefix(reqPath, "/"+prefix+"/") || reqPath == "/"+prefix {
