@@ -4,12 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 
@@ -101,9 +99,9 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 				ts = ts / 1000
 			}
 			// Xray's statsUserOnline keeps track of seen IPs.
-			// Ignore IPs that haven't been active in the last 12 seconds
+			// Ignore IPs that haven't been active in the last 180 seconds
 			// so idle background connections still count, but offline devices are pruned.
-			if now-ts > 12 {
+			if now-ts > 180 {
 				continue
 			}
 			if _, exists := observed[user.Email]; !exists {
@@ -437,10 +435,6 @@ func mergeClientIps(old, new []IPWithTimestamp, staleCutoff int64, newAlwaysLive
 		} else {
 			// Existing IP, update Timestamp to latest activity, but PRESERVE Created!
 			if ipTime.Timestamp > existing.Timestamp {
-				// If the IP was offline/unseen for more than 15 seconds, treat it as a new session
-				if ipTime.Timestamp-existing.Timestamp > 15 {
-					existing.Created = ipTime.Timestamp
-				}
 				existing.Timestamp = ipTime.Timestamp
 			}
 			if existing.Created == 0 {
@@ -474,10 +468,10 @@ func partitionLiveIps(ipMap map[string]IPWithTimestamp, observedThisScan map[str
 	now := time.Now().Unix()
 	for ip, entry := range ipMap {
 		// Consider an IP "live" if it was seen locally in this scan, OR if its
-		// timestamp from the synced database is very recent (within 12 seconds).
+		// timestamp from the synced database is very recent (within 180 seconds).
 		// This ensures cluster-wide limits work even if the IP was seen on another node.
-		// Use 12 seconds as the live check since the scan runs every 2s.
-		if observedThisScan[ip] || now-entry.Timestamp < 12 {
+		// Use 180 seconds as the live check since the scan runs every 2s.
+		if observedThisScan[ip] || now-entry.Timestamp < 180 {
 			live = append(live, entry)
 		} else {
 			historical = append(historical, entry)
@@ -623,17 +617,11 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 				for _, ipTime := range bannedLive {
 					j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
 					ipLogger.Printf("[LIMIT_IP] Email = %s || Disconnecting OLD IP = %s || Timestamp = %d", clientEmail, ipTime.IP, ipTime.Timestamp)
-					if inbound.Port > 0 {
-						j.banIPDirectly(ipTime.IP, inbound.Port, 1*time.Minute)
-					}
 				}
 			}
 		} else {
 			for _, ipTime := range bannedLive {
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
-				if inbound.Port > 0 {
-					j.banIPDirectly(ipTime.IP, inbound.Port, 1*time.Minute)
-				}
 			}
 		}
 		banned = true
@@ -824,39 +812,3 @@ func (j *CheckClientIpJob) getInboundsByEmail(clientEmail string) ([]*model.Inbo
 	}
 	return nil, err
 }
-
-var (
-	directBansMu sync.Mutex
-	directBans   = make(map[string]time.Time) // key: "ip:port"
-)
-
-func (j *CheckClientIpJob) banIPDirectly(ip string, port int, duration time.Duration) {
-	key := fmt.Sprintf("%s:%d", ip, port)
-	directBansMu.Lock()
-	if _, exists := directBans[key]; exists {
-		directBansMu.Unlock()
-		return
-	}
-	directBans[key] = time.Now()
-	directBansMu.Unlock()
-
-	logger.Infof("[LIMIT_IP] Direct Firewall Ban: blocking IP %s on port %d for %v", ip, port, duration)
-
-	// Add iptables rules to drop TCP and UDP traffic from this IP on this port
-	portStr := strconv.Itoa(port)
-	_ = exec.Command("iptables", "-I", "INPUT", "-s", ip, "-p", "tcp", "--dport", portStr, "-j", "DROP").Run()
-	_ = exec.Command("iptables", "-I", "INPUT", "-s", ip, "-p", "udp", "--dport", portStr, "-j", "DROP").Run()
-
-	// Schedule automatic unban after duration
-	go func() {
-		time.Sleep(duration)
-		directBansMu.Lock()
-		delete(directBans, key)
-		directBansMu.Unlock()
-
-		logger.Infof("[LIMIT_IP] Direct Firewall Unban: restoring IP %s on port %d", ip, port)
-		_ = exec.Command("iptables", "-D", "INPUT", "-s", ip, "-p", "tcp", "--dport", portStr, "-j", "DROP").Run()
-		_ = exec.Command("iptables", "-D", "INPUT", "-s", ip, "-p", "udp", "--dport", portStr, "-j", "DROP").Run()
-	}()
-}
-
