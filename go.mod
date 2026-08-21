@@ -6,6 +6,7 @@ require (
 	github.com/gin-contrib/gzip v1.2.6
 	github.com/gin-contrib/sessions v1.1.0
 	github.com/gin-gonic/gin v1.12.0
+	github.com/glebarez/sqlite v1.11.0
 	github.com/go-ldap/ldap/v3 v3.4.13
 	github.com/go-playground/validator/v10 v10.30.3
 	github.com/goccy/go-json v0.10.6
@@ -26,12 +27,21 @@ require (
 	golang.org/x/crypto v0.53.0
 	golang.org/x/sys v0.46.0
 	golang.org/x/text v0.38.0
-	google.golang.org/grpc v1.82.0
+	google.golang.org/grpc v1.83.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
-	github.com/glebarez/sqlite v1.11.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.2
 	pgregory.net/rapid v1.3.0
+)
+
+require (
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/glebarez/go-sqlite v1.21.2 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	modernc.org/libc v1.22.5 // indirect
+	modernc.org/mathutil v1.5.0 // indirect
+	modernc.org/memory v1.5.0 // indirect
+	modernc.org/sqlite v1.23.1 // indirect
 )
 
 require (
