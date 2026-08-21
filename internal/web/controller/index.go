@@ -49,15 +49,8 @@ func (a *IndexController) initRouter(g *gin.RouterGroup) {
 	g.GET("/csrf-token", a.csrfToken)
 
 	g.POST("/login", middleware.CSRFMiddleware(), a.login)
-	g.POST("/:webPath/login", middleware.CSRFMiddleware(), a.login)
-	g.POST("/portal/login", middleware.CSRFMiddleware(), a.login)
-	g.POST("/portal/:webPath/login", middleware.CSRFMiddleware(), a.login)
-
 	g.POST("/logout", middleware.CSRFMiddleware(), a.logout)
 	g.POST("/getTwoFactorEnable", middleware.CSRFMiddleware(), a.getTwoFactorEnable)
-	g.POST("/:webPath/getTwoFactorEnable", middleware.CSRFMiddleware(), a.getTwoFactorEnable)
-	g.POST("/portal/getTwoFactorEnable", middleware.CSRFMiddleware(), a.getTwoFactorEnable)
-	g.POST("/portal/:webPath/getTwoFactorEnable", middleware.CSRFMiddleware(), a.getTwoFactorEnable)
 }
 
 func (a *IndexController) portalLogin(c *gin.Context) {
@@ -66,24 +59,11 @@ func (a *IndexController) portalLogin(c *gin.Context) {
 		db := database.GetDB()
 		if db != nil {
 			var admin model.ResellerAdmin
-			if err := db.Where("LOWER(web_path) = LOWER(?)", webPath).First(&admin).Error; err != nil || !admin.Enable {
+			if err := db.Where("LOWER(web_path) = LOWER(?)", webPath).First(&admin).Error; err != nil {
 				c.String(http.StatusNotFound, "404 Not Found")
-				c.Abort()
 				return
 			}
 			c.Set("is_reseller", true)
-			settingService := service.SettingService{}
-			mainBasePath, _ := settingService.GetBasePath()
-			if mainBasePath == "" {
-				mainBasePath = "/"
-			}
-			resellerBasePath := "/"
-			trimmedMain := strings.Trim(mainBasePath, "/")
-			if trimmedMain != "" {
-				resellerBasePath += trimmedMain + "/"
-			}
-			resellerBasePath += admin.WebPath + "/"
-			c.Set("base_path", resellerBasePath)
 			// Set a short-lived cookie to verify the portal during login POST
 			c.SetCookie("reseller_portal", admin.WebPath, 300, "/", "", false, true)
 		}
@@ -195,37 +175,21 @@ func (a *IndexController) login(c *gin.Context) {
 		if err != nil || mainBasePath == "" {
 			mainBasePath = "/"
 		}
-
-		// Is the actual request URL for the main admin login page?
-		urlPath := c.Request.URL.Path
-		trimmedPath := strings.Trim(urlPath, "/")
-		trimmedMain := strings.Trim(mainBasePath, "/")
-
-		isMainLoginRoute := false
-		if trimmedMain == "" {
-			isMainLoginRoute = trimmedPath == "login"
-		} else {
-			isMainLoginRoute = trimmedPath == trimmedMain+"/login" || trimmedPath == "login"
+		if !strings.HasSuffix(mainBasePath, "/") {
+			mainBasePath += "/"
 		}
-
-		isResellerContext := false
-		if !isMainLoginRoute {
-			if !strings.HasSuffix(mainBasePath, "/") {
-				mainBasePath += "/"
-			}
-			currentBasePath := c.GetString("base_path")
-			if !strings.HasSuffix(currentBasePath, "/") {
-				currentBasePath += "/"
-			}
-
-			portalCookie, _ := c.Cookie("reseller_portal")
-			referer := strings.ToLower(c.Request.Referer())
-
-			isResellerContext = (currentBasePath != mainBasePath) || 
-				portalCookie != "" || 
-				strings.Contains(referer, "/portal/") || 
-				c.GetBool("is_reseller")
+		currentBasePath := c.GetString("base_path")
+		if !strings.HasSuffix(currentBasePath, "/") {
+			currentBasePath += "/"
 		}
+		
+		portalCookie, _ := c.Cookie("reseller_portal")
+		referer := strings.ToLower(c.Request.Referer())
+		
+		isResellerContext := (currentBasePath != mainBasePath) || 
+			portalCookie != "" || 
+			strings.Contains(referer, "/portal/") || 
+			c.GetBool("is_reseller")
 		
 		if isResellerContext {
 			pureJsonMsg(c, http.StatusOK, false, "امکان ورود به پنل اصلی از طریق پورتال نمایندگان وجود ندارد / Master admin cannot login from a reseller portal")
@@ -250,16 +214,10 @@ func (a *IndexController) login(c *gin.Context) {
 			
 			// Check cookie as a fallback for missing/unreliable referer
 			portalCookie, _ := c.Cookie("reseller_portal")
-			currentBasePath := strings.ToLower(strings.Trim(c.GetString("base_path"), "/"))
-			adminWebPath := strings.ToLower(strings.Trim(admin.WebPath, "/"))
-			isBasePathMatch := currentBasePath != "" && (currentBasePath == adminWebPath || strings.HasSuffix(currentBasePath, "/"+adminWebPath))
-			urlWebPathParam := strings.ToLower(c.Param("webPath"))
-			isParamMatch := urlWebPathParam != "" && urlWebPathParam == adminWebPath
-
-			isValidPortal := strings.EqualFold(portalCookie, admin.WebPath) || strings.Contains(referer, portalPath) || isBasePathMatch || isParamMatch
+			isValidPortal := strings.EqualFold(portalCookie, admin.WebPath) || strings.Contains(referer, portalPath)
 
 			if !isValidPortal {
-				pureJsonMsg(c, http.StatusOK, false, "لطفا از طریق لینک اختصاصی پورتال خود وارد شوید / Please login via your dedicated reseller portal URL")
+				pureJsonMsg(c, http.StatusOK, false, "Invalid login URL for this reseller")
 				return
 			}
 			
@@ -346,24 +304,14 @@ func loginFailureReason(err error) string {
 }
 
 func (a *IndexController) logout(c *gin.Context) {
-	isReseller := c.GetBool("is_reseller") || 
-		strings.Contains(strings.ToLower(c.Request.URL.Path), "/portal/") ||
-		(c.GetHeader("X-Reseller-Base-Path") != "" && c.GetHeader("X-Reseller-Base-Path") != "/")
-	
-	if isReseller {
+	user := session.GetLoginUser(c)
+	if user != nil {
+		logger.Infof("%s logged out successfully", user.Username)
+	} else if session.IsResellerLogin(c) {
 		logger.Infof("Reseller logged out successfully")
-		if err := session.ClearResellerSession(c); err != nil {
-			logger.Warning("Unable to clear reseller session on logout:", err)
-		}
-		c.SetCookie("reseller_portal", "", -1, "/", "", false, true)
-	} else {
-		user := session.GetLoginUser(c)
-		if user != nil {
-			logger.Infof("%s logged out successfully", user.Username)
-		}
-		if err := session.ClearAdminSession(c); err != nil {
-			logger.Warning("Unable to clear admin session on logout:", err)
-		}
+	}
+	if err := session.ClearSession(c); err != nil {
+		logger.Warning("Unable to clear session on logout:", err)
 	}
 	c.Header("Cache-Control", "no-store")
 	c.JSON(http.StatusOK, gin.H{"success": true})

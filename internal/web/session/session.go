@@ -4,7 +4,6 @@ import (
 	"encoding/gob"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
@@ -206,8 +205,6 @@ func ClearResellerSession(c *gin.Context) error {
 	s := sessions.Default(c)
 	s.Delete(getContextKey(c, loginResellerKey))
 	s.Delete(getContextKey(c, loginResellerUsernameKey))
-	s.Delete(loginResellerKey)
-	s.Delete(loginResellerUsernameKey)
 	return s.Save()
 }
 
@@ -239,35 +236,20 @@ func GetLoginReseller(c *gin.Context) string {
 	if obj == nil {
 		return ""
 	}
-	var resellerId string
 	if str, ok := obj.(string); ok {
-		resellerId = str
-	} else {
-		switch v := obj.(type) {
-		case int:
-			resellerId = strconv.Itoa(v)
-		case int64:
-			resellerId = strconv.FormatInt(v, 10)
-		case int32:
-			resellerId = strconv.FormatInt(int64(v), 10)
-		case float64:
-			resellerId = strconv.FormatInt(int64(v), 10)
-		}
+		return str
 	}
-	if resellerId == "" {
-		return ""
+	switch v := obj.(type) {
+	case int:
+		return strconv.Itoa(v)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case int32:
+		return strconv.FormatInt(int64(v), 10)
+	case float64:
+		return strconv.FormatInt(int64(v), 10)
 	}
-
-	db := database.GetDB()
-	if db != nil {
-		var admin model.ResellerAdmin
-		if err := db.Where("id = ?", resellerId).First(&admin).Error; err != nil || !admin.Enable {
-			// Reseller was deleted or disabled - purge stale session!
-			_ = ClearResellerSession(c)
-			return ""
-		}
-	}
-	return resellerId
+	return ""
 }
 
 func IsResellerLogin(c *gin.Context) bool {
@@ -304,18 +286,5 @@ func SetLoginReseller(c *gin.Context, id string, username string) error {
 	s := sessions.Default(c)
 	s.Set(getContextKey(c, loginResellerKey), id)
 	s.Set(getContextKey(c, loginResellerUsernameKey), username)
-
-	bp := c.GetString("base_path")
-	if bp != "" && bp != "/" {
-		isHTTPS := c.Request.TLS != nil || strings.ToLower(c.Request.Header.Get("X-Forwarded-Proto")) == "https"
-		s.Options(sessions.Options{
-			Path:     bp,
-			HttpOnly: true,
-			Secure:   isHTTPS,
-			SameSite: http.SameSiteLaxMode,
-			MaxAge:   3600 * 24 * 7, // 7 days expiration for reseller session
-		})
-	}
-
 	return s.Save()
 }

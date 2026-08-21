@@ -177,7 +177,7 @@ func (s *AdminService) DeleteAdmin(id string) error {
 func (s *AdminService) GetAdminByWebPath(webPath string) (*model.ResellerAdmin, error) {
 	db := database.GetDB()
 	var admin model.ResellerAdmin
-	err := db.Where("LOWER(web_path) = LOWER(?)", webPath).First(&admin).Error
+	err := db.Where("web_path = ?", webPath).First(&admin).Error
 	if err != nil {
 		return nil, err
 	}
