@@ -44,10 +44,15 @@ export default function LoginPage() {
   const isFa = useMemo(() => i18n.language?.startsWith('fa'), [i18n.language]);
 
   const isResellerPortal = useMemo(() => {
-    if ((window as unknown as { X_UI_IS_RESELLER?: boolean }).X_UI_IS_RESELLER) return true;
-    if ((window as unknown as { X_UI_RESELLER_WEB_PATH?: string }).X_UI_RESELLER_WEB_PATH) return true;
     const path = window.location.pathname.toLowerCase();
-    return path.includes('/portal/');
+    if (path.includes('/portal/')) return true;
+    const resellerWebPath = (window as unknown as { X_UI_RESELLER_WEB_PATH?: string }).X_UI_RESELLER_WEB_PATH;
+    if (resellerWebPath && (window as unknown as { X_UI_IS_RESELLER?: boolean }).X_UI_IS_RESELLER) {
+      if (path.includes(`/${resellerWebPath.toLowerCase()}`)) {
+        return true;
+      }
+    }
+    return false;
   }, []);
 
   useEffect(() => {

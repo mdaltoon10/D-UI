@@ -128,11 +128,17 @@ func serveDistPage(c *gin.Context, name string) {
 		nonceAttr = ` nonce="` + htmlpkg.EscapeString(nonce) + `"`
 	}
 	script := `<script` + nonceAttr + `>window.X_UI_BASE_PATH="` + escapedBase + `"`
-	isReseller := session.IsResellerLogin(c) || c.GetBool("is_reseller")
+	isReseller := c.GetBool("is_reseller")
+	if name != "login.html" && session.IsResellerLogin(c) {
+		isReseller = true
+	}
 	if isReseller {
 		script += `;window.X_UI_IS_RESELLER=true`
 		if username := session.GetLoginResellerUsername(c); username != "" {
 			escapedResellerUser := jsEscape.Replace(username)
+			script += `;window.X_UI_RESELLER_USER="` + escapedResellerUser + `"`
+		} else if impUser := c.GetString("IMPERSONATE_RESELLER_USERNAME"); impUser != "" {
+			escapedResellerUser := jsEscape.Replace(impUser)
 			script += `;window.X_UI_RESELLER_USER="` + escapedResellerUser + `"`
 		}
 		resellerWebPath := c.GetString("reseller_web_path")
