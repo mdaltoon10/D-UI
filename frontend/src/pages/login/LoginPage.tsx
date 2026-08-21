@@ -84,10 +84,15 @@ export default function LoginPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const msg = await HttpUtil.post('getTwoFactorEnable');
-      if (cancelled) return;
-      if (msg.success) setTwoFactorEnable(!!msg.obj);
-      setFetched(true);
+      try {
+        const msg = await HttpUtil.post('getTwoFactorEnable');
+        if (cancelled) return;
+        if (msg.success) setTwoFactorEnable(!!msg.obj);
+      } catch {
+        // ignore error
+      } finally {
+        if (!cancelled) setFetched(true);
+      }
     })();
     return () => { cancelled = true; };
   }, []);

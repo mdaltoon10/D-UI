@@ -460,7 +460,7 @@ export default function AppSidebar() {
       } catch {
         // ignore network error on logout
       }
-      window.location.href = logoutRedirect;
+      window.location.replace(logoutRedirect);
       return;
     }
     navigate(key);

@@ -65,8 +65,6 @@ func (a *IndexController) portalLogin(c *gin.Context) {
 			}
 			c.Set("is_reseller", true)
 			c.Set("reseller_web_path", admin.WebPath)
-			// Set a short-lived cookie to verify the portal during login POST
-			c.SetCookie("reseller_portal", admin.WebPath, 300, "/", "", false, true)
 		}
 	}
 	if session.IsLogin(c) {
@@ -170,32 +168,7 @@ func (a *IndexController) login(c *gin.Context) {
 
 	user, checkErr := a.userService.CheckUser(form.Username, form.Password, form.TwoFactorCode)
 	if user != nil && checkErr == nil {
-		// Check if we are on a reseller context
-		settingService := service.SettingService{}
-		mainBasePath, err := settingService.GetBasePath()
-		if err != nil || mainBasePath == "" {
-			mainBasePath = "/"
-		}
-		if !strings.HasSuffix(mainBasePath, "/") {
-			mainBasePath += "/"
-		}
-		currentBasePath := c.GetString("base_path")
-		if !strings.HasSuffix(currentBasePath, "/") {
-			currentBasePath += "/"
-		}
-		
-		portalCookie, _ := c.Cookie("reseller_portal")
-		referer := strings.ToLower(c.Request.Referer())
-		
-		isResellerContext := (currentBasePath != mainBasePath) || 
-			portalCookie != "" || 
-			strings.Contains(referer, "/portal/") || 
-			c.GetBool("is_reseller")
-		
-		if isResellerContext {
-			pureJsonMsg(c, http.StatusOK, false, "امکان ورود به پنل اصلی از طریق پورتال نمایندگان وجود ندارد / Master admin cannot login from a reseller portal")
-			return
-		}
+		c.SetCookie("reseller_portal", "", -1, "/", "", false, true)
 	}
 
 	if user == nil {
@@ -209,25 +182,7 @@ func (a *IndexController) login(c *gin.Context) {
 				return
 			}
 
-			// Ensure they logged in from their specific portal path or the direct reseller path
-			referer := strings.ToLower(c.Request.Referer())
-			portalPath := "/portal/" + strings.ToLower(admin.WebPath)
-			directResellerPath := "/" + strings.ToLower(admin.WebPath)
-			
-			// Check cookie as a fallback for missing/unreliable referer
-			portalCookie, _ := c.Cookie("reseller_portal")
-			isValidPortal := strings.EqualFold(portalCookie, admin.WebPath) ||
-				strings.Contains(referer, portalPath) ||
-				strings.Contains(referer, directResellerPath) ||
-				strings.EqualFold(c.GetString("reseller_web_path"), admin.WebPath) ||
-				c.GetBool("is_reseller")
-
-			if !isValidPortal {
-				pureJsonMsg(c, http.StatusOK, false, "Invalid login URL for this reseller")
-				return
-			}
-			
-			// Clear the portal cookie after use
+			// Clear any lingering portal cookie
 			c.SetCookie("reseller_portal", "", -1, "/", "", false, true)
 			
 			if !admin.Enable {
