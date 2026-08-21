@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"sort"
-	"time"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
@@ -621,11 +623,17 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 				for _, ipTime := range bannedLive {
 					j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
 					ipLogger.Printf("[LIMIT_IP] Email = %s || Disconnecting OLD IP = %s || Timestamp = %d", clientEmail, ipTime.IP, ipTime.Timestamp)
+					if inbound.Port > 0 {
+						j.banIPDirectly(ipTime.IP, inbound.Port, 1*time.Minute)
+					}
 				}
 			}
 		} else {
 			for _, ipTime := range bannedLive {
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
+				if inbound.Port > 0 {
+					j.banIPDirectly(ipTime.IP, inbound.Port, 1*time.Minute)
+				}
 			}
 		}
 		banned = true
@@ -816,3 +824,39 @@ func (j *CheckClientIpJob) getInboundsByEmail(clientEmail string) ([]*model.Inbo
 	}
 	return nil, err
 }
+
+var (
+	directBansMu sync.Mutex
+	directBans   = make(map[string]time.Time) // key: "ip:port"
+)
+
+func (j *CheckClientIpJob) banIPDirectly(ip string, port int, duration time.Duration) {
+	key := fmt.Sprintf("%s:%d", ip, port)
+	directBansMu.Lock()
+	if _, exists := directBans[key]; exists {
+		directBansMu.Unlock()
+		return
+	}
+	directBans[key] = time.Now()
+	directBansMu.Unlock()
+
+	logger.Infof("[LIMIT_IP] Direct Firewall Ban: blocking IP %s on port %d for %v", ip, port, duration)
+
+	// Add iptables rules to drop TCP and UDP traffic from this IP on this port
+	portStr := strconv.Itoa(port)
+	_ = exec.Command("iptables", "-I", "INPUT", "-s", ip, "-p", "tcp", "--dport", portStr, "-j", "DROP").Run()
+	_ = exec.Command("iptables", "-I", "INPUT", "-s", ip, "-p", "udp", "--dport", portStr, "-j", "DROP").Run()
+
+	// Schedule automatic unban after duration
+	go func() {
+		time.Sleep(duration)
+		directBansMu.Lock()
+		delete(directBans, key)
+		directBansMu.Unlock()
+
+		logger.Infof("[LIMIT_IP] Direct Firewall Unban: restoring IP %s on port %d", ip, port)
+		_ = exec.Command("iptables", "-D", "INPUT", "-s", ip, "-p", "tcp", "--dport", portStr, "-j", "DROP").Run()
+		_ = exec.Command("iptables", "-D", "INPUT", "-s", ip, "-p", "udp", "--dport", portStr, "-j", "DROP").Run()
+	}()
+}
+
