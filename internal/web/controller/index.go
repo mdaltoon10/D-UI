@@ -175,21 +175,37 @@ func (a *IndexController) login(c *gin.Context) {
 		if err != nil || mainBasePath == "" {
 			mainBasePath = "/"
 		}
-		if !strings.HasSuffix(mainBasePath, "/") {
-			mainBasePath += "/"
+
+		// Is the actual request URL for the main admin login page?
+		urlPath := c.Request.URL.Path
+		trimmedPath := strings.Trim(urlPath, "/")
+		trimmedMain := strings.Trim(mainBasePath, "/")
+
+		isMainLoginRoute := false
+		if trimmedMain == "" {
+			isMainLoginRoute = trimmedPath == "login"
+		} else {
+			isMainLoginRoute = trimmedPath == trimmedMain+"/login" || trimmedPath == "login"
 		}
-		currentBasePath := c.GetString("base_path")
-		if !strings.HasSuffix(currentBasePath, "/") {
-			currentBasePath += "/"
+
+		isResellerContext := false
+		if !isMainLoginRoute {
+			if !strings.HasSuffix(mainBasePath, "/") {
+				mainBasePath += "/"
+			}
+			currentBasePath := c.GetString("base_path")
+			if !strings.HasSuffix(currentBasePath, "/") {
+				currentBasePath += "/"
+			}
+
+			portalCookie, _ := c.Cookie("reseller_portal")
+			referer := strings.ToLower(c.Request.Referer())
+
+			isResellerContext = (currentBasePath != mainBasePath) || 
+				portalCookie != "" || 
+				strings.Contains(referer, "/portal/") || 
+				c.GetBool("is_reseller")
 		}
-		
-		portalCookie, _ := c.Cookie("reseller_portal")
-		referer := strings.ToLower(c.Request.Referer())
-		
-		isResellerContext := (currentBasePath != mainBasePath) || 
-			portalCookie != "" || 
-			strings.Contains(referer, "/portal/") || 
-			c.GetBool("is_reseller")
 		
 		if isResellerContext {
 			pureJsonMsg(c, http.StatusOK, false, "امکان ورود به پنل اصلی از طریق پورتال نمایندگان وجود ندارد / Master admin cannot login from a reseller portal")
