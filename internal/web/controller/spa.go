@@ -257,7 +257,17 @@ func isPanelSPAFallbackRequest(c *gin.Context) bool {
 	isReseller := c.GetBool("is_reseller")
 
 	// If it's not a reseller path and doesn't start with /panel, don't serve SPA
-	if !isReseller && !strings.HasPrefix(reqPath, "/panel") {
+	basePath := c.GetString("base_path")
+	if basePath == "" {
+		basePath = "/"
+	}
+	if !strings.HasSuffix(basePath, "/") {
+		basePath += "/"
+	}
+	panelPrefix := basePath + "panel"
+	
+	if !isReseller && !strings.HasPrefix(reqPath, panelPrefix) {
+
 		return false
 	}
 
