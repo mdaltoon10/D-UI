@@ -346,7 +346,9 @@ func loginFailureReason(err error) string {
 }
 
 func (a *IndexController) logout(c *gin.Context) {
-	isReseller := c.GetBool("is_reseller") || strings.Contains(strings.ToLower(c.Request.URL.Path), "/portal/")
+	isReseller := c.GetBool("is_reseller") || 
+		strings.Contains(strings.ToLower(c.Request.URL.Path), "/portal/") ||
+		(c.GetHeader("X-Reseller-Base-Path") != "" && c.GetHeader("X-Reseller-Base-Path") != "/")
 	
 	if isReseller {
 		logger.Infof("Reseller logged out successfully")
