@@ -133,6 +133,22 @@ func serveDistPage(c *gin.Context, name string) {
 			escapedResellerUser := jsEscape.Replace(username)
 			script += `;window.X_UI_RESELLER_USER="` + escapedResellerUser + `"`
 		}
+		resellerWebPath := c.GetString("reseller_web_path")
+		if resellerWebPath == "" {
+			if resellerId := session.GetLoginReseller(c); resellerId != "" {
+				db := database.GetDB()
+				if db != nil {
+					var admin model.ResellerAdmin
+					if err := db.Where("id = ?", resellerId).First(&admin).Error; err == nil {
+						resellerWebPath = admin.WebPath
+					}
+				}
+			}
+		}
+		if resellerWebPath != "" {
+			escapedResellerPath := jsEscape.Replace(resellerWebPath)
+			script += `;window.X_UI_RESELLER_WEB_PATH="` + escapedResellerPath + `"`
+		}
 	}
 	if name != "login.html" {
 		escapedVer := jsEscape.Replace(config.GetPanelVersion())

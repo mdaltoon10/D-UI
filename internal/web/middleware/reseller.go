@@ -64,6 +64,7 @@ func ResellerPathMiddleware(mainBasePath string) gin.HandlerFunc {
 
 			c.Set("base_path", resellerBasePath)
 			c.Set("is_reseller", true)
+			c.Set("reseller_web_path", admin.WebPath)
 			c.Set("IMPERSONATE_RESELLER_ID", admin.Id)
 			c.Set("IMPERSONATE_RESELLER_USERNAME", admin.Username)
 		}

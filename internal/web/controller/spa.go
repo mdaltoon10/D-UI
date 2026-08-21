@@ -267,7 +267,10 @@ func isPanelSPAFallbackRequest(c *gin.Context) bool {
 		strings.Contains(reqPath, "/ws") ||
 		strings.Contains(reqPath, "/sub/") ||
 		strings.HasSuffix(reqPath, "/csrf-token") ||
-		strings.Contains(reqPath, "/csrf-token/") {
+		strings.Contains(reqPath, "/csrf-token/") ||
+		strings.HasSuffix(reqPath, "/login") ||
+		strings.HasSuffix(reqPath, "/logout") ||
+		strings.HasSuffix(reqPath, "/getTwoFactorEnable") {
 		return false
 	}
 

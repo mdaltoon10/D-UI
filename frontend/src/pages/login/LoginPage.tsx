@@ -45,8 +45,12 @@ export default function LoginPage() {
 
   const isResellerPortal = useMemo(() => {
     if ((window as unknown as { X_UI_IS_RESELLER?: boolean }).X_UI_IS_RESELLER) return true;
+    if ((window as unknown as { X_UI_RESELLER_WEB_PATH?: string }).X_UI_RESELLER_WEB_PATH) return true;
     const path = window.location.pathname.toLowerCase();
-    return path.includes('/portal/') || path.includes('/reseller');
+    if (path.includes('/portal/') || path.includes('/reseller')) return true;
+    if (sessionStorage.getItem('daltoon_is_reseller') === 'true') return true;
+    if (localStorage.getItem('daltoon_reseller_webpath')) return true;
+    return false;
   }, []);
 
   useEffect(() => {
@@ -94,6 +98,9 @@ export default function LoginPage() {
             remark: obj.remark,
             webPath: obj.webPath
           }));
+          sessionStorage.setItem('daltoon_is_reseller', 'true');
+          sessionStorage.setItem('daltoon_reseller_webpath', obj.webPath);
+          localStorage.setItem('daltoon_reseller_webpath', obj.webPath);
           const cleanBase = basePath.endsWith('/') ? basePath : basePath + '/';
           const webPathLower = obj.webPath.toLowerCase();
           const cleanBaseLower = cleanBase.toLowerCase();
@@ -104,6 +111,9 @@ export default function LoginPage() {
           }
         } else {
           localStorage.removeItem('daltoon_current_admin');
+          sessionStorage.removeItem('daltoon_is_reseller');
+          sessionStorage.removeItem('daltoon_reseller_webpath');
+          localStorage.removeItem('daltoon_reseller_webpath');
           const cleanBase = basePath.endsWith('/') ? basePath : basePath + '/';
           window.location.href = cleanBase + 'panel/';
         }

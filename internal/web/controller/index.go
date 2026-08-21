@@ -64,6 +64,7 @@ func (a *IndexController) portalLogin(c *gin.Context) {
 				return
 			}
 			c.Set("is_reseller", true)
+			c.Set("reseller_web_path", admin.WebPath)
 			// Set a short-lived cookie to verify the portal during login POST
 			c.SetCookie("reseller_portal", admin.WebPath, 300, "/", "", false, true)
 		}
@@ -211,10 +212,15 @@ func (a *IndexController) login(c *gin.Context) {
 			// Ensure they logged in from their specific portal path or the direct reseller path
 			referer := strings.ToLower(c.Request.Referer())
 			portalPath := "/portal/" + strings.ToLower(admin.WebPath)
+			directResellerPath := "/" + strings.ToLower(admin.WebPath)
 			
 			// Check cookie as a fallback for missing/unreliable referer
 			portalCookie, _ := c.Cookie("reseller_portal")
-			isValidPortal := strings.EqualFold(portalCookie, admin.WebPath) || strings.Contains(referer, portalPath)
+			isValidPortal := strings.EqualFold(portalCookie, admin.WebPath) ||
+				strings.Contains(referer, portalPath) ||
+				strings.Contains(referer, directResellerPath) ||
+				strings.EqualFold(c.GetString("reseller_web_path"), admin.WebPath) ||
+				c.GetBool("is_reseller")
 
 			if !isValidPortal {
 				pureJsonMsg(c, http.StatusOK, false, "Invalid login URL for this reseller")

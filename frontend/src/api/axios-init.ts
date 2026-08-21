@@ -133,10 +133,29 @@ export function setupAxios(): void {
     async (error: { response?: { status?: number }; config?: CsrfAwareConfig }) => {
       const status = error.response?.status;
       if (status === 401) {
+        const isLoginPage = !window.location.pathname.includes('/panel');
+        if (isLoginPage) {
+          return Promise.reject(error);
+        }
         if (!sessionExpired) {
           sessionExpired = true;
-          const basePath = window.X_UI_BASE_PATH || '/';
-          window.location.replace(basePath);
+          const isReseller = (window as unknown as { X_UI_IS_RESELLER?: boolean }).X_UI_IS_RESELLER || !!localStorage.getItem('daltoon_current_admin');
+          const resellerWebPath = (window as unknown as { X_UI_RESELLER_WEB_PATH?: string }).X_UI_RESELLER_WEB_PATH ||
+            localStorage.getItem('daltoon_reseller_webpath') ||
+            sessionStorage.getItem('daltoon_reseller_webpath');
+          
+          let redirectUrl = window.X_UI_BASE_PATH || '/';
+          if (isReseller && resellerWebPath) {
+            const cleanBase = redirectUrl.endsWith('/') ? redirectUrl : redirectUrl + '/';
+            const cleanBaseLower = cleanBase.toLowerCase();
+            const webPathLower = String(resellerWebPath).toLowerCase();
+            let rootBase = '/';
+            if (cleanBaseLower.includes('/' + webPathLower + '/')) {
+              rootBase = cleanBase.substring(0, cleanBaseLower.indexOf('/' + webPathLower + '/')) + '/';
+            }
+            redirectUrl = `${rootBase}portal/${resellerWebPath}`;
+          }
+          window.location.replace(redirectUrl);
         }
         return new Promise(() => {});
       }
