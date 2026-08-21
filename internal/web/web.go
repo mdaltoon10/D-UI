@@ -244,6 +244,12 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	engine.Use(func(c *gin.Context) {
 		if res := c.GetHeader("X-Reseller-Base-Path"); res != "" {
 			c.Set("base_path", res)
+			c.Set("is_reseller", true)
+			trimmed := strings.Trim(res, "/")
+			segments := strings.Split(trimmed, "/")
+			if len(segments) > 0 {
+				c.Set("reseller_web_path", segments[len(segments)-1])
+			}
 		} else if _, exists := c.Get("base_path"); !exists {
 			c.Set("base_path", basePath)
 		}

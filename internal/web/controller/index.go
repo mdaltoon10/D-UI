@@ -265,7 +265,18 @@ func loginFailureReason(err error) string {
 }
 
 func (a *IndexController) logout(c *gin.Context) {
-	if c.GetBool("is_reseller") {
+	settingService := service.SettingService{}
+	mainBasePath, _ := settingService.GetBasePath()
+	if mainBasePath == "" {
+		mainBasePath = "/"
+	}
+
+	isReseller := c.GetBool("is_reseller") ||
+		c.GetHeader("X-Reseller-Base-Path") != "" ||
+		(c.GetString("base_path") != "" && c.GetString("base_path") != mainBasePath) ||
+		session.IsResellerLogin(c)
+
+	if isReseller {
 		logger.Infof("Reseller logged out successfully")
 		if err := session.ClearResellerSession(c); err != nil {
 			logger.Warning("Unable to clear reseller session on logout:", err)

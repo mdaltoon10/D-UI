@@ -34,6 +34,9 @@ func ResellerPathMiddleware(mainBasePath string) gin.HandlerFunc {
 		}
 
 		webPath := segments[startIndex]
+		if webPath == "portal" && len(segments) > startIndex+1 {
+			webPath = segments[startIndex+1]
+		}
 		
 		// Reserved segments that are NOT resellers
 		reserved := map[string]bool{
