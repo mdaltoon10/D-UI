@@ -205,6 +205,8 @@ func ClearResellerSession(c *gin.Context) error {
 	s := sessions.Default(c)
 	s.Delete(getContextKey(c, loginResellerKey))
 	s.Delete(getContextKey(c, loginResellerUsernameKey))
+	s.Delete(loginResellerKey)
+	s.Delete(loginResellerUsernameKey)
 	return s.Save()
 }
 
@@ -265,15 +267,6 @@ func GetLoginReseller(c *gin.Context) string {
 		}
 	}
 	return resellerId
-}
-
-func ClearResellerSession(c *gin.Context) error {
-	s := sessions.Default(c)
-	s.Delete(getContextKey(c, loginResellerKey))
-	s.Delete(getContextKey(c, loginResellerUsernameKey))
-	s.Delete(loginResellerKey)
-	s.Delete(loginResellerUsernameKey)
-	return s.Save()
 }
 
 func IsResellerLogin(c *gin.Context) bool {
