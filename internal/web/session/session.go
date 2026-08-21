@@ -78,9 +78,12 @@ func GetLoginUser(c *gin.Context) *model.User {
 	}
 	
 	s := sessions.Default(c)
-	resellerId := GetLoginReseller(c)
-	if resellerId != "" {
-		return &model.User{Id: 1, Username: "reseller"} // fake user with Id=1 so they can access inbounds
+	if c.GetBool("is_reseller") {
+		resellerId := GetLoginReseller(c)
+		if resellerId != "" {
+			return &model.User{Id: 1, Username: "reseller"} // fake user with Id=1 so they can access inbounds
+		}
+		return nil
 	}
 	
 	obj := s.Get(getContextKey(c, loginUserKey))
@@ -142,7 +145,10 @@ func sessionEpochMatches(cookieVal any, userEpoch int64) bool {
 }
 
 func IsLogin(c *gin.Context) bool {
-	return GetLoginUser(c) != nil || IsResellerLogin(c)
+	if c.GetBool("is_reseller") {
+		return IsResellerLogin(c)
+	}
+	return GetLoginUser(c) != nil
 }
 
 func sessionUserID(obj any) (int, bool) {
@@ -205,6 +211,8 @@ func ClearResellerSession(c *gin.Context) error {
 	s := sessions.Default(c)
 	s.Delete(getContextKey(c, loginResellerKey))
 	s.Delete(getContextKey(c, loginResellerUsernameKey))
+	s.Delete(loginResellerKey)
+	s.Delete(loginResellerUsernameKey)
 	return s.Save()
 }
 
@@ -214,6 +222,8 @@ func ClearSession(c *gin.Context) error {
 	s.Delete(getContextKey(c, loginEpochKey))
 	s.Delete(getContextKey(c, loginResellerKey))
 	s.Delete(getContextKey(c, loginResellerUsernameKey))
+	s.Delete(loginResellerKey)
+	s.Delete(loginResellerUsernameKey)
 	return s.Save()
 }
 

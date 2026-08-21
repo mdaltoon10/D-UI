@@ -265,16 +265,21 @@ func loginFailureReason(err error) string {
 }
 
 func (a *IndexController) logout(c *gin.Context) {
-	user := session.GetLoginUser(c)
-	if user != nil {
-		logger.Infof("%s logged out successfully", user.Username)
-	} else if session.IsResellerLogin(c) {
+	if c.GetBool("is_reseller") {
 		logger.Infof("Reseller logged out successfully")
+		if err := session.ClearResellerSession(c); err != nil {
+			logger.Warning("Unable to clear reseller session on logout:", err)
+		}
+	} else {
+		user := session.GetLoginUser(c)
+		if user != nil {
+			logger.Infof("%s logged out successfully", user.Username)
+		}
+		if err := session.ClearAdminSession(c); err != nil {
+			logger.Warning("Unable to clear admin session on logout:", err)
+		}
 	}
 	c.SetCookie("reseller_portal", "", -1, "/", "", false, true)
-	if err := session.ClearSession(c); err != nil {
-		logger.Warning("Unable to clear session on logout:", err)
-	}
 	c.Header("Cache-Control", "no-store")
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
