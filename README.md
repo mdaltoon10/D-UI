@@ -48,10 +48,10 @@ Built as an enhanced fork of the original Daltoon-UI project, Daltoon-UI adds br
 bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh)
 ```
 
-To install a specific version, append its tag (e.g. `v1.4.1`):
+To install a specific version, append its tag (e.g. `v3.0.0`):
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v1.4.1
+bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v3.0.0
 ```
 
 To install the rolling **dev** build (latest per-commit pre-release from `main`, not a stable release), pass `dev-latest`:
