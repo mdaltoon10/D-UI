@@ -319,35 +319,35 @@ func fakeFail2BanClient(t *testing.T) string {
 	return marker
 }
 
-func TestMergeClientIps_IdleOver10SecondsResetsCreated(t *testing.T) {
-	// If an IP has no data passed (idle) for > 10 seconds, its Created timestamp
-	// should reset upon new activity so a newly connected 2nd user keeps priority.
+func TestMergeClientIps_IdleOver60SecondsResetsCreated(t *testing.T) {
+	// If an IP is unseen for > 60 seconds, its Created timestamp
+	// should reset upon new activity so a newly connected user keeps priority.
 	old := []IPWithTimestamp{
 		{IP: "1.1.1.1", Timestamp: 100, Created: 100},
 	}
 	new := []IPWithTimestamp{
-		{IP: "1.1.1.1", Timestamp: 115, Created: 115}, // 15s later (> 10s idle)
+		{IP: "1.1.1.1", Timestamp: 175, Created: 175}, // 75s later (> 60s idle)
 	}
 
 	ipMap := mergeClientIps(old, new, 0, true)
-	if got := ipMap["1.1.1.1"].Created; got != 115 {
-		t.Fatalf("expected Created to reset to 115 after >10s idle, got %d", got)
+	if got := ipMap["1.1.1.1"].Created; got != 175 {
+		t.Fatalf("expected Created to reset to 175 after >60s idle, got %d", got)
 	}
 }
 
-func TestMergeClientIps_ActiveWithin10SecondsPreservesCreated(t *testing.T) {
-	// If an IP is actively passing data (even 1KB within 10s), its Created
+func TestMergeClientIps_ActiveWithin60SecondsPreservesCreated(t *testing.T) {
+	// If an IP is active within 60s, its Created
 	// timestamp is preserved so it cannot be kicked by new connections.
 	old := []IPWithTimestamp{
 		{IP: "1.1.1.1", Timestamp: 100, Created: 100},
 	}
 	new := []IPWithTimestamp{
-		{IP: "1.1.1.1", Timestamp: 105, Created: 105}, // 5s later (<= 10s active)
+		{IP: "1.1.1.1", Timestamp: 120, Created: 120}, // 20s later (<= 60s active)
 	}
 
 	ipMap := mergeClientIps(old, new, 0, true)
 	if got := ipMap["1.1.1.1"].Created; got != 100 {
-		t.Fatalf("expected Created to be preserved at 100 when active within 10s, got %d", got)
+		t.Fatalf("expected Created to be preserved at 100 when active within 60s, got %d", got)
 	}
 }
 

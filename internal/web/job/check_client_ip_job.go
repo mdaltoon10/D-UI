@@ -4,12 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"sort"
-	"time"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
@@ -95,12 +98,6 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 			ts := entry.LastSeen
 			if ts <= 0 {
 				ts = now
-			}
-			// If upload is 0 and download is 0 (no data passed) for more than 10 seconds,
-			// the IP is considered inactive/offline so a 2nd user can take over and replace it.
-			// If even 1 byte/KB of upload or download traffic passes, the user is recognized as active/online.
-			if now-ts > 10 {
-				continue
 			}
 			if _, exists := observed[user.Email]; !exists {
 				observed[user.Email] = make(map[string]int64)
@@ -430,8 +427,7 @@ func mergeClientIps(old, new []IPWithTimestamp, staleCutoff int64, newAlwaysLive
 		} else {
 			// Existing IP, update Timestamp to latest activity, but PRESERVE Created!
 			if ipTime.Timestamp > existing.Timestamp {
-				// If the IP was idle/not passing data (0 up and 0 down) for more than 10 seconds, treat it as a new session
-				if ipTime.Timestamp-existing.Timestamp > 10 {
+				if ipTime.Timestamp-existing.Timestamp > 60 {
 					existing.Created = ipTime.Timestamp
 				}
 				existing.Timestamp = ipTime.Timestamp
@@ -554,6 +550,53 @@ func (j *CheckClientIpJob) delInboundClientIps(tx *gorm.DB, clientEmail string) 
 	}
 }
 
+func getIPv6Subnet64(ipStr string) string {
+	ip := net.ParseIP(ipStr)
+	if ip == nil || ip.To4() != nil {
+		return ""
+	}
+	mask := net.CIDRMask(64, 128)
+	network := ip.Mask(mask)
+	return fmt.Sprintf("%s/64", network.String())
+}
+
+func banIpDirectly(ip string) {
+	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	if strings.Contains(ip, ":") {
+		// IPv6 address: Drop at position 1 & reset connections
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP").Run()
+		subnet64 := getIPv6Subnet64(ip)
+		if subnet64 != "" {
+			_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", subnet64, "-j", "DROP").Run()
+			_ = exec.CommandContext(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", subnet64, "-j", "DROP").Run()
+			_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", subnet64, "-j", "DROP").Run()
+		}
+		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl-v6", "banip", ip).Run()
+		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
+		_ = exec.CommandContext(ctx, "ss", "-K", "dst", fmt.Sprintf("[%s]", ip)).Run()
+		_ = exec.CommandContext(ctx, "ss", "-K", "src", fmt.Sprintf("[%s]", ip)).Run()
+		_ = exec.CommandContext(ctx, "conntrack", "-D", "-s", ip).Run()
+		_ = exec.CommandContext(ctx, "conntrack", "-D", "-d", ip).Run()
+	} else {
+		// IPv4 address: Drop at position 1 & reset connections
+		_ = exec.CommandContext(ctx, "iptables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "iptables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "iptables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
+		_ = exec.CommandContext(ctx, "ss", "-K", "dst", ip).Run()
+		_ = exec.CommandContext(ctx, "ss", "-K", "src", ip).Run()
+		_ = exec.CommandContext(ctx, "conntrack", "-D", "-s", ip).Run()
+		_ = exec.CommandContext(ctx, "conntrack", "-D", "-d", ip).Run()
+	}
+}
+
 // updateInboundClientIps merges one email's observed IPs into its tracking row
 // and applies the IP limit. limitIp comes from the caller (the clients table);
 // writes go through the caller's transaction. banned=true asks the caller to
@@ -599,31 +642,25 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 	if len(bannedLive) > 0 {
 		shouldCleanLog = true
 
-		isKickOnly := policy == "kick_only" || policy == "kick_oldest_kick_only" || policy == "block_newest_kick_only"
-		if !isKickOnly {
-			logIpFile, err := os.OpenFile(xray.GetIPLimitLogPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-			if err != nil {
-				logger.Errorf("failed to open IP limit log file: %s", err)
-				return false, false
-			}
-			defer logIpFile.Close()
+		logIpFile, err := os.OpenFile(xray.GetIPLimitLogPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err == nil {
 			ipLogger := log.New(logIpFile, "", log.LstdFlags)
-
-			// log format is load-bearing: d-ui.sh create_iplimit_jails builds
-			// filter.d/dui-ipl.conf with
-			//   failregex = \[LIMIT_IP\]\s*Email\s*=\s*<F-USER>.+</F-USER>\s*\|\|\s*Disconnecting OLD IP\s*=\s*<ADDR>\s*\|\|\s*Timestamp\s*=\s*\d+
-			// don't change the wording.
 			for _, ipTime := range bannedLive {
-				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
 				ipLogger.Printf("[LIMIT_IP] Email = %s || Disconnecting OLD IP = %s || Timestamp = %d", clientEmail, ipTime.IP, ipTime.Timestamp)
 			}
-			banned = false
-		} else {
-			for _, ipTime := range bannedLive {
-				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
-			}
-			banned = true
+			_ = logIpFile.Close()
 		}
+
+		for _, ipTime := range bannedLive {
+			j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
+		}
+
+		// Direct, instant, ruthless kernel-level firewall block and socket kill
+		for _, ipTime := range bannedLive {
+			banIpDirectly(ipTime.IP)
+		}
+
+		banned = true
 	}
 
 	// keep kept-live + historical in the blob so the panel keeps showing
@@ -641,7 +678,7 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 	}
 
 	if len(j.disAllowedIps) > 0 {
-		logger.Infof("[LIMIT_IP] Client %s: Kept %d live IPs, queued %d old IPs for fail2ban", clientEmail, len(keptLive), len(j.disAllowedIps))
+		logger.Infof("[LIMIT_IP] Client %s: Kept %d live IPs, blocked %d exceeding IPs immediately", clientEmail, len(keptLive), len(j.disAllowedIps))
 	}
 
 	return shouldCleanLog, banned
