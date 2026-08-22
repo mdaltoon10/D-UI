@@ -514,7 +514,15 @@ func partitionLiveIps(ipMap map[string]IPWithTimestamp, observedThisScan map[str
 	// Sort live IPs oldest-first.
 	// We prefer sorting by Created timestamp to track actual connection start time.
 	// If Created is 0, we fall back to Timestamp.
+	// Critical: Actively transmitting local IPs (present in observedThisScan) always take priority over
+	// recently inactive/ghost IPs. This prevents offline or idle connections from blocking active ones.
 	sort.Slice(live, func(i, j int) bool {
+		obsI := observedThisScan[live[i].IP]
+		obsJ := observedThisScan[live[j].IP]
+		if obsI != obsJ {
+			return obsI
+		}
+
 		tI := live[i].Created
 		if tI == 0 {
 			tI = live[i].Timestamp
@@ -777,9 +785,48 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 
 	j.disAllowedIps = []string{}
 
-	// historical db-only ips are excluded from this count on purpose.
+	// Calculate precise current active unbanned user count
+	var otherNodesCount int64
+	if tx.Model(&model.Node{}).Where("enable = ?", true).Count(&otherNodesCount).Error != nil {
+		otherNodesCount = 0
+	}
+
+	activeCount := 0
+	for _, ipTime := range liveIps {
+		blackholeMu.Lock()
+		_, isBanned := blackholeIPs[ipTime.IP]
+		blackholeMu.Unlock()
+		if isBanned {
+			continue
+		}
+
+		if otherNodesCount == 0 {
+			// Single-node setup: count as active only if observed locally transmitting data in this scan
+			if observedThisScan[ipTime.IP] {
+				activeCount++
+			}
+		} else {
+			// Multi-node setup fallback: count as active if observed locally OR seen recently in synced database
+			if observedThisScan[ipTime.IP] || time.Now().Unix()-ipTime.Timestamp <= 30 {
+				activeCount++
+			}
+		}
+	}
+
 	policy := (&service.SettingService{}).GetIpLimitPolicy()
-	keptLive, bannedLive := selectIpsToBan(liveIps, limitIp, policy)
+	var keptLive, bannedLive []IPWithTimestamp
+
+	// If the number of currently active unbanned IPs is strictly less than the limit,
+	// we have empty slots! Instantly unban all previously blocked IPs of this client for dynamic self-healing.
+	if activeCount < limitIp {
+		unbanClientIps(clientEmail)
+		keptLive = liveIps
+		bannedLive = nil
+	} else {
+		// Otherwise, select which IPs to keep and which to ban/reject
+		keptLive, bannedLive = selectIpsToBan(liveIps, limitIp, policy)
+	}
+
 	if len(bannedLive) > 0 {
 		shouldCleanLog = true
 
@@ -805,12 +852,6 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 		// Direct, instant, ruthless kernel-level firewall block and socket kill
 		for _, ipTime := range bannedLive {
 			banIpDirectly(ipTime.IP, clientEmail)
-		}
-	} else {
-		// Dynamic Self-Healing: If current active users are below the limit (e.g. oldest went offline),
-		// instantly unban and un-blackhole any of this client's previously blocked IPs.
-		if len(liveIps) < limitIp {
-			unbanClientIps(clientEmail)
 		}
 	}
 
