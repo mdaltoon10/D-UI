@@ -111,14 +111,18 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 }
 
 // hasLimitIp reports whether any client carries an IP limit. It probes the
-// normalized clients table (limit_ip is synced there by SyncInbound and the
-// legacy seeder), replacing the old `settings LIKE '%limitIp%'` scan that
-// loaded and JSON-parsed every inbound's settings blob on each 10s run.
+// normalized clients table and inbounds settings.
 func (j *CheckClientIpJob) hasLimitIp() bool {
 	db := database.GetDB()
 	var probe int64
-	err := db.Model(&model.ClientRecord{}).Where("limit_ip > 0").Limit(1).Count(&probe).Error
-	return err == nil && probe > 0
+	if err := db.Model(&model.ClientRecord{}).Where("limit_ip > 0").Limit(1).Count(&probe).Error; err == nil && probe > 0 {
+		return true
+	}
+	var inboundProbe int64
+	if err := db.Model(&model.Inbound{}).Where("settings LIKE ?", "%limitIp%").Limit(1).Count(&inboundProbe).Error; err == nil && inboundProbe > 0 {
+		return true
+	}
+	return false
 }
 
 const ipScanChunk = 400
@@ -135,8 +139,7 @@ func chunkEmails(s []string, size int) [][]string {
 }
 
 // loadClientLimits maps each observed email to its clients.limit_ip in a few
-// chunked queries, replacing the per-email settings-JSON parse that previously
-// resolved the limit.
+// chunked queries, falling back to inbounds settings if not found in clients table.
 func (j *CheckClientIpJob) loadClientLimits(emails []string) map[string]int {
 	db := database.GetDB()
 	out := make(map[string]int, len(emails))
@@ -154,6 +157,28 @@ func (j *CheckClientIpJob) loadClientLimits(emails []string) map[string]int {
 		}
 		for _, r := range rows {
 			out[r.Email] = r.LimitIp
+		}
+	}
+	// Fallback to check inbound settings for any emails with limit 0 or missing
+	for _, email := range emails {
+		if out[email] <= 0 {
+			var inbounds []model.Inbound
+			if err := db.Model(&model.Inbound{}).Where("settings LIKE ?", "%"+email+"%").Find(&inbounds).Error; err == nil {
+				for _, ib := range inbounds {
+					settings := map[string][]model.Client{}
+					if jsonErr := json.Unmarshal([]byte(ib.Settings), &settings); jsonErr == nil {
+						for _, client := range settings["clients"] {
+							if client.Email == email && client.LimitIP > 0 {
+								out[email] = client.LimitIP
+								break
+							}
+						}
+					}
+					if out[email] > 0 {
+						break
+					}
+				}
+			}
 		}
 	}
 	return out
@@ -463,9 +488,9 @@ func partitionLiveIps(ipMap map[string]IPWithTimestamp, observedThisScan map[str
 	now := time.Now().Unix()
 	for ip, entry := range ipMap {
 		// Consider an IP "live" if it was seen locally in this scan, OR if its
-		// timestamp from the synced database is very recent (within 10 seconds).
+		// timestamp from the synced database is recent (within 120 seconds).
 		// This ensures cluster-wide limits work even if the IP was seen on another node.
-		if observedThisScan[ip] || now-entry.Timestamp <= 10 {
+		if observedThisScan[ip] || now-entry.Timestamp <= 120 {
 			live = append(live, entry)
 		} else {
 			historical = append(historical, entry)
@@ -560,6 +585,16 @@ func getIPv6Subnet64(ipStr string) string {
 	return fmt.Sprintf("%s/64", network.String())
 }
 
+func runSysCmd(ctx context.Context, name string, args ...string) {
+	paths := []string{name, "/sbin/" + name, "/usr/sbin/" + name, "/usr/bin/" + name, "/bin/" + name}
+	for _, p := range paths {
+		cmd := exec.CommandContext(ctx, p, args...)
+		if err := cmd.Run(); err == nil {
+			return
+		}
+	}
+}
+
 func banIpDirectly(ip string) {
 	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
 		return
@@ -569,31 +604,33 @@ func banIpDirectly(ip string) {
 
 	if strings.Contains(ip, ":") {
 		// IPv6 address: Drop at position 1 & reset connections
-		_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP").Run()
+		runSysCmd(ctx, "ip6tables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP")
+		runSysCmd(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP")
+		runSysCmd(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP")
 		subnet64 := getIPv6Subnet64(ip)
 		if subnet64 != "" {
-			_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", subnet64, "-j", "DROP").Run()
-			_ = exec.CommandContext(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", subnet64, "-j", "DROP").Run()
-			_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", subnet64, "-j", "DROP").Run()
+			runSysCmd(ctx, "ip6tables", "-I", "INPUT", "1", "-s", subnet64, "-j", "DROP")
+			runSysCmd(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", subnet64, "-j", "DROP")
+			runSysCmd(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", subnet64, "-j", "DROP")
 		}
-		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl-v6", "banip", ip).Run()
-		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
-		_ = exec.CommandContext(ctx, "ss", "-K", "dst", fmt.Sprintf("[%s]", ip)).Run()
-		_ = exec.CommandContext(ctx, "ss", "-K", "src", fmt.Sprintf("[%s]", ip)).Run()
-		_ = exec.CommandContext(ctx, "conntrack", "-D", "-s", ip).Run()
-		_ = exec.CommandContext(ctx, "conntrack", "-D", "-d", ip).Run()
+		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl-v6", "banip", ip)
+		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip)
+		runSysCmd(ctx, "ss", "-K", "dst", fmt.Sprintf("[%s]", ip))
+		runSysCmd(ctx, "ss", "-K", "src", fmt.Sprintf("[%s]", ip))
+		runSysCmd(ctx, "conntrack", "-D", "-s", ip)
+		runSysCmd(ctx, "conntrack", "-D", "-d", ip)
+		runSysCmd(ctx, "ufw", "deny", "from", ip)
 	} else {
 		// IPv4 address: Drop at position 1 & reset connections
-		_ = exec.CommandContext(ctx, "iptables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "iptables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "iptables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
-		_ = exec.CommandContext(ctx, "ss", "-K", "dst", ip).Run()
-		_ = exec.CommandContext(ctx, "ss", "-K", "src", ip).Run()
-		_ = exec.CommandContext(ctx, "conntrack", "-D", "-s", ip).Run()
-		_ = exec.CommandContext(ctx, "conntrack", "-D", "-d", ip).Run()
+		runSysCmd(ctx, "iptables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP")
+		runSysCmd(ctx, "iptables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP")
+		runSysCmd(ctx, "iptables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP")
+		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip)
+		runSysCmd(ctx, "ss", "-K", "dst", ip)
+		runSysCmd(ctx, "ss", "-K", "src", ip)
+		runSysCmd(ctx, "conntrack", "-D", "-s", ip)
+		runSysCmd(ctx, "conntrack", "-D", "-d", ip)
+		runSysCmd(ctx, "ufw", "deny", "from", ip)
 	}
 }
 
@@ -607,9 +644,21 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 		return false, false
 	}
 
-	if !enforce || limitIp <= 0 || !inbound.Enable {
-		// Nothing to enforce (collection-only run, no limit on the clients row,
-		// or inbound disabled): record the observed IPs for the panel and return.
+	if limitIp <= 0 && inbound.Settings != "" {
+		settings := map[string][]model.Client{}
+		if err := json.Unmarshal([]byte(inbound.Settings), &settings); err == nil {
+			for _, client := range settings["clients"] {
+				if client.Email == clientEmail && client.LimitIP > 0 {
+					limitIp = client.LimitIP
+					break
+				}
+			}
+		}
+	}
+
+	if limitIp <= 0 || !inbound.Enable {
+		// Nothing to enforce (no limit on the client, or inbound disabled):
+		// record the observed IPs for the panel and return.
 		jsonIps, _ := json.Marshal(newIpsWithTime)
 		inboundClientIps.Ips = string(jsonIps)
 		if err := tx.Save(inboundClientIps).Error; err != nil {
