@@ -228,12 +228,12 @@ func TestPartitionLiveIps_EmptyScanLeavesDbIntact(t *testing.T) {
 }
 
 func TestPartitionLiveIps_RecentSyncedIpIsLive(t *testing.T) {
-	// Synced IPs from other nodes within 2 minutes should be counted as live
+	// Synced IPs within 10 seconds should be counted as live
 	// even if they weren't observed in the local scan.
 	now := time.Now().Unix()
 	ipMap := map[string]IPWithTimestamp{
-		"A": {IP: "A", Timestamp: now - 30},  // synced 30s ago -> live
-		"B": {IP: "B", Timestamp: now - 150}, // synced 2m30s ago -> historical
+		"A": {IP: "A", Timestamp: now - 5},   // synced 5s ago (<10s) -> live
+		"B": {IP: "B", Timestamp: now - 150}, // synced 2m30s ago (>10s) -> historical
 	}
 	observed := map[string]bool{}
 
@@ -318,3 +318,36 @@ func fakeFail2BanClient(t *testing.T) string {
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	return marker
 }
+
+func TestMergeClientIps_IdleOver10SecondsResetsCreated(t *testing.T) {
+	// If an IP has no data passed (idle) for > 10 seconds, its Created timestamp
+	// should reset upon new activity so a newly connected 2nd user keeps priority.
+	old := []IPWithTimestamp{
+		{IP: "1.1.1.1", Timestamp: 100, Created: 100},
+	}
+	new := []IPWithTimestamp{
+		{IP: "1.1.1.1", Timestamp: 115, Created: 115}, // 15s later (> 10s idle)
+	}
+
+	ipMap := mergeClientIps(old, new, 0, true)
+	if got := ipMap["1.1.1.1"].Created; got != 115 {
+		t.Fatalf("expected Created to reset to 115 after >10s idle, got %d", got)
+	}
+}
+
+func TestMergeClientIps_ActiveWithin10SecondsPreservesCreated(t *testing.T) {
+	// If an IP is actively passing data (even 1KB within 10s), its Created
+	// timestamp is preserved so it cannot be kicked by new connections.
+	old := []IPWithTimestamp{
+		{IP: "1.1.1.1", Timestamp: 100, Created: 100},
+	}
+	new := []IPWithTimestamp{
+		{IP: "1.1.1.1", Timestamp: 105, Created: 105}, // 5s later (<= 10s active)
+	}
+
+	ipMap := mergeClientIps(old, new, 0, true)
+	if got := ipMap["1.1.1.1"].Created; got != 100 {
+		t.Fatalf("expected Created to be preserved at 100 when active within 10s, got %d", got)
+	}
+}
+
