@@ -40,9 +40,10 @@ type CheckClientIpJob struct {
 }
 
 var (
-	job          *CheckClientIpJob
-	blackholeIPs = make(map[string]int64) // IP -> Expiration Unix timestamp
-	blackholeMu  sync.Mutex
+	job             *CheckClientIpJob
+	blackholeIPs    = make(map[string]int64) // IP -> Expiration Unix timestamp
+	blackholeEmails = make(map[string]string) // IP -> Email of the client
+	blackholeMu     sync.Mutex
 )
 
 const defaultXrayAPIPort = 62789
@@ -596,6 +597,19 @@ func (j *CheckClientIpJob) cleanExpiredBlackholes() {
 		if now >= expireAt {
 			unbanIpDirectly(ip)
 			delete(blackholeIPs, ip)
+			delete(blackholeEmails, ip)
+		}
+	}
+}
+
+func unbanClientIps(email string) {
+	blackholeMu.Lock()
+	defer blackholeMu.Unlock()
+	for ip, e := range blackholeEmails {
+		if e == email {
+			unbanIpDirectly(ip)
+			delete(blackholeIPs, ip)
+			delete(blackholeEmails, ip)
 		}
 	}
 }
@@ -631,7 +645,7 @@ func runSysCmd(ctx context.Context, name string, args ...string) {
 	logger.Warningf("[LIMIT_IP] Failed to execute command: %s %v (tried both sudo -n and direct)", name, args)
 }
 
-func banIpDirectly(ip string) {
+func banIpDirectly(ip string, email string) {
 	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
 		return
 	}
@@ -639,12 +653,13 @@ func banIpDirectly(ip string) {
 	// Track and manage auto-unbanning in 5 minutes (300 seconds)
 	blackholeMu.Lock()
 	blackholeIPs[ip] = time.Now().Unix() + 300
+	blackholeEmails[ip] = email
 	blackholeMu.Unlock()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	logger.Infof("[LIMIT_IP] RUTHLESS OVERRIDE: Applying kernel blackhole route and killing connections for IP: %s", ip)
+	logger.Infof("[LIMIT_IP] RUTHLESS OVERRIDE: Applying kernel blackhole route and killing connections for IP: %s (Client: %s)", ip, email)
 
 	if strings.Contains(ip, ":") {
 		// IPv6 address: Drop at position 1, add blackhole, & reset connections
@@ -779,7 +794,7 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 				}
 				_ = logIpFile.Close()
 			}
-			banned = false
+			banned = true // Always force banned = true to trigger Xray API disconnect for robust socket killing
 		} else {
 			for _, ipTime := range bannedLive {
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
@@ -789,7 +804,13 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 
 		// Direct, instant, ruthless kernel-level firewall block and socket kill
 		for _, ipTime := range bannedLive {
-			banIpDirectly(ipTime.IP)
+			banIpDirectly(ipTime.IP, clientEmail)
+		}
+	} else {
+		// Dynamic Self-Healing: If current active users are below the limit (e.g. oldest went offline),
+		// instantly unban and un-blackhole any of this client's previously blocked IPs.
+		if len(liveIps) < limitIp {
+			unbanClientIps(clientEmail)
 		}
 	}
 
