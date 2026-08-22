@@ -1,6 +1,6 @@
 ---
 title: Migration
-description: Migrate to Daltoon-UI from x-ui, between servers, or between Daltoon-UI versions.
+description: Migrate to D-UI from x-ui, between servers, or between D-UI versions.
 icon: ArrowRightLeft
 ---
 
@@ -18,7 +18,7 @@ Copy the database (default `/etc/x-ui/x-ui.db`) and your certificates. See
 </Step>
 
 <Step>
-### Install Daltoon-UI on the new server
+### Install D-UI on the new server
 
 Use the same install method and a compatible version. See
 [Installation](/docs/guide/installation).
@@ -33,17 +33,17 @@ panel. Update any IP/domain-specific settings.
 
 </Steps>
 
-## Between Daltoon-UI versions
+## Between D-UI versions
 
 Within the same backend, upgrading is usually just re-running the installer or
 pulling a new image — the panel migrates its own database. Across **major**
-versions, read the [release notes](https://github.com/mdaltoon10/Daltoon-UI/releases)
+versions, read the [release notes](https://github.com/mdaltoon10/D-UI/releases)
 first and take a backup.
 
 ## From x-ui
 
-Importing an older x-ui panel's database directly into Daltoon-UI is **not
-supported** — the schemas differ. Install Daltoon-UI fresh and recreate
+Importing an older x-ui panel's database directly into D-UI is **not
+supported** — the schemas differ. Install D-UI fresh and recreate
 inbounds/clients, exporting share links from the old panel as you go.
 
 <Callout type="warn">

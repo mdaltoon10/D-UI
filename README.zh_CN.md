@@ -2,25 +2,25 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/media/d-ui-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/media/d-ui-light.png">
-    <img alt="D-UI Preview" src="https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/media/d-ui-dark.png" width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mdaltoon10/D-UI/main/media/d-ui-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/mdaltoon10/D-UI/main/media/d-ui-light.png">
+    <img alt="D-UI Preview" src="https://raw.githubusercontent.com/mdaltoon10/D-UI/main/media/d-ui-dark.png" width="100%">
   </picture>
 </p>
 
 <p align="center">
-  <a href="https://github.com/mdaltoon10/Daltoon-UI/releases"><img src="https://img.shields.io/github/v/release/mdaltoon10/Daltoon-UI" alt="Release"></a>
-  <a href="https://github.com/mdaltoon10/Daltoon-UI/actions"><img src="https://img.shields.io/github/actions/workflow/status/mdaltoon10/Daltoon-UI/release.yml.svg" alt="Build"></a>
-  <a href="#"><img src="https://img.shields.io/github/go-mod/go-version/mdaltoon10/Daltoon-UI.svg" alt="GO Version"></a>
-  <a href="https://github.com/mdaltoon10/Daltoon-UI/releases/latest"><img src="https://img.shields.io/github/downloads/mdaltoon10/Daltoon-UI/total.svg" alt="Downloads"></a>
+  <a href="https://github.com/mdaltoon10/D-UI/releases"><img src="https://img.shields.io/github/v/release/mdaltoon10/D-UI" alt="Release"></a>
+  <a href="https://github.com/mdaltoon10/D-UI/actions"><img src="https://img.shields.io/github/actions/workflow/status/mdaltoon10/D-UI/release.yml.svg" alt="Build"></a>
+  <a href="#"><img src="https://img.shields.io/github/go-mod/go-version/mdaltoon10/D-UI.svg" alt="GO Version"></a>
+  <a href="https://github.com/mdaltoon10/D-UI/releases/latest"><img src="https://img.shields.io/github/downloads/mdaltoon10/D-UI/total.svg" alt="Downloads"></a>
   <a href="https://www.gnu.org/licenses/gpl-3.0.en.html"><img src="https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true" alt="License"></a>
-  <a href="https://pkg.go.dev/github.com/mdaltoon10/Daltoon-UI/v3"><img src="https://pkg.go.dev/badge/github.com/mdaltoon10/Daltoon-UI/v3.svg" alt="Go Reference"></a>
-  <a href="https://goreportcard.com/report/github.com/mdaltoon10/Daltoon-UI/v3"><img src="https://goreportcard.com/badge/github.com/mdaltoon10/Daltoon-UI/v3" alt="Go Report Card"></a>
+  <a href="https://pkg.go.dev/github.com/mdaltoon10/D-UI/v3"><img src="https://pkg.go.dev/badge/github.com/mdaltoon10/D-UI/v3.svg" alt="Go Reference"></a>
+  <a href="https://goreportcard.com/report/github.com/mdaltoon10/D-UI/v3"><img src="https://goreportcard.com/badge/github.com/mdaltoon10/D-UI/v3" alt="Go Report Card"></a>
 </p>
 
-**Daltoon-UI** 是一个先进的开源 Web 控制面板，用于管理 [Xray-core](https://github.com/XTLS/Xray-core) 服务器。它提供简洁、多语言的界面，用于部署、配置和监控各种代理与 VPN 协议——从单台 VPS 到多节点部署。
+**D-UI** 是一个先进的开源 Web 控制面板，用于管理 [Xray-core](https://github.com/XTLS/Xray-core) 服务器。它提供简洁、多语言的界面，用于部署、配置和监控各种代理与 VPN 协议——从单台 VPS 到多节点部署。
 
-Daltoon-UI 作为原始 Daltoon-UI 项目的增强分支（fork），增加了更广泛的协议支持、更好的稳定性、按客户端的流量统计以及许多提升使用体验的功能。
+D-UI 作为原始 D-UI 项目的增强分支（fork），增加了更广泛的协议支持、更好的稳定性、按客户端的流量统计以及许多提升使用体验的功能。
 
 > [!IMPORTANT]
 > 本项目仅供个人使用。请勿将其用于非法目的，也请勿在生产环境中使用。
@@ -45,24 +45,24 @@ Daltoon-UI 作为原始 Daltoon-UI 项目的增强分支（fork），增加了�
 ## 快速开始
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh)
 ```
 
 若要安装特定版本，请在命令后附加对应的标签（例如 `v3.0.0`）：
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/install.sh) v3.0.0
+bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v3.0.0
 ```
 
 若要安装滚动更新的 **dev** 版本（来自 `main` 的最新逐次提交预发布版本，而非稳定版本），请传入 `dev-latest`：
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/install.sh) dev-latest
+bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) dev-latest
 ```
 
 安装过程中会生成随机的用户名、密码和访问路径。安装完成后，运行 `d-ui` 打开管理菜单，您可以在其中启动/停止服务、查看或重置登录凭据、管理 SSL 证书等。
 
-完整文档请参阅 [项目Wiki](https://github.com/mdaltoon10/Daltoon-UI/wiki)。
+完整文档请参阅 [项目Wiki](https://github.com/mdaltoon10/D-UI/wiki)。
 
 ### 无人值守安装
 
@@ -82,7 +82,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/ins
 
 ## 数据库选项
 
-Daltoon-UI 支持两种后端，可在安装时选择：
+D-UI 支持两种后端，可在安装时选择：
 
 - **SQLite**（默认）— 位于 `/etc/d-ui/d-ui.db` 的单个文件。无需配置，适合中小型部署。
 - **PostgreSQL** — 推荐用于大量客户端或多节点设置。安装程序可以为您在本地安装 PostgreSQL，或接受指向现有服务器的 DSN。
@@ -115,7 +115,7 @@ docker compose --profile postgres up -d
 该镜像捆绑了 Fail2ban（默认启用），用于强制执行按客户端的 **IP 限制**。Fail2ban 使用 `iptables` 封禁违规者，这需要 `NET_ADMIN` 权限。`docker-compose.yml` 已通过 `cap_add` 授予该权限；如果您改用 `docker run` 启动容器，请自行添加这些权限，否则封禁只会被记录而永远不会生效：
 
 ```bash
-docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/mdaltoon10/Daltoon-UI
+docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/mdaltoon10/D-UI
 ```
 
 ## 环境变量

@@ -16,7 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DUIController is the main controller for the Daltoon-UI panel, serving the SPA shell.
+// DUIController is the main controller for the D-UI panel, serving the SPA shell.
 type DUIController struct {
 	BaseController
 	adminService panel.AdminService

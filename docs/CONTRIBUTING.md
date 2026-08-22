@@ -1,6 +1,6 @@
-# Contributing to Daltoon-UI-docs
+# Contributing to D-UI-docs
 
-Thanks for helping improve the Daltoon-UI documentation and product site!
+Thanks for helping improve the D-UI documentation and product site!
 
 ## Prerequisites
 

@@ -1,15 +1,15 @@
-# Daltoon-UI Custom Subscription Templates
+# D-UI Custom Subscription Templates
 
-Daltoon-UI can render your users' subscription pages from your own custom HTML templates.
+D-UI can render your users' subscription pages from your own custom HTML templates.
 
 ## How to use a Custom Template
 
-1. Go to the Daltoon-UI panel settings.
+1. Go to the D-UI panel settings.
 2. Under **Settings → Subscription → Information**, locate the **Sub Theme Directory** field.
-3. Provide the absolute path to the folder containing your template (e.g. `/etc/Daltoon-UI/sub_templates/my-theme/`).
+3. Provide the absolute path to the folder containing your template (e.g. `/etc/D-UI/sub_templates/my-theme/`).
 4. Save the settings.
 
-> **Note:** Daltoon-UI does not ship any templates by default. Create your own template folder anywhere
+> **Note:** D-UI does not ship any templates by default. Create your own template folder anywhere
 > on the server, put an `index.html` (or `sub.html`) inside it, and point **Sub Theme Directory** at
 > that absolute path. Leave the field empty to use the default built-in page.
 

@@ -1,6 +1,6 @@
 ---
 title: Security
-description: Harden Daltoon-UI — panel auth and 2FA, Fail2ban IP limits, firewall rules, BBR, and staying current.
+description: Harden D-UI — panel auth and 2FA, Fail2ban IP limits, firewall rules, BBR, and staying current.
 icon: ShieldCheck
 ---
 
@@ -21,7 +21,7 @@ See [First login](/docs/guide/first-login) for the full checklist.
 
 Set an **IP limit** per client (see [Clients](/docs/config/clients)) to cap the
 number of simultaneous source IPs. Enforcement is handled by **Fail2ban**, which
-Daltoon-UI installs and configures for you (enabled by default on script installs, and
+D-UI installs and configures for you (enabled by default on script installs, and
 on Docker via `XUI_ENABLE_FAIL2BAN=true`).
 
 Manage it from the `x-ui` menu (**22 — IP Limit Management**): install/configure,
@@ -61,6 +61,6 @@ often improves throughput on congested links.
 
 ## Keep current
 
-Update Daltoon-UI and Xray-core regularly — security fixes land in new releases. Watch
-the [releases page](https://github.com/mdaltoon10/Daltoon-UI/releases) and see
+Update D-UI and Xray-core regularly — security fixes land in new releases. Watch
+the [releases page](https://github.com/mdaltoon10/D-UI/releases) and see
 [Update & uninstall](/docs/guide/update-uninstall).

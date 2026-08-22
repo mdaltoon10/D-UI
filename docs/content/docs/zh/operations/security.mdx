@@ -1,6 +1,6 @@
 ---
 title: 安全加固
-description: 加固 Daltoon-UI——面板认证与 2FA、Fail2ban IP 限制、防火墙规则、BBR，以及保持更新。
+description: 加固 D-UI——面板认证与 2FA、Fail2ban IP 限制、防火墙规则、BBR，以及保持更新。
 icon: ShieldCheck
 ---
 
@@ -19,7 +19,7 @@ icon: ShieldCheck
 ## Fail2ban 与 IP 限制
 
 为每个客户端设置一个 **IP 限制**（参见[客户端](/docs/config/clients)），以限制同时使用的源
-IP 数量。限制的执行由 **Fail2ban** 负责，Daltoon-UI 会为你安装并配置好它（脚本安装时默认启用，
+IP 数量。限制的执行由 **Fail2ban** 负责，D-UI 会为你安装并配置好它（脚本安装时默认启用，
 Docker 安装时通过 `XUI_ENABLE_FAIL2BAN=true` 启用）。
 
 可从 `x-ui` 菜单（**22 — IP Limit Management**）进行管理：安装/配置、修改封锁时长
@@ -57,6 +57,6 @@ Docker 安装时通过 `XUI_ENABLE_FAIL2BAN=true` 启用）。
 
 ## 保持更新
 
-定期更新 Daltoon-UI 和 Xray-core——安全修复会随新版本发布。请关注
-[发布页面](https://github.com/mdaltoon10/Daltoon-UI/releases)，并参见
+定期更新 D-UI 和 Xray-core——安全修复会随新版本发布。请关注
+[发布页面](https://github.com/mdaltoon10/D-UI/releases)，并参见
 [更新与卸载](/docs/guide/update-uninstall)。

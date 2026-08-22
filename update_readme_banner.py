@@ -1,7 +1,7 @@
 import glob
 
 html_old = """<p align="center">
-  <img src="./media/d-ui-dark.png" alt="Daltoon-UI Preview" width="100%">
+  <img src="./media/d-ui-dark.png" alt="D-UI Preview" width="100%">
 </p>"""
 
 html_new = """<p align="center">

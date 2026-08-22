@@ -1,4 +1,4 @@
-// Pure builders for Daltoon-UI's subscription server: the subscription URLs plus
+// Pure builders for D-UI's subscription server: the subscription URLs plus
 // previews of the two body formats — Base64 (newline-joined share links,
 // standard base64) and JSON (Xray client config, one per client). Grounded in
 // internal/sub/{controller,build_urls_test}.go, json_service.go, default.json.
@@ -244,6 +244,6 @@ function jsonConfig(c: SubClient): Record<string, unknown> {
 export function buildJsonSubscription(clients: SubClient[]): string {
   if (clients.length === 0) return '';
   const configs = clients.map(jsonConfig);
-  // Daltoon-UI returns a single object for one client, an array for several.
+  // D-UI returns a single object for one client, an array for several.
   return JSON.stringify(configs.length === 1 ? configs[0] : configs, null, 2);
 }

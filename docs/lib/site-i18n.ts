@@ -6,7 +6,7 @@ import type { Locale } from './i18n';
 // can't live in MDX. English is the source; fa/ru/zh fall back to en.
 //
 // Convention matches the docs: translate prose only — product/protocol names
-// (Daltoon-UI, Xray, VLESS, REALITY, x25519, Docker, REST API, …) stay in Latin.
+// (D-UI, Xray, VLESS, REALITY, x25519, Docker, REST API, …) stay in Latin.
 export interface SiteMessages {
   tagline: string;
   getStarted: string;

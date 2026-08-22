@@ -1,5 +1,5 @@
 {
-  "name": "Daltoon-UI",
+  "name": "D-UI",
   "description": "An advanced, open-source web control panel for managing Xray-core servers with reseller support and multi-node capabilities.",
   "requestFramePermissions": [
     "camera",

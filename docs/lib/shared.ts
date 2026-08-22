@@ -1,11 +1,11 @@
-export const appName = 'Daltoon-UI';
+export const appName = 'D-UI';
 export const appTagline = 'Advanced web panel for managing Xray-core servers';
 
 export const docsRoute = '/docs';
 export const docsImageRoute = '/og/docs';
 export const docsContentRoute = '/llms.mdx/docs';
 
-// The Daltoon-UI product repository — used for the navbar GitHub link,
+// The D-UI product repository — used for the navbar GitHub link,
 // build-time star/release stats, and install commands.
 export const productRepo = {
   user: 'mdaltoon10',
@@ -13,7 +13,7 @@ export const productRepo = {
   branch: 'main',
 };
 
-// Where these docs live in the Daltoon-UI monorepo — used for "Edit on GitHub" links.
+// Where these docs live in the D-UI monorepo — used for "Edit on GitHub" links.
 export const gitConfig = {
   user: 'mdaltoon10',
   repo: 'D-UI',
@@ -23,10 +23,10 @@ export const gitConfig = {
 
 export const productRepoUrl = `https://github.com/${productRepo.user}/${productRepo.repo}`;
 
-// AI-generated interactive wiki of the Daltoon-UI codebase.
+// AI-generated interactive wiki of the D-UI codebase.
 export const deepWikiUrl = `https://deepwiki.com/${productRepo.user}/${productRepo.repo}`;
 
-// Official Daltoon-UI community channel on Telegram (announcements & support).
+// Official D-UI community channel on Telegram (announcements & support).
 export const telegramChannel = 'mDaltoon';
 export const telegramChannelUrl = `https://t.me/${telegramChannel}`;
 

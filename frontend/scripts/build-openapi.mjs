@@ -206,10 +206,10 @@ function buildSpec() {
   return {
     openapi: '3.0.3',
     info: {
-      title: 'Daltoon-UI Panel API',
+      title: 'D-UI Panel API',
       version: PANEL_VERSION,
       description:
-        'Programmatic interface to a Daltoon-UI panel. Authenticate either by logging in (cookie) or with an API token from Settings → Security → API Token (Bearer). All endpoints under /panel/api/* honour both modes — an API token is a full-admin credential, so treat it like the panel password.',
+        'Programmatic interface to a D-UI panel. Authenticate either by logging in (cookie) or with an API token from Settings → Security → API Token (Bearer). All endpoints under /panel/api/* honour both modes — an API token is a full-admin credential, so treat it like the panel password.',
     },
     servers: [
       { url: '/', description: 'Current panel (basePath aware)' },

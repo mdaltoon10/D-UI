@@ -1,4 +1,4 @@
-// Pure builders for Daltoon-UI install commands (script + Docker). No React/DOM.
+// Pure builders for D-UI install commands (script + Docker). No React/DOM.
 
 export type InstallMethod = 'script' | 'docker';
 
@@ -11,8 +11,8 @@ export interface InstallOptions {
   webBasePath: string;
 }
 
-const REPO_RAW = 'https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/master/install.sh';
-const IMAGE = 'ghcr.io/mdaltoon10/Daltoon-UI:latest';
+const REPO_RAW = 'https://raw.githubusercontent.com/mdaltoon10/D-UI/master/install.sh';
+const IMAGE = 'ghcr.io/mdaltoon10/D-UI:latest';
 
 function isLatest(version: string): boolean {
   const v = version.trim().toLowerCase();
@@ -43,7 +43,7 @@ export function buildDockerRun(options: InstallOptions): string {
   lines.push(`  -v $PWD/cert/:/root/cert/`);
   lines.push(`  --network=host`);
   lines.push(`  --restart=unless-stopped`);
-  lines.push(`  --name Daltoon-UI`);
+  lines.push(`  --name D-UI`);
   lines.push(`  ${IMAGE}`);
   return lines.join(' \\\n');
 }
@@ -60,9 +60,9 @@ export function buildDockerCompose(options: InstallOptions): string {
 
   return [
     `services:`,
-    `  Daltoon-UI:`,
+    `  D-UI:`,
     `    image: ${IMAGE}`,
-    `    container_name: Daltoon-UI`,
+    `    container_name: D-UI`,
     `    volumes:`,
     `      - ./db/:/etc/x-ui/`,
     `      - ./cert/:/root/cert/`,

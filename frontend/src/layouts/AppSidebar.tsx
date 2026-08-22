@@ -226,7 +226,7 @@ export default function AppSidebar() {
   const brandName = useMemo(() => {
     if (currentAdmin?.remark) return currentAdmin.remark;
     if (currentAdmin?.username) return currentAdmin.username;
-    return 'Daltoon-UI';
+    return 'D-UI';
   }, [currentAdmin]);
 
   const currentTheme: 'light' | 'dark' = isDark ? 'dark' : 'light';

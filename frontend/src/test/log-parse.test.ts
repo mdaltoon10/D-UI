@@ -7,13 +7,13 @@ import { parseLogLine } from '@/pages/index/logParse';
 // carries a "Mon DD HH:MM:SS host ident[pid]: " prefix that the viewer used to
 // mistake for the level, leaving only a bare timestamp on screen.
 describe('parseLogLine — SysLog (journalctl) formats', () => {
-  it('d-ui go-logging line: keeps level, strips prefix, tags Daltoon-UI', () => {
+  it('d-ui go-logging line: keeps level, strips prefix, tags D-UI', () => {
     const r = parseLogLine(
       'Jun 08 23:57:28 ubuntu-4gb-fsn1-1 /usr/local/d-ui/d-ui[72297]: INFO - mtproto: started mtg for inbound 3 on 0.0.0.0:8443',
     );
     expect(r.stamp).toBe('Jun 08 23:57:28');
     expect(r.levelText).toBe('INFO');
-    expect(r.service).toBe('Daltoon-UI:');
+    expect(r.service).toBe('D-UI:');
     expect(r.body).toBe('mtproto: started mtg for inbound 3 on 0.0.0.0:8443');
   });
 
@@ -68,7 +68,7 @@ describe('parseLogLine — app-log format (SysLog off)', () => {
     expect(r.date).toBe('2026/06/09');
     expect(r.time).toBe('00:35:09');
     expect(r.levelText).toBe('INFO');
-    expect(r.service).toBe('Daltoon-UI:');
+    expect(r.service).toBe('D-UI:');
     expect(r.body).toBe('mtproto: started mtg for inbound 3 on 0.0.0.0:8443');
   });
 
