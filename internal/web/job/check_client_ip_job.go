@@ -430,8 +430,8 @@ func mergeClientIps(old, new []IPWithTimestamp, staleCutoff int64, newAlwaysLive
 		} else {
 			// Existing IP, update Timestamp to latest activity, but PRESERVE Created!
 			if ipTime.Timestamp > existing.Timestamp {
-				// If the IP was offline/unseen for more than 30 seconds, treat it as a new session
-				if ipTime.Timestamp-existing.Timestamp > 30 {
+				// If the IP was offline/unseen for more than 10 seconds, treat it as a new session
+				if ipTime.Timestamp-existing.Timestamp > 10 {
 					existing.Created = ipTime.Timestamp
 				}
 				existing.Timestamp = ipTime.Timestamp
