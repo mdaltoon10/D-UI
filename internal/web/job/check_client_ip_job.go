@@ -172,9 +172,9 @@ func (j *CheckClientIpJob) loadClientLimits(emails []string) map[string]int {
 // loadInboundsByEmails resolves each email's owning inbound through the
 // clients/client_inbounds relation in chunked queries. Like the old per-email
 // First() it keeps the lowest inbound id when a client spans several inbounds.
-func (j *CheckClientIpJob) loadInboundsByEmails(emails []string) map[string]*model.Inbound {
+func (j *CheckClientIpJob) loadInboundsByEmails(emails []string) map[string][]*model.Inbound {
 	db := database.GetDB()
-	minInboundByEmail := make(map[string]int, len(emails))
+	inboundsByEmail := make(map[string][]int, len(emails))
 	for _, batch := range chunkEmails(emails, ipScanChunk) {
 		var pairs []struct {
 			Email     string
@@ -189,21 +189,20 @@ func (j *CheckClientIpJob) loadInboundsByEmails(emails []string) map[string]*mod
 			return nil
 		}
 		for _, p := range pairs {
-			if cur, ok := minInboundByEmail[p.Email]; !ok || p.InboundId < cur {
-				minInboundByEmail[p.Email] = p.InboundId
-			}
+			inboundsByEmail[p.Email] = append(inboundsByEmail[p.Email], p.InboundId)
 		}
 	}
-	if len(minInboundByEmail) == 0 {
+	if len(inboundsByEmail) == 0 {
 		return nil
 	}
-
-	idSet := make(map[int]struct{}, len(minInboundByEmail))
-	ids := make([]int, 0, len(minInboundByEmail))
-	for _, id := range minInboundByEmail {
-		if _, seen := idSet[id]; !seen {
-			idSet[id] = struct{}{}
-			ids = append(ids, id)
+	idSet := make(map[int]struct{})
+	ids := make([]int, 0)
+	for _, inboundIds := range inboundsByEmail {
+		for _, id := range inboundIds {
+			if _, seen := idSet[id]; !seen {
+				idSet[id] = struct{}{}
+				ids = append(ids, id)
+			}
 		}
 	}
 	sort.Ints(ids)
@@ -215,16 +214,19 @@ func (j *CheckClientIpJob) loadInboundsByEmails(emails []string) map[string]*mod
 			j.checkError(err)
 			return nil
 		}
-		for _, ib := range page {
-			inboundsById[ib.Id] = ib
+		for i := range page {
+			inboundsById[page[i].Id] = page[i]
 		}
 	}
-
-	out := make(map[string]*model.Inbound, len(minInboundByEmail))
-	for email, id := range minInboundByEmail {
-		if ib, ok := inboundsById[id]; ok {
-			out[email] = ib
+	out := make(map[string][]*model.Inbound, len(inboundsByEmail))
+	for email, inboundIds := range inboundsByEmail {
+		var inbounds []*model.Inbound
+		for _, id := range inboundIds {
+			if ib, ok := inboundsById[id]; ok {
+				inbounds = append(inbounds, ib)
+			}
 		}
+		out[email] = inbounds
 	}
 	return out
 }
@@ -299,10 +301,10 @@ func (j *CheckClientIpJob) processObserved(observed map[string]map[string]int64,
 		// logging an ERROR every run (#4963). The batch map resolves through
 		// the clients relation; the per-email fallback keeps its settings LIKE
 		// net for clients not yet present there.
-		inbound, ok := inboundByEmail[email]
-		if !ok {
+		inbounds, ok := inboundByEmail[email]
+		if !ok || len(inbounds) == 0 {
 			var err error
-			inbound, err = j.getInboundByEmail(email)
+			inbounds, err = j.getInboundsByEmail(email)
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					logger.Debugf("[LimitIP] skipping stale observed email %q (renamed or deleted)", email)
@@ -312,6 +314,20 @@ func (j *CheckClientIpJob) processObserved(observed map[string]map[string]int64,
 				}
 				continue
 			}
+		}
+
+		var targetInbound *model.Inbound
+		for _, ib := range inbounds {
+			if ib.Enable {
+				targetInbound = ib
+				break
+			}
+		}
+		if targetInbound == nil && len(inbounds) > 0 {
+			targetInbound = inbounds[0]
+		}
+		if targetInbound == nil {
+			continue
 		}
 
 		// Convert to IPWithTimestamp slice
@@ -338,22 +354,31 @@ func (j *CheckClientIpJob) processObserved(observed map[string]map[string]int64,
 		}
 
 		limit := limitByEmail[email]
-		if limit <= 0 && inbound != nil && inbound.Settings != "" {
-			settings := map[string][]model.Client{}
-			if jsonErr := json.Unmarshal([]byte(inbound.Settings), &settings); jsonErr == nil {
-				for _, c := range settings["clients"] {
-					if c.Email == email && c.LimitIP > 0 {
-						limit = c.LimitIP
-						break
+		if limit <= 0 {
+			for _, ib := range inbounds {
+				if ib.Settings != "" {
+					settings := map[string][]model.Client{}
+					if jsonErr := json.Unmarshal([]byte(ib.Settings), &settings); jsonErr == nil {
+						for _, c := range settings["clients"] {
+							if c.Email == email && c.LimitIP > 0 {
+								limit = c.LimitIP
+								break
+							}
+						}
 					}
+				}
+				if limit > 0 {
+					break
 				}
 			}
 		}
 
-		cleaned, banned := j.updateInboundClientIps(tx, clientIpsRecord, inbound, email, limit, ipsWithTime, enforce, observedAreLive)
+		cleaned, banned := j.updateInboundClientIps(tx, clientIpsRecord, targetInbound, email, limit, ipsWithTime, enforce, observedAreLive)
 		shouldCleanLog = cleaned || shouldCleanLog
 		if banned {
-			disconnects = append(disconnects, pendingDisconnect{inbound: inbound, email: email})
+			for _, ib := range inbounds {
+				disconnects = append(disconnects, pendingDisconnect{inbound: ib, email: email})
+			}
 		}
 	}
 
@@ -821,25 +846,23 @@ func getAPIPortFromConfigData(configData []byte) (int, error) {
 	return 0, errors.New("api inbound port not found")
 }
 
-// getInboundByEmail resolves the inbound that owns a client email. It prefers
+// getInboundsByEmail resolves the inbounds that own a client email. It prefers
 // the exact clients/client_inbounds relation; a substring "settings LIKE
 // %email%" can match the wrong inbound (an email that is a substring of another,
 // or text that merely appears elsewhere in the settings JSON). The LIKE + JSON
 // scan stays only as a fallback for clients not yet present in the relation, so
 // nothing regresses when the join finds no row.
-func (j *CheckClientIpJob) getInboundByEmail(clientEmail string) (*model.Inbound, error) {
+func (j *CheckClientIpJob) getInboundsByEmail(clientEmail string) ([]*model.Inbound, error) {
 	db := database.GetDB()
-	inbound := &model.Inbound{}
-
+	var inbounds []*model.Inbound
 	err := db.Model(&model.Inbound{}).
 		Joins("JOIN client_inbounds ON client_inbounds.inbound_id = inbounds.id").
 		Joins("JOIN clients ON clients.id = client_inbounds.client_id").
 		Where("clients.email = ?", clientEmail).
-		First(inbound).Error
-	if err == nil {
-		return inbound, nil
+		Find(&inbounds).Error
+	if err == nil && len(inbounds) > 0 {
+		return inbounds, nil
 	}
-
 	var candidates []model.Inbound
 	if listErr := db.Model(&model.Inbound{}).Where("settings LIKE ?", "%"+clientEmail+"%").Find(&candidates).Error; listErr != nil {
 		return nil, listErr
@@ -851,10 +874,13 @@ func (j *CheckClientIpJob) getInboundByEmail(clientEmail string) (*model.Inbound
 		}
 		for _, client := range settings["clients"] {
 			if client.Email == clientEmail {
-				return &candidates[i], nil
+				inbounds = append(inbounds, &candidates[i])
+				break
 			}
 		}
 	}
-
+	if len(inbounds) > 0 {
+		return inbounds, nil
+	}
 	return nil, err
 }
