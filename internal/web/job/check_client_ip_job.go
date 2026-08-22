@@ -588,31 +588,38 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 		shouldCleanLog = true
 		isKickOnly := policy == "kick_only" || policy == "kick_oldest_kick_only" || policy == "block_newest_kick_only"
 
-		logIpFile, err := os.OpenFile(xray.GetIPLimitLogPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-		if err == nil {
-			defer logIpFile.Close()
-			ipLogger := log.New(logIpFile, "", log.LstdFlags)
+		if !isKickOnly {
+			logIpFile, err := os.OpenFile(xray.GetIPLimitLogPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+			if err == nil {
+				defer logIpFile.Close()
+				ipLogger := log.New(logIpFile, "", log.LstdFlags)
 
-			// log format is load-bearing: d-ui.sh create_iplimit_jails builds
-			// filter.d/dui-ipl.conf with
-			//   failregex = \[LIMIT_IP\]\s*Email\s*=\s*<F-USER>.+</F-USER>\s*\|\|\s*Disconnecting OLD IP\s*=\s*<ADDR>\s*\|\|\s*Timestamp\s*=\s*\d+
-			// don't change the wording.
-			for _, ipTime := range bannedLive {
-				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
-				ipLogger.Printf("[LIMIT_IP] Email = %s || Disconnecting OLD IP = %s || Timestamp = %d", clientEmail, ipTime.IP, ipTime.Timestamp)
+				// log format is load-bearing: d-ui.sh create_iplimit_jails builds
+				// filter.d/dui-ipl.conf with
+				//   failregex = \[LIMIT_IP\]\s*Email\s*=\s*<F-USER>.+</F-USER>\s*\|\|\s*Disconnecting OLD IP\s*=\s*<ADDR>\s*\|\|\s*Timestamp\s*=\s*\d+
+				// don't change the wording.
+				for _, ipTime := range bannedLive {
+					j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
+					ipLogger.Printf("[LIMIT_IP] Email = %s || Disconnecting OLD IP = %s || Timestamp = %d", clientEmail, ipTime.IP, ipTime.Timestamp)
+				}
+			} else {
+				for _, ipTime := range bannedLive {
+					j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
+				}
 			}
+
+			// Direct instant firewall drop & active socket termination at kernel level
+			for _, ipTime := range bannedLive {
+				banIpDirectly(ipTime.IP)
+			}
+
+			banned = false
 		} else {
 			for _, ipTime := range bannedLive {
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
 			}
+			banned = true
 		}
-
-		// Direct instant firewall drop & active socket termination at kernel level
-		for _, ipTime := range bannedLive {
-			banIpDirectly(ipTime.IP)
-		}
-
-		banned = isKickOnly
 	}
 
 	// keep kept-live + historical in the blob so the panel keeps showing
