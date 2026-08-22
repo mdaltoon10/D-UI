@@ -624,16 +624,13 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 					banIpDirectly(ipTime.IP)
 				}
 			}
-			// Keep banned = false so we NEVER remove/re-add the user in Xray.
-			// This ensures User 1 (legitimate user) stays 100% online without interruption,
-			// while User 2's packets are instantly blocked at the network/fail2ban layer.
-			banned = false
+			banned = true
 		} else {
 			for _, ipTime := range bannedLive {
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
 				banIpDirectly(ipTime.IP)
 			}
-			banned = false
+			banned = true
 		}
 	}
 
@@ -725,12 +722,16 @@ func (j *CheckClientIpJob) disconnectClientTemporarily(inbound *model.Inbound, c
 	}
 }
 
-// resolveXrayAPIPort returns the API inbound port from running config, then template config, then default.
+// resolveXrayAPIPort returns the API inbound port from running process, running config, template config, or default.
 func (j *CheckClientIpJob) resolveXrayAPIPort() int {
+	if port := j.xrayService.GetXrayAPIPort(); port > 0 {
+		return port
+	}
+
 	var configErr error
 	var templateErr error
 
-	if port, err := getAPIPortFromConfigPath(xray.GetConfigPath()); err == nil {
+	if port, err := getAPIPortFromConfigPath(xray.GetConfigPath()); err == nil && port > 0 {
 		return port
 	} else {
 		configErr = err
