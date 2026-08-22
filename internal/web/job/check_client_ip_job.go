@@ -4,14 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
-	"net"
 	"os"
 	"os/exec"
 	"sort"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
@@ -98,14 +94,11 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 			ts := entry.LastSeen
 			if ts <= 0 {
 				ts = now
-			} else if ts > 1e11 {
-				ts = ts / 1000
 			}
-			// Xray's statsUserOnline keeps track of seen IPs.
-			// Active connections refresh LastSeen continuously.
-			// Ignore IPs that haven't been active in the last 25 seconds
-			// so offline devices are quickly pruned, allowing new devices to connect after disconnect.
-			if now-ts > 25 {
+			// Xray's statsUserOnline keeps track of all seen IPs since startup/reload.
+			// To ensure accurate real-time IP limiting and prevent offline devices
+			// from blocking new ones, we ignore IPs that haven't been active in the last 5 seconds.
+			if now-ts > 5 {
 				continue
 			}
 			if _, exists := observed[user.Email]; !exists {
@@ -119,18 +112,15 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 	return observed, true
 }
 
-// hasLimitIp reports whether any client carries an IP limit. It probes both the
-// normalized client records table and the inbounds settings JSON.
+// hasLimitIp reports whether any client carries an IP limit. It probes the
+// normalized clients table (limit_ip is synced there by SyncInbound and the
+// legacy seeder), replacing the old `settings LIKE '%limitIp%'` scan that
+// loaded and JSON-parsed every inbound's settings blob on each 10s run.
 func (j *CheckClientIpJob) hasLimitIp() bool {
 	db := database.GetDB()
 	var probe int64
 	err := db.Model(&model.ClientRecord{}).Where("limit_ip > 0").Limit(1).Count(&probe).Error
-	if err == nil && probe > 0 {
-		return true
-	}
-	var count int64
-	err = db.Model(&model.Inbound{}).Where("settings LIKE ?", "%\"limitIp\":%").Limit(1).Count(&count).Error
-	return err == nil && count > 0
+	return err == nil && probe > 0
 }
 
 const ipScanChunk = 400
@@ -174,9 +164,9 @@ func (j *CheckClientIpJob) loadClientLimits(emails []string) map[string]int {
 // loadInboundsByEmails resolves each email's owning inbound through the
 // clients/client_inbounds relation in chunked queries. Like the old per-email
 // First() it keeps the lowest inbound id when a client spans several inbounds.
-func (j *CheckClientIpJob) loadInboundsByEmails(emails []string) map[string][]*model.Inbound {
+func (j *CheckClientIpJob) loadInboundsByEmails(emails []string) map[string]*model.Inbound {
 	db := database.GetDB()
-	inboundsByEmail := make(map[string][]int, len(emails))
+	minInboundByEmail := make(map[string]int, len(emails))
 	for _, batch := range chunkEmails(emails, ipScanChunk) {
 		var pairs []struct {
 			Email     string
@@ -191,21 +181,21 @@ func (j *CheckClientIpJob) loadInboundsByEmails(emails []string) map[string][]*m
 			return nil
 		}
 		for _, p := range pairs {
-			inboundsByEmail[p.Email] = append(inboundsByEmail[p.Email], p.InboundId)
+			if cur, ok := minInboundByEmail[p.Email]; !ok || p.InboundId < cur {
+				minInboundByEmail[p.Email] = p.InboundId
+			}
 		}
 	}
-	if len(inboundsByEmail) == 0 {
+	if len(minInboundByEmail) == 0 {
 		return nil
 	}
 
-	idSet := make(map[int]struct{})
-	ids := make([]int, 0)
-	for _, inboundIds := range inboundsByEmail {
-		for _, id := range inboundIds {
-			if _, seen := idSet[id]; !seen {
-				idSet[id] = struct{}{}
-				ids = append(ids, id)
-			}
+	idSet := make(map[int]struct{}, len(minInboundByEmail))
+	ids := make([]int, 0, len(minInboundByEmail))
+	for _, id := range minInboundByEmail {
+		if _, seen := idSet[id]; !seen {
+			idSet[id] = struct{}{}
+			ids = append(ids, id)
 		}
 	}
 	sort.Ints(ids)
@@ -217,20 +207,16 @@ func (j *CheckClientIpJob) loadInboundsByEmails(emails []string) map[string][]*m
 			j.checkError(err)
 			return nil
 		}
-		for i := range page {
-			inboundsById[page[i].Id] = page[i]
+		for _, ib := range page {
+			inboundsById[ib.Id] = ib
 		}
 	}
 
-	out := make(map[string][]*model.Inbound, len(inboundsByEmail))
-	for email, inboundIds := range inboundsByEmail {
-		var inbounds []*model.Inbound
-		for _, id := range inboundIds {
-			if ib, ok := inboundsById[id]; ok {
-				inbounds = append(inbounds, ib)
-			}
+	out := make(map[string]*model.Inbound, len(minInboundByEmail))
+	for email, id := range minInboundByEmail {
+		if ib, ok := inboundsById[id]; ok {
+			out[email] = ib
 		}
-		out[email] = inbounds
 	}
 	return out
 }
@@ -305,10 +291,10 @@ func (j *CheckClientIpJob) processObserved(observed map[string]map[string]int64,
 		// logging an ERROR every run (#4963). The batch map resolves through
 		// the clients relation; the per-email fallback keeps its settings LIKE
 		// net for clients not yet present there.
-		inbounds, ok := inboundByEmail[email]
-		if !ok || len(inbounds) == 0 {
+		inbound, ok := inboundByEmail[email]
+		if !ok {
 			var err error
-			inbounds, err = j.getInboundsByEmail(email)
+			inbound, err = j.getInboundByEmail(email)
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					logger.Debugf("[LimitIP] skipping stale observed email %q (renamed or deleted)", email)
@@ -318,20 +304,6 @@ func (j *CheckClientIpJob) processObserved(observed map[string]map[string]int64,
 				}
 				continue
 			}
-		}
-
-		var targetInbound *model.Inbound
-		for _, ib := range inbounds {
-			if ib.Enable {
-				targetInbound = ib
-				break
-			}
-		}
-		if targetInbound == nil && len(inbounds) > 0 {
-			targetInbound = inbounds[0]
-		}
-		if targetInbound == nil {
-			continue
 		}
 
 		// Convert to IPWithTimestamp slice
@@ -357,12 +329,10 @@ func (j *CheckClientIpJob) processObserved(observed map[string]map[string]int64,
 			clientIpsRecord = &model.InboundClientIps{ClientEmail: email}
 		}
 
-		cleaned, banned := j.updateInboundClientIps(tx, clientIpsRecord, targetInbound, email, limitByEmail[email], ipsWithTime, enforce, observedAreLive)
+		cleaned, banned := j.updateInboundClientIps(tx, clientIpsRecord, inbound, email, limitByEmail[email], ipsWithTime, enforce, observedAreLive)
 		shouldCleanLog = cleaned || shouldCleanLog
 		if banned {
-			for _, ib := range inbounds {
-				disconnects = append(disconnects, pendingDisconnect{inbound: ib, email: email})
-			}
+			disconnects = append(disconnects, pendingDisconnect{inbound: inbound, email: email})
 		}
 	}
 
@@ -439,6 +409,10 @@ func mergeClientIps(old, new []IPWithTimestamp, staleCutoff int64, newAlwaysLive
 		} else {
 			// Existing IP, update Timestamp to latest activity, but PRESERVE Created!
 			if ipTime.Timestamp > existing.Timestamp {
+				// If the IP was offline/unseen for more than 5 seconds, treat it as a new session
+				if ipTime.Timestamp-existing.Timestamp > 5 {
+					existing.Created = ipTime.Timestamp
+				}
 				existing.Timestamp = ipTime.Timestamp
 			}
 			if existing.Created == 0 {
@@ -472,10 +446,9 @@ func partitionLiveIps(ipMap map[string]IPWithTimestamp, observedThisScan map[str
 	now := time.Now().Unix()
 	for ip, entry := range ipMap {
 		// Consider an IP "live" if it was seen locally in this scan, OR if its
-		// timestamp from the synced database is very recent (within 25 seconds).
+		// timestamp from the synced database is very recent (e.g. within 5 seconds).
 		// This ensures cluster-wide limits work even if the IP was seen on another node.
-		// Use 25 seconds as the live window since the scan runs every 2s.
-		if observedThisScan[ip] || now-entry.Timestamp < 25 {
+		if observedThisScan[ip] || now-entry.Timestamp < 5 {
 			live = append(live, entry)
 		} else {
 			historical = append(historical, entry)
@@ -517,27 +490,15 @@ func partitionLiveIps(ipMap map[string]IPWithTimestamp, observedThisScan map[str
 	return live, historical
 }
 
-var (
-	f2bInstalledMu   sync.Mutex
-	f2bInstalled     bool
-	f2bInstalledTime time.Time
-)
-
 func (j *CheckClientIpJob) checkFail2BanInstalled() bool {
 	if !isFail2BanEnabled() {
 		return false
 	}
-	f2bInstalledMu.Lock()
-	defer f2bInstalledMu.Unlock()
-	if !f2bInstalledTime.IsZero() && time.Since(f2bInstalledTime) < 30*time.Second {
-		return f2bInstalled
-	}
+
 	cmd := "fail2ban-client"
 	args := []string{"-h"}
 	err := exec.CommandContext(context.Background(), cmd, args...).Run()
-	f2bInstalled = err == nil
-	f2bInstalledTime = time.Now()
-	return f2bInstalled
+	return err == nil
 }
 
 func isFail2BanEnabled() bool {
@@ -610,25 +571,23 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 			logIpFile, err := os.OpenFile(xray.GetIPLimitLogPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 			if err != nil {
 				logger.Errorf("failed to open IP limit log file: %s", err)
-			} else {
-				defer logIpFile.Close()
-				ipLogger := log.New(logIpFile, "", log.LstdFlags)
-
-				// log format is load-bearing: d-ui.sh create_iplimit_jails builds
-				// filter.d/dui-ipl.conf with
-				//   failregex = \[LIMIT_IP\]\s*Email\s*=\s*<F-USER>.+</F-USER>\s*\|\|\s*Disconnecting OLD IP\s*=\s*<ADDR>\s*\|\|\s*Timestamp\s*=\s*\d+
-				// don't change the wording.
-				for _, ipTime := range bannedLive {
-					j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
-					ipLogger.Printf("[LIMIT_IP] Email = %s || Disconnecting OLD IP = %s || Timestamp = %d", clientEmail, ipTime.IP, ipTime.Timestamp)
-					banIpDirectly(ipTime.IP)
-				}
+				return false, false
 			}
-			banned = true
+			defer logIpFile.Close()
+			ipLogger := log.New(logIpFile, "", log.LstdFlags)
+
+			// log format is load-bearing: d-ui.sh create_iplimit_jails builds
+			// filter.d/dui-ipl.conf with
+			//   failregex = \[LIMIT_IP\]\s*Email\s*=\s*<F-USER>.+</F-USER>\s*\|\|\s*Disconnecting OLD IP\s*=\s*<ADDR>\s*\|\|\s*Timestamp\s*=\s*\d+
+			// don't change the wording.
+			for _, ipTime := range bannedLive {
+				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
+				ipLogger.Printf("[LIMIT_IP] Email = %s || Disconnecting OLD IP = %s || Timestamp = %d", clientEmail, ipTime.IP, ipTime.Timestamp)
+			}
+			banned = false
 		} else {
 			for _, ipTime := range bannedLive {
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
-				banIpDirectly(ipTime.IP)
 			}
 			banned = true
 		}
@@ -722,16 +681,12 @@ func (j *CheckClientIpJob) disconnectClientTemporarily(inbound *model.Inbound, c
 	}
 }
 
-// resolveXrayAPIPort returns the API inbound port from running process, running config, template config, or default.
+// resolveXrayAPIPort returns the API inbound port from running config, then template config, then default.
 func (j *CheckClientIpJob) resolveXrayAPIPort() int {
-	if port := j.xrayService.GetXrayAPIPort(); port > 0 {
-		return port
-	}
-
 	var configErr error
 	var templateErr error
 
-	if port, err := getAPIPortFromConfigPath(xray.GetConfigPath()); err == nil && port > 0 {
+	if port, err := getAPIPortFromConfigPath(xray.GetConfigPath()); err == nil {
 		return port
 	} else {
 		configErr = err
@@ -789,17 +744,17 @@ func getAPIPortFromConfigData(configData []byte) (int, error) {
 // or text that merely appears elsewhere in the settings JSON). The LIKE + JSON
 // scan stays only as a fallback for clients not yet present in the relation, so
 // nothing regresses when the join finds no row.
-func (j *CheckClientIpJob) getInboundsByEmail(clientEmail string) ([]*model.Inbound, error) {
+func (j *CheckClientIpJob) getInboundByEmail(clientEmail string) (*model.Inbound, error) {
 	db := database.GetDB()
-	var inbounds []*model.Inbound
+	inbound := &model.Inbound{}
 
 	err := db.Model(&model.Inbound{}).
 		Joins("JOIN client_inbounds ON client_inbounds.inbound_id = inbounds.id").
 		Joins("JOIN clients ON clients.id = client_inbounds.client_id").
 		Where("clients.email = ?", clientEmail).
-		Find(&inbounds).Error
-	if err == nil && len(inbounds) > 0 {
-		return inbounds, nil
+		First(inbound).Error
+	if err == nil {
+		return inbound, nil
 	}
 
 	var candidates []model.Inbound
@@ -813,74 +768,10 @@ func (j *CheckClientIpJob) getInboundsByEmail(clientEmail string) ([]*model.Inbo
 		}
 		for _, client := range settings["clients"] {
 			if client.Email == clientEmail {
-				inbounds = append(inbounds, &candidates[i])
-				break
+				return &candidates[i], nil
 			}
 		}
 	}
-	if len(inbounds) > 0 {
-		return inbounds, nil
-	}
+
 	return nil, err
-}
-
-// getIPv6Subnet64 returns the /64 CIDR string for an IPv6 address (e.g. "2a12:bec4:16f3:5ccf::/64")
-func getIPv6Subnet64(ipStr string) string {
-	parsedIP := net.ParseIP(ipStr)
-	if parsedIP == nil || parsedIP.To4() != nil {
-		return ""
-	}
-	mask := net.CIDRMask(64, 128)
-	network := parsedIP.Mask(mask)
-	if network == nil {
-		return ""
-	}
-	return fmt.Sprintf("%s/64", network.String())
-}
-
-// banIpDirectly immediately bans an IP using fail2ban-client, iptables/ip6tables, conntrack, and ss for instant kernel-level rejection.
-func banIpDirectly(ip string) {
-	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
-		return
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	if strings.Contains(ip, ":") {
-		// IPv6 address: TCP Reset + Drop at position 1
-		_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", ip, "-p", "tcp", "-j", "REJECT", "--reject-with", "tcp-reset").Run()
-		_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", ip, "-p", "udp", "-j", "REJECT", "--reject-with", "icmp6-port-unreachable").Run()
-		_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "1", "-d", ip, "-j", "DROP").Run()
-
-		// Drop the /64 IPv6 subnet prefix (essential for mobile carriers using dynamic IPv6 addresses)
-		subnet64 := getIPv6Subnet64(ip)
-		if subnet64 != "" {
-			_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", subnet64, "-j", "DROP").Run()
-			_ = exec.CommandContext(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", subnet64, "-j", "DROP").Run()
-			_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", subnet64, "-j", "DROP").Run()
-		}
-
-		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl-v6", "banip", ip).Run()
-		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
-		_ = exec.CommandContext(ctx, "ss", "-K", "dst", fmt.Sprintf("[%s]", ip)).Run()
-		_ = exec.CommandContext(ctx, "ss", "-K", "src", fmt.Sprintf("[%s]", ip)).Run()
-		_ = exec.CommandContext(ctx, "conntrack", "-D", "-s", ip).Run()
-		_ = exec.CommandContext(ctx, "conntrack", "-D", "-d", ip).Run()
-	} else {
-		// IPv4 address: TCP Reset + Drop at position 1
-		_ = exec.CommandContext(ctx, "iptables", "-I", "INPUT", "1", "-s", ip, "-p", "tcp", "-j", "REJECT", "--reject-with", "tcp-reset").Run()
-		_ = exec.CommandContext(ctx, "iptables", "-I", "INPUT", "1", "-s", ip, "-p", "udp", "-j", "REJECT", "--reject-with", "icmp-port-unreachable").Run()
-		_ = exec.CommandContext(ctx, "iptables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "iptables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "iptables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "iptables", "-I", "FORWARD", "1", "-d", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
-		_ = exec.CommandContext(ctx, "ss", "-K", "dst", ip).Run()
-		_ = exec.CommandContext(ctx, "ss", "-K", "src", ip).Run()
-		_ = exec.CommandContext(ctx, "conntrack", "-D", "-s", ip).Run()
-		_ = exec.CommandContext(ctx, "conntrack", "-D", "-d", ip).Run()
-	}
 }
