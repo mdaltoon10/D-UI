@@ -67,6 +67,57 @@ func (j *CheckClientIpJob) Run() {
 		return
 	}
 
+	// Dynamic Self-Healing for ALL blackholed/banned emails:
+	// If a client has any banned IPs, but their current active (unbanned) connection count
+	// is below their allowed limit, we instantly unban them!
+	// This ensures that when the active user goes offline, any other blocked users
+	// of that client are instantly unbanned in the next 1-second scan.
+	blackholeMu.Lock()
+	blackholeEmailsCopy := make(map[string]string, len(blackholeEmails))
+	for ip, email := range blackholeEmails {
+		blackholeEmailsCopy[ip] = email
+	}
+	blackholeMu.Unlock()
+
+	emailsToCheck := make(map[string]bool)
+	for _, email := range blackholeEmailsCopy {
+		emailsToCheck[email] = true
+	}
+
+	if len(emailsToCheck) > 0 {
+		var emailList []string
+		for email := range emailsToCheck {
+			emailList = append(emailList, email)
+		}
+		limits := j.loadClientLimits(emailList)
+		for _, email := range emailList {
+			limit := limits[email]
+			if limit <= 0 {
+				// No limit or disabled limit: unban all IPs for this client
+				unbanClientIps(email)
+				continue
+			}
+
+			// Count currently active unbanned IPs
+			activeCount := 0
+			if ipMap, ok := observed[email]; ok {
+				for ip := range ipMap {
+					blackholeMu.Lock()
+					_, isBanned := blackholeIPs[ip]
+					blackholeMu.Unlock()
+					if !isBanned {
+						activeCount++
+					}
+				}
+			}
+
+			if activeCount < limit {
+				// Instantly unban all banned IPs of this client because they have free slots!
+				unbanClientIps(email)
+			}
+		}
+	}
+
 	hasLimit := j.hasLimitIp()
 	f2bInstalled := false
 	if hasLimit {
