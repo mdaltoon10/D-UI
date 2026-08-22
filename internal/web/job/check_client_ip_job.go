@@ -624,13 +624,13 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 					banIpDirectly(ipTime.IP)
 				}
 			}
-			banned = false
+			banned = true
 		} else {
 			for _, ipTime := range bannedLive {
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
 				banIpDirectly(ipTime.IP)
 			}
-			banned = false
+			banned = true
 		}
 	}
 
