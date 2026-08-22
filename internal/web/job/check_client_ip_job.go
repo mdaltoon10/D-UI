@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
@@ -94,11 +97,13 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 			ts := entry.LastSeen
 			if ts <= 0 {
 				ts = now
+			} else if ts > 1e11 {
+				ts = ts / 1000
 			}
 			// Xray's statsUserOnline keeps track of all seen IPs since startup/reload.
 			// To ensure accurate real-time IP limiting and prevent offline devices
-			// from blocking new ones, we ignore IPs that haven't been active in the last 5 seconds.
-			if now-ts > 5 {
+			// from blocking new ones, we ignore IPs that haven't been active in the last 15 seconds.
+			if now-ts > 15 {
 				continue
 			}
 			if _, exists := observed[user.Email]; !exists {
@@ -112,15 +117,18 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 	return observed, true
 }
 
-// hasLimitIp reports whether any client carries an IP limit. It probes the
-// normalized clients table (limit_ip is synced there by SyncInbound and the
-// legacy seeder), replacing the old `settings LIKE '%limitIp%'` scan that
-// loaded and JSON-parsed every inbound's settings blob on each 10s run.
+// hasLimitIp reports whether any client carries an IP limit. It probes both the
+// normalized clients table and inbounds settings JSON.
 func (j *CheckClientIpJob) hasLimitIp() bool {
 	db := database.GetDB()
 	var probe int64
 	err := db.Model(&model.ClientRecord{}).Where("limit_ip > 0").Limit(1).Count(&probe).Error
-	return err == nil && probe > 0
+	if err == nil && probe > 0 {
+		return true
+	}
+	var count int64
+	err = db.Model(&model.Inbound{}).Where("settings LIKE ?", "%\"limitIp\":%").Limit(1).Count(&count).Error
+	return err == nil && count > 0
 }
 
 const ipScanChunk = 400
@@ -329,7 +337,20 @@ func (j *CheckClientIpJob) processObserved(observed map[string]map[string]int64,
 			clientIpsRecord = &model.InboundClientIps{ClientEmail: email}
 		}
 
-		cleaned, banned := j.updateInboundClientIps(tx, clientIpsRecord, inbound, email, limitByEmail[email], ipsWithTime, enforce, observedAreLive)
+		limit := limitByEmail[email]
+		if limit <= 0 && inbound != nil && inbound.Settings != "" {
+			settings := map[string][]model.Client{}
+			if jsonErr := json.Unmarshal([]byte(inbound.Settings), &settings); jsonErr == nil {
+				for _, c := range settings["clients"] {
+					if c.Email == email && c.LimitIP > 0 {
+						limit = c.LimitIP
+						break
+					}
+				}
+			}
+		}
+
+		cleaned, banned := j.updateInboundClientIps(tx, clientIpsRecord, inbound, email, limit, ipsWithTime, enforce, observedAreLive)
 		shouldCleanLog = cleaned || shouldCleanLog
 		if banned {
 			disconnects = append(disconnects, pendingDisconnect{inbound: inbound, email: email})
@@ -566,13 +587,8 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 	if len(bannedLive) > 0 {
 		shouldCleanLog = true
 
-		isKickOnly := policy == "kick_only" || policy == "kick_oldest_kick_only" || policy == "block_newest_kick_only"
-		if !isKickOnly {
-			logIpFile, err := os.OpenFile(xray.GetIPLimitLogPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-			if err != nil {
-				logger.Errorf("failed to open IP limit log file: %s", err)
-				return false, false
-			}
+		logIpFile, err := os.OpenFile(xray.GetIPLimitLogPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+		if err == nil {
 			defer logIpFile.Close()
 			ipLogger := log.New(logIpFile, "", log.LstdFlags)
 
@@ -584,13 +600,18 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
 				ipLogger.Printf("[LIMIT_IP] Email = %s || Disconnecting OLD IP = %s || Timestamp = %d", clientEmail, ipTime.IP, ipTime.Timestamp)
 			}
-			banned = false
 		} else {
 			for _, ipTime := range bannedLive {
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
 			}
-			banned = true
 		}
+
+		// Direct instant firewall drop & active socket termination at kernel level
+		for _, ipTime := range bannedLive {
+			banIpDirectly(ipTime.IP)
+		}
+
+		banned = true
 	}
 
 	// keep kept-live + historical in the blob so the panel keeps showing
@@ -608,10 +629,60 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 	}
 
 	if len(j.disAllowedIps) > 0 {
-		logger.Infof("[LIMIT_IP] Client %s: Kept %d live IPs, queued %d old IPs for fail2ban", clientEmail, len(keptLive), len(j.disAllowedIps))
+		logger.Infof("[LIMIT_IP] Client %s: Kept %d live IPs, blocked %d exceeding IPs immediately", clientEmail, len(keptLive), len(j.disAllowedIps))
 	}
 
 	return shouldCleanLog, banned
+}
+
+func getIPv6Subnet64(ipStr string) string {
+	ip := net.ParseIP(ipStr)
+	if ip == nil || ip.To4() != nil {
+		return ""
+	}
+	mask := net.CIDRMask(64, 128)
+	network := ip.Mask(mask)
+	return fmt.Sprintf("%s/64", network.String())
+}
+
+func banIpDirectly(ip string) {
+	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	if strings.Contains(ip, ":") {
+		// IPv6 address: Drop at position 1 & reset connections
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP").Run()
+
+		subnet64 := getIPv6Subnet64(ip)
+		if subnet64 != "" {
+			_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", subnet64, "-j", "DROP").Run()
+			_ = exec.CommandContext(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", subnet64, "-j", "DROP").Run()
+			_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", subnet64, "-j", "DROP").Run()
+		}
+
+		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl-v6", "banip", ip).Run()
+		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
+		_ = exec.CommandContext(ctx, "ss", "-K", "dst", fmt.Sprintf("[%s]", ip)).Run()
+		_ = exec.CommandContext(ctx, "ss", "-K", "src", fmt.Sprintf("[%s]", ip)).Run()
+		_ = exec.CommandContext(ctx, "conntrack", "-D", "-s", ip).Run()
+		_ = exec.CommandContext(ctx, "conntrack", "-D", "-d", ip).Run()
+	} else {
+		// IPv4 address: Drop at position 1 & reset connections
+		_ = exec.CommandContext(ctx, "iptables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "iptables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "iptables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP").Run()
+
+		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
+		_ = exec.CommandContext(ctx, "ss", "-K", "dst", ip).Run()
+		_ = exec.CommandContext(ctx, "ss", "-K", "src", ip).Run()
+		_ = exec.CommandContext(ctx, "conntrack", "-D", "-s", ip).Run()
+		_ = exec.CommandContext(ctx, "conntrack", "-D", "-d", ip).Run()
+	}
 }
 
 // disconnectClientTemporarily removes and re-adds a client to force disconnect banned connections
@@ -683,6 +754,10 @@ func (j *CheckClientIpJob) disconnectClientTemporarily(inbound *model.Inbound, c
 
 // resolveXrayAPIPort returns the API inbound port from running config, then template config, then default.
 func (j *CheckClientIpJob) resolveXrayAPIPort() int {
+	if port := j.xrayService.GetXrayAPIPort(); port > 0 {
+		return port
+	}
+
 	var configErr error
 	var templateErr error
 
