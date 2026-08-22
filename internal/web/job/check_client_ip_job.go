@@ -39,7 +39,11 @@ type CheckClientIpJob struct {
 	xrayService   service.XrayService
 }
 
-var job *CheckClientIpJob
+var (
+	job          *CheckClientIpJob
+	blackholeIPs = make(map[string]int64) // IP -> Expiration Unix timestamp
+	blackholeMu  sync.Mutex
+)
 
 const defaultXrayAPIPort = 62789
 
@@ -52,6 +56,8 @@ func NewCheckClientIpJob() *CheckClientIpJob {
 }
 
 func (j *CheckClientIpJob) Run() {
+	j.cleanExpiredBlackholes()
+
 	observed, apiMode := j.collectFromOnlineAPI()
 	if !apiMode {
 		// xray is down or predates the online-stats API. There is no access-log
@@ -582,6 +588,18 @@ func (j *CheckClientIpJob) delInboundClientIps(tx *gorm.DB, clientEmail string) 
 	}
 }
 
+func (j *CheckClientIpJob) cleanExpiredBlackholes() {
+	blackholeMu.Lock()
+	defer blackholeMu.Unlock()
+	now := time.Now().Unix()
+	for ip, expireAt := range blackholeIPs {
+		if now >= expireAt {
+			unbanIpDirectly(ip)
+			delete(blackholeIPs, ip)
+		}
+	}
+}
+
 func getIPv6Subnet64(ipStr string) string {
 	ip := net.ParseIP(ipStr)
 	if ip == nil || ip.To4() != nil {
@@ -595,22 +613,41 @@ func getIPv6Subnet64(ipStr string) string {
 func runSysCmd(ctx context.Context, name string, args ...string) {
 	paths := []string{name, "/sbin/" + name, "/usr/sbin/" + name, "/usr/bin/" + name, "/bin/" + name}
 	for _, p := range paths {
+		// 1. Try with sudo -n (non-interactive sudo)
+		sudoArgs := append([]string{"-n", p}, args...)
+		cmdSudo := exec.CommandContext(ctx, "sudo", sudoArgs...)
+		if err := cmdSudo.Run(); err == nil {
+			logger.Debugf("[LIMIT_IP] Succeeded: sudo -n %s %v", p, args)
+			return
+		}
+
+		// 2. Fallback to running directly without sudo
 		cmd := exec.CommandContext(ctx, p, args...)
 		if err := cmd.Run(); err == nil {
+			logger.Debugf("[LIMIT_IP] Succeeded: %s %v", p, args)
 			return
 		}
 	}
+	logger.Warningf("[LIMIT_IP] Failed to execute command: %s %v (tried both sudo -n and direct)", name, args)
 }
 
 func banIpDirectly(ip string) {
 	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
 		return
 	}
+
+	// Track and manage auto-unbanning in 5 minutes (300 seconds)
+	blackholeMu.Lock()
+	blackholeIPs[ip] = time.Now().Unix() + 300
+	blackholeMu.Unlock()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
+	logger.Infof("[LIMIT_IP] RUTHLESS OVERRIDE: Applying kernel blackhole route and killing connections for IP: %s", ip)
+
 	if strings.Contains(ip, ":") {
-		// IPv6 address: Drop at position 1 & reset connections
+		// IPv6 address: Drop at position 1, add blackhole, & reset connections
 		runSysCmd(ctx, "ip6tables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP")
 		runSysCmd(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP")
 		runSysCmd(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP")
@@ -620,6 +657,7 @@ func banIpDirectly(ip string) {
 			runSysCmd(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", subnet64, "-j", "DROP")
 			runSysCmd(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", subnet64, "-j", "DROP")
 		}
+		runSysCmd(ctx, "ip", "-6", "route", "replace", "blackhole", ip)
 		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl-v6", "banip", ip)
 		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip)
 		runSysCmd(ctx, "ss", "-K", "dst", fmt.Sprintf("[%s]", ip))
@@ -628,16 +666,48 @@ func banIpDirectly(ip string) {
 		runSysCmd(ctx, "conntrack", "-D", "-d", ip)
 		runSysCmd(ctx, "ufw", "deny", "from", ip)
 	} else {
-		// IPv4 address: Drop at position 1 & reset connections
+		// IPv4 address: Drop at position 1, add blackhole, & reset connections
 		runSysCmd(ctx, "iptables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP")
 		runSysCmd(ctx, "iptables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP")
 		runSysCmd(ctx, "iptables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP")
+		runSysCmd(ctx, "ip", "route", "replace", "blackhole", ip)
 		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip)
 		runSysCmd(ctx, "ss", "-K", "dst", ip)
 		runSysCmd(ctx, "ss", "-K", "src", ip)
 		runSysCmd(ctx, "conntrack", "-D", "-s", ip)
 		runSysCmd(ctx, "conntrack", "-D", "-d", ip)
 		runSysCmd(ctx, "ufw", "deny", "from", ip)
+	}
+}
+
+func unbanIpDirectly(ip string) {
+	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	logger.Infof("[LIMIT_IP] Removing kernel blackhole route and firewall rule for IP: %s", ip)
+
+	if strings.Contains(ip, ":") {
+		runSysCmd(ctx, "ip6tables", "-D", "INPUT", "-s", ip, "-j", "DROP")
+		runSysCmd(ctx, "ip6tables", "-D", "OUTPUT", "-d", ip, "-j", "DROP")
+		runSysCmd(ctx, "ip6tables", "-D", "FORWARD", "-s", ip, "-j", "DROP")
+		subnet64 := getIPv6Subnet64(ip)
+		if subnet64 != "" {
+			runSysCmd(ctx, "ip6tables", "-D", "INPUT", "-s", subnet64, "-j", "DROP")
+			runSysCmd(ctx, "ip6tables", "-D", "OUTPUT", "-d", subnet64, "-j", "DROP")
+			runSysCmd(ctx, "ip6tables", "-D", "FORWARD", "-s", subnet64, "-j", "DROP")
+		}
+		runSysCmd(ctx, "ip", "-6", "route", "del", "blackhole", ip)
+		runSysCmd(ctx, "ip", "-6", "route", "del", ip)
+	} else {
+		runSysCmd(ctx, "iptables", "-D", "INPUT", "-s", ip, "-j", "DROP")
+		runSysCmd(ctx, "iptables", "-D", "OUTPUT", "-d", ip, "-j", "DROP")
+		runSysCmd(ctx, "iptables", "-D", "FORWARD", "-s", ip, "-j", "DROP")
+		runSysCmd(ctx, "ip", "route", "del", "blackhole", ip)
+		runSysCmd(ctx, "ip", "route", "del", ip)
 	}
 }
 
