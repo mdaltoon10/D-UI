@@ -978,13 +978,13 @@ update_d-ui() {
         tag_version="${DUI_UPDATE_TAG}"
         echo -e "${green}Using update tag: ${tag_version}${plain}"
     else
-        tag_version=$(${curl_bin} -Ls "https://api.github.com/repos/mdaltoon10/D-UI/releases/latest" 2> /dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        tag_version=$(${curl_bin} -Ls "https://api.github.com/repos/mdaltoon10/Daltoon-UI/releases/latest" 2> /dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$tag_version" ]]; then
-            _fail "ERROR: Failed to fetch d-ui version. Your repository 'mdaltoon10/D-UI' has no releases published yet. Please push a commit or tag to trigger GitHub Actions to build and publish your first release."
+            _fail "ERROR: Failed to fetch d-ui version. Your repository 'mdaltoon10/Daltoon-UI' has no releases published yet. Please push a commit or tag to trigger GitHub Actions to build and publish your first release."
         fi
     fi
     echo -e "Got d-ui latest version: ${tag_version}, beginning the installation..."
-    ${curl_bin} -fLRo ${dui_folder}-linux-$(arch).tar.gz https://github.com/mdaltoon10/D-UI/releases/download/${tag_version}/d-ui-linux-$(arch).tar.gz 2> /dev/null
+    ${curl_bin} -fLRo ${dui_folder}-linux-$(arch).tar.gz https://github.com/mdaltoon10/Daltoon-UI/releases/download/${tag_version}/d-ui-linux-$(arch).tar.gz 2> /dev/null
     if [[ $? -ne 0 ]]; then
         _fail "ERROR: Failed to download d-ui, please be sure that your server can access GitHub"
     fi
@@ -1068,7 +1068,7 @@ update_d-ui() {
         cp -f d-ui.sh "${dui_script_temp}" > /dev/null 2>&1
     else
         echo -e "${yellow}d-ui.sh not found locally, downloading from GitHub...${plain}"
-        ${curl_bin} -fLRo "${dui_script_temp}" https://raw.githubusercontent.com/mdaltoon10/D-UI/main/d-ui.sh > /dev/null 2>&1
+        ${curl_bin} -fLRo "${dui_script_temp}" https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/d-ui.sh > /dev/null 2>&1
     fi
     if [[ ! -s "${dui_script_temp}" ]]; then
         rm -f "${dui_script_temp}"
@@ -1100,7 +1100,7 @@ update_d-ui() {
             cp -f d-ui.rc "${dui_rc_temp}" > /dev/null 2>&1
         else
             echo -e "${yellow}d-ui.rc not found locally, downloading from GitHub...${plain}"
-            ${curl_bin} -fLRo "${dui_rc_temp}" https://raw.githubusercontent.com/mdaltoon10/D-UI/main/d-ui.rc > /dev/null 2>&1
+            ${curl_bin} -fLRo "${dui_rc_temp}" https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/d-ui.rc > /dev/null 2>&1
         fi
         if [[ ! -s "${dui_rc_temp}" ]]; then
             rm -f "${dui_rc_temp}"
@@ -1158,13 +1158,13 @@ update_d-ui() {
             echo -e "${yellow}Service files not found locally, downloading from GitHub...${plain}"
             case "${release}" in
                 ubuntu | debian | armbian)
-                    service_unit_url="https://raw.githubusercontent.com/mdaltoon10/D-UI/main/d-ui.service.debian"
+                    service_unit_url="https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/d-ui.service.debian"
                     ;;
                 arch | manjaro | parch)
-                    service_unit_url="https://raw.githubusercontent.com/mdaltoon10/D-UI/main/d-ui.service.arch"
+                    service_unit_url="https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/d-ui.service.arch"
                     ;;
                 *)
-                    service_unit_url="https://raw.githubusercontent.com/mdaltoon10/D-UI/main/d-ui.service.rhel"
+                    service_unit_url="https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/d-ui.service.rhel"
                     ;;
             esac
 

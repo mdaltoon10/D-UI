@@ -1367,14 +1367,14 @@ install_d-ui() {
 
     # Download resources
     if [ $# == 0 ]; then
-        tag_version=$(curl -Ls --retry 5 --retry-delay 3 --connect-timeout 15 --max-time 60 "https://api.github.com/repos/mdaltoon10/D-UI/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        tag_version=$(curl -Ls --retry 5 --retry-delay 3 --connect-timeout 15 --max-time 60 "https://api.github.com/repos/mdaltoon10/Daltoon-UI/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$tag_version" ]]; then
-            echo -e "${red}Failed to fetch d-ui version. Your repository 'mdaltoon10/D-UI' has no releases published yet.${plain}"
+            echo -e "${red}Failed to fetch d-ui version. Your repository 'mdaltoon10/Daltoon-UI' has no releases published yet.${plain}"
             echo -e "${yellow}Please push a commit to trigger the automatic GitHub Actions build, which will create the 'dev-latest' release with the compiled binaries, or push a tag (e.g., v1.0.1) to publish a stable release.${plain}"
             exit 1
         fi
         echo -e "Got d-ui latest version: ${tag_version}, beginning the installation..."
-        curl -fLR --retry 5 --retry-delay 3 --connect-timeout 15 --max-time 300 -o ${dui_folder}-linux-$(arch).tar.gz https://github.com/mdaltoon10/D-UI/releases/download/${tag_version}/d-ui-linux-$(arch).tar.gz
+        curl -fLR --retry 5 --retry-delay 3 --connect-timeout 15 --max-time 300 -o ${dui_folder}-linux-$(arch).tar.gz https://github.com/mdaltoon10/Daltoon-UI/releases/download/${tag_version}/d-ui-linux-$(arch).tar.gz
         if [[ $? -ne 0 ]]; then
             echo -e "${red}Downloading d-ui failed, please be sure that your server can access GitHub ${plain}"
             exit 1
@@ -1402,7 +1402,7 @@ install_d-ui() {
             fi
         fi
 
-        url="https://github.com/mdaltoon10/D-UI/releases/download/${tag_version}/d-ui-linux-$(arch).tar.gz"
+        url="https://github.com/mdaltoon10/Daltoon-UI/releases/download/${tag_version}/d-ui-linux-$(arch).tar.gz"
         echo -e "Beginning to install d-ui ${tag_version}"
         curl -fLR --retry 5 --retry-delay 3 --connect-timeout 15 --max-time 300 -o ${dui_folder}-linux-$(arch).tar.gz ${url}
         if [[ $? -ne 0 ]]; then
@@ -1417,7 +1417,7 @@ install_d-ui() {
     fi
     local dui_script_temp="/usr/bin/d-ui-temp.$$"
     rm -f "${dui_script_temp}"
-    curl -fLRo "${dui_script_temp}" https://raw.githubusercontent.com/mdaltoon10/D-UI/main/d-ui.sh
+    curl -fLRo "${dui_script_temp}" https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/d-ui.sh
     if [[ $? -ne 0 ]]; then
         rm -f "${dui_script_temp}"
         echo -e "${red}Failed to download d-ui.sh${plain}"
@@ -1512,7 +1512,7 @@ install_d-ui() {
             cp -f d-ui.rc "${dui_rc_temp}" > /dev/null 2>&1
         else
             echo -e "${yellow}d-ui.rc not found locally, downloading from GitHub...${plain}"
-            curl -fLRo "${dui_rc_temp}" https://raw.githubusercontent.com/mdaltoon10/D-UI/main/d-ui.rc
+            curl -fLRo "${dui_rc_temp}" https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/d-ui.rc
         fi
         if [[ ! -s "${dui_rc_temp}" ]]; then
             rm -f "${dui_rc_temp}"
@@ -1573,13 +1573,13 @@ install_d-ui() {
             echo -e "${yellow}Service files not found locally, downloading from GitHub...${plain}"
             case "${release}" in
                 ubuntu | debian | armbian)
-                    service_unit_url="https://raw.githubusercontent.com/mdaltoon10/D-UI/main/d-ui.service.debian"
+                    service_unit_url="https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/d-ui.service.debian"
                     ;;
                 arch | manjaro | parch)
-                    service_unit_url="https://raw.githubusercontent.com/mdaltoon10/D-UI/main/d-ui.service.arch"
+                    service_unit_url="https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/d-ui.service.arch"
                     ;;
                 *)
-                    service_unit_url="https://raw.githubusercontent.com/mdaltoon10/D-UI/main/d-ui.service.rhel"
+                    service_unit_url="https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/main/d-ui.service.rhel"
                     ;;
             esac
 
