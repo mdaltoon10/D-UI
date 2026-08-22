@@ -36,16 +36,26 @@ const PRESET_TRAFFIC_GB = [10, 20, 30, 40, 50, 100];
 const PRESET_IP_LIMITS = [1, 2, 3, 4, 5, 6];
 const PRESET_DAYS = [30, 60, 90, 120, 182, 365];
 
-const presetTagStyle: React.CSSProperties = {
+const presetTagBaseStyle: React.CSSProperties = {
   cursor: 'pointer',
-  margin: '2px 3px',
-  padding: '0 6px',
-  fontSize: '11px',
-  lineHeight: '18px',
-  borderRadius: '4px',
+  margin: '3px 4px',
+  padding: '2px 10px',
+  fontSize: '13px',
+  fontWeight: 600,
+  lineHeight: '22px',
+  borderRadius: '6px',
   userSelect: 'none',
-  transition: 'all 0.15s ease',
+  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
 };
+
+const getPresetTagStyle = (selected: boolean): React.CSSProperties => ({
+  ...presetTagBaseStyle,
+  background: selected ? 'rgba(0, 180, 216, 0.25)' : 'rgba(0, 180, 216, 0.08)',
+  color: selected ? '#00b4d8' : 'var(--ant-color-text-secondary, #94a3b8)',
+  border: selected ? '1px solid #00b4d8' : '1px solid rgba(0, 180, 216, 0.22)',
+  boxShadow: selected ? '0 0 8px rgba(0, 180, 216, 0.35)' : 'none',
+  transform: selected ? 'scale(1.04)' : 'scale(1)',
+});
 
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
 const VMESS_SECURITY_OPTIONS = ['auto', 'aes-128-gcm', 'chacha20-poly1305', 'none', 'zero'] as const;
@@ -658,15 +668,14 @@ export default function ClientFormModal({
                         <Form.Item label={t('pages.clients.totalGB')} tooltip={t('pages.clients.totalGBDesc')}>
                           <InputNumber value={form.totalGB} min={0} step={1} style={{ width: '100%' }}
                             onChange={(v) => update('totalGB', Number(v) || 0)} />
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                             {PRESET_TRAFFIC_GB.map((gb) => (
                               <Tag
                                 key={gb}
-                                color={form.totalGB === gb ? 'processing' : 'default'}
-                                style={presetTagStyle}
+                                style={getPresetTagStyle(form.totalGB === gb)}
                                 onClick={() => update('totalGB', gb)}
                               >
-                                {gb}
+                                {gb} GB
                               </Tag>
                             ))}
                           </div>
@@ -703,12 +712,11 @@ export default function ClientFormModal({
                             </span>
                           </Tooltip>
                           {!limitIpDisabled && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                               {PRESET_IP_LIMITS.map((ip) => (
                                 <Tag
                                   key={ip}
-                                  color={form.limitIp === ip ? 'processing' : 'default'}
-                                  style={presetTagStyle}
+                                  style={getPresetTagStyle(form.limitIp === ip)}
                                   onClick={() => update('limitIp', ip)}
                                 >
                                   {ip}
@@ -726,15 +734,14 @@ export default function ClientFormModal({
                           <Form.Item label={t('pages.clients.expireDays')}>
                             <InputNumber value={form.delayedDays} min={0} style={{ width: '100%' }}
                               onChange={(v) => update('delayedDays', Number(v) || 0)} />
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                               {PRESET_DAYS.map((days) => (
                                 <Tag
                                   key={days}
-                                  color={form.delayedDays === days ? 'processing' : 'default'}
-                                  style={presetTagStyle}
+                                  style={getPresetTagStyle(form.delayedDays === days)}
                                   onClick={() => update('delayedDays', days)}
                                 >
-                                  {days}
+                                  {days}d
                                 </Tag>
                               ))}
                             </div>
@@ -745,17 +752,16 @@ export default function ClientFormModal({
                               value={form.expiryDate}
                               onChange={(d) => update('expiryDate', d || null)}
                             />
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                               {PRESET_DAYS.map((days) => {
-                                const isSelected = form.expiryDate && Math.abs(form.expiryDate.diff(dayjs(), 'day') - days) === 0;
+                                const isSelected = Boolean(form.expiryDate && Math.abs(form.expiryDate.diff(dayjs(), 'day') - days) <= 1);
                                 return (
                                   <Tag
                                     key={days}
-                                    color={isSelected ? 'processing' : 'default'}
-                                    style={presetTagStyle}
+                                    style={getPresetTagStyle(isSelected)}
                                     onClick={() => update('expiryDate', dayjs().add(days, 'day'))}
                                   >
-                                    {days}
+                                    {days}d
                                   </Tag>
                                 );
                               })}
