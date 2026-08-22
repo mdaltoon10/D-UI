@@ -56,41 +56,7 @@ func NewCheckClientIpJob() *CheckClientIpJob {
 	return job
 }
 
-var lastFullFlushTime time.Time
-
-func (j *CheckClientIpJob) checkPeriodicFullFlush() {
-	blackholeMu.Lock()
-	defer blackholeMu.Unlock()
-
-	now := time.Now()
-	if lastFullFlushTime.IsZero() {
-		lastFullFlushTime = now
-		return
-	}
-
-	if now.Sub(lastFullFlushTime) >= 1*time.Minute {
-		logger.Infof("[LIMIT_IP] PERIODIC 1-MINUTE CLEANUP: Wiping all blocked/banned IPs from Fail2ban, UFW, Firewall, and routing table to prevent stale locks...")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		for ip := range blackholeIPs {
-			unbanIpDirectlyNoLock(ip)
-		}
-		blackholeIPs = make(map[string]int64)
-		blackholeEmails = make(map[string]string)
-		lastFullFlushTime = now
-
-		// System-wide fail2ban and OS kernel route purge
-		runSysCmd(ctx, "fail2ban-client", "unban", "--all")
-		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl", "unbanip", "--all")
-		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl-v6", "unbanip", "--all")
-		runSysCmd(ctx, "sh", "-c", "for ip in $(ip route show | grep blackhole | awk '{print $2}'); do ip route del blackhole \"$ip\"; done")
-		runSysCmd(ctx, "sh", "-c", "for ip in $(ip -6 route show | grep blackhole | awk '{print $2}'); do ip -6 route del blackhole \"$ip\"; done")
-	}
-}
-
 func (j *CheckClientIpJob) Run() {
-	j.checkPeriodicFullFlush()
 	j.cleanExpiredBlackholes()
 
 	observed, apiMode := j.collectFromOnlineAPI()
