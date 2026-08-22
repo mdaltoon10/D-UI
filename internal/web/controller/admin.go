@@ -141,12 +141,6 @@ func (a *AdminController) add(c *gin.Context) {
 		jsonMsg(c, "Username cannot be empty", errors.New("empty username"))
 		return
 	}
-	reserved := map[string]bool{"panel": true, "assets": true, "api": true, "login": true, "logout": true, "portal": true, "csrf-token": true, "getTwoFactorEnable": true, "sub": true, "json": true, "ws": true, "docs": true, "favicon.ico": true, "robots.txt": true, ".well-known": true, "xui": true, "inbounds": true, "clients": true, "groups": true, "nodes": true, "hosts": true, "settings": true, "xray": true, "outbound": true, "routing": true, "api-docs": true, "admin-access": true, "clients-admin": true, "authentication": true}
-	if reserved[strings.ToLower(webPath)] {
-		jsonMsg(c, "Web path is a reserved keyword", errors.New("reserved web path"))
-		return
-	}
-
 	if webPath == "" {
 		jsonMsg(c, "Web path cannot be empty", errors.New("empty web path"))
 		return
@@ -202,12 +196,6 @@ func (a *AdminController) update(c *gin.Context) {
 		jsonMsg(c, "Username cannot be empty", errors.New("empty username"))
 		return
 	}
-	reserved := map[string]bool{"panel": true, "assets": true, "api": true, "login": true, "logout": true, "portal": true, "csrf-token": true, "getTwoFactorEnable": true, "sub": true, "json": true, "ws": true, "docs": true, "favicon.ico": true, "robots.txt": true, ".well-known": true, "xui": true, "inbounds": true, "clients": true, "groups": true, "nodes": true, "hosts": true, "settings": true, "xray": true, "outbound": true, "routing": true, "api-docs": true, "admin-access": true, "clients-admin": true, "authentication": true}
-	if reserved[strings.ToLower(webPath)] {
-		jsonMsg(c, "Web path is a reserved keyword", errors.New("reserved web path"))
-		return
-	}
-
 	if webPath == "" {
 		jsonMsg(c, "Web path cannot be empty", errors.New("empty web path"))
 		return

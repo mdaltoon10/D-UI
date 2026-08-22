@@ -11,8 +11,8 @@ export interface InstallOptions {
   webBasePath: string;
 }
 
-const REPO_RAW = 'https://raw.githubusercontent.com/mdaltoon10/Daltoon-UI/master/install.sh';
-const IMAGE = 'ghcr.io/mdaltoon10/Daltoon-UI:latest';
+const REPO_RAW = 'https://raw.githubusercontent.com/mdaltoon10/D-UI/master/install.sh';
+const IMAGE = 'ghcr.io/mdaltoon10/D-UI:latest';
 
 function isLatest(version: string): boolean {
   const v = version.trim().toLowerCase();

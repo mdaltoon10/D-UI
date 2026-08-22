@@ -331,10 +331,9 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	// non-SPA miss still returns a hard 404.
 	engine.NoRoute(func(c *gin.Context) {
 		basePathAttr := c.GetString("base_path")
-		if c.GetBool("is_reseller") && c.GetHeader("X-Reseller-Redirected") != "true" {
+		if basePathAttr != "" && basePathAttr != "/" && c.GetHeader("X-Reseller-Redirected") != "true" {
 			prefix := strings.Trim(basePathAttr, "/")
 			reqPath := c.Request.URL.Path
-
 			// If the path was not already rewritten by the middleware and starts with /<prefix>
 			if strings.HasPrefix(reqPath, "/"+prefix+"/") || reqPath == "/"+prefix {
 				newPath := strings.TrimPrefix(reqPath, "/"+prefix)
@@ -378,7 +377,7 @@ const (
 	cadenceXrayRestart   = "@every 30s"
 	cadenceXrayTraffic   = "@every 5s"
 	cadenceMtproto       = "@every 10s"
-	cadenceClientIPScan  = "@every 1s"
+	cadenceClientIPScan  = "@every 2s"
 	cadenceNodeHeartbeat = "@every 5s"
 	cadenceNodeTraffic   = "@every 5s"
 	cadenceOutboundSub   = "@every 5m"

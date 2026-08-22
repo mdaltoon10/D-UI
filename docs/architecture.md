@@ -3,7 +3,7 @@
 > Navigation map for contributors and AI coding agents (referenced from `CLAUDE.md`).
 > Goal: jump to the right file in one hop instead of grepping the whole tree.
 > Tracks the `main` branch — paths reflect the latest changes, so verify against the live
-> tree rather than a pinned release (Go module `github.com/mdaltoon10/Daltoon-UI/v3`).
+> tree rather than a pinned release (Go module `github.com/mdaltoon10/D-UI/v3`).
 >
 > **How to use this file:** read "Mental model" + "Request lifecycle" first, then
 > use the **Symptom → File index** to locate work. Respect the **Layering rules**
@@ -566,7 +566,7 @@ root → `go build ./...` / `go run main.go`.
 
 ## 10. Gotchas & conventions
 
-- **Module path is `.../v3`.** Internal imports use `github.com/mdaltoon10/Daltoon-UI/v3/internal/...`.
+- **Module path is `.../v3`.** Internal imports use `github.com/mdaltoon10/D-UI/v3/internal/...`.
 - **SQLite vs Postgres.** Default is SQLite at `{XUI_DB_FOLDER}/x-ui.db`. Postgres via
   `XUI_DB_TYPE=postgres` + `XUI_DB_DSN`. Some SQL paths are dialect-aware (`database/dialect.go`);
   test both when touching raw queries (there are `*_scale_postgres_test.go` suites).

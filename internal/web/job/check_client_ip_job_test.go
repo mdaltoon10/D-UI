@@ -228,12 +228,12 @@ func TestPartitionLiveIps_EmptyScanLeavesDbIntact(t *testing.T) {
 }
 
 func TestPartitionLiveIps_RecentSyncedIpIsLive(t *testing.T) {
-	// Synced IPs within 10 seconds should be counted as live
+	// Synced IPs from other nodes within 2 minutes should be counted as live
 	// even if they weren't observed in the local scan.
 	now := time.Now().Unix()
 	ipMap := map[string]IPWithTimestamp{
-		"A": {IP: "A", Timestamp: now - 5},   // synced 5s ago (<10s) -> live
-		"B": {IP: "B", Timestamp: now - 150}, // synced 2m30s ago (>10s) -> historical
+		"A": {IP: "A", Timestamp: now - 30},  // synced 30s ago -> live
+		"B": {IP: "B", Timestamp: now - 150}, // synced 2m30s ago -> historical
 	}
 	observed := map[string]bool{}
 
@@ -318,36 +318,3 @@ func fakeFail2BanClient(t *testing.T) string {
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	return marker
 }
-
-func TestMergeClientIps_IdleOver60SecondsResetsCreated(t *testing.T) {
-	// If an IP is unseen for > 60 seconds, its Created timestamp
-	// should reset upon new activity so a newly connected user keeps priority.
-	old := []IPWithTimestamp{
-		{IP: "1.1.1.1", Timestamp: 100, Created: 100},
-	}
-	new := []IPWithTimestamp{
-		{IP: "1.1.1.1", Timestamp: 175, Created: 175}, // 75s later (> 60s idle)
-	}
-
-	ipMap := mergeClientIps(old, new, 0, true)
-	if got := ipMap["1.1.1.1"].Created; got != 175 {
-		t.Fatalf("expected Created to reset to 175 after >60s idle, got %d", got)
-	}
-}
-
-func TestMergeClientIps_ActiveWithin60SecondsPreservesCreated(t *testing.T) {
-	// If an IP is active within 60s, its Created
-	// timestamp is preserved so it cannot be kicked by new connections.
-	old := []IPWithTimestamp{
-		{IP: "1.1.1.1", Timestamp: 100, Created: 100},
-	}
-	new := []IPWithTimestamp{
-		{IP: "1.1.1.1", Timestamp: 120, Created: 120}, // 20s later (<= 60s active)
-	}
-
-	ipMap := mergeClientIps(old, new, 0, true)
-	if got := ipMap["1.1.1.1"].Created; got != 100 {
-		t.Fatalf("expected Created to be preserved at 100 when active within 60s, got %d", got)
-	}
-}
-

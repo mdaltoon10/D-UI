@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AutoComplete, Button, Form, Input, InputNumber, Modal, Select, Space, Switch, Tag, Tooltip, message } from 'antd';
+import { AutoComplete, Button, Form, Input, InputNumber, Modal, Select, Space, Switch, Tooltip, message } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
@@ -13,31 +13,6 @@ import { useClients, type InboundOption } from '@/hooks/useClients';
 import { useFail2banStatusQuery, getLimitIpNotice } from '@/api/queries/useFail2banStatusQuery';
 import { ClientBulkAddFormSchema, type ClientBulkAddFormValues } from '@/schemas/client';
 import { getSpeedTranslations } from '@/utils/speedI18n';
-
-const PRESET_TRAFFIC_GB = [10, 20, 30, 40, 50, 100];
-const PRESET_IP_LIMITS = [1, 2, 3, 4, 5, 6];
-const PRESET_DAYS = [30, 60, 90, 120, 182, 365];
-
-const presetTagBaseStyle: React.CSSProperties = {
-  cursor: 'pointer',
-  margin: '3px 4px',
-  padding: '2px 10px',
-  fontSize: '13px',
-  fontWeight: 600,
-  lineHeight: '22px',
-  borderRadius: '6px',
-  userSelect: 'none',
-  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-};
-
-const getPresetTagStyle = (selected: boolean): React.CSSProperties => ({
-  ...presetTagBaseStyle,
-  background: selected ? 'rgba(0, 180, 216, 0.25)' : 'rgba(0, 180, 216, 0.08)',
-  color: selected ? '#00b4d8' : 'var(--ant-color-text-secondary, #94a3b8)',
-  border: selected ? '1px solid #00b4d8' : '1px solid rgba(0, 180, 216, 0.22)',
-  boxShadow: selected ? '0 0 8px rgba(0, 180, 216, 0.35)' : 'none',
-  transform: selected ? 'scale(1.04)' : 'scale(1)',
-});
 
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
 
@@ -389,34 +364,10 @@ export default function ClientBulkAddModal({
                   onChange={(v) => update('limitIp', Number(v) || 0)} />
               </span>
             </Tooltip>
-            {!limitIpDisabled && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-                {PRESET_IP_LIMITS.map((ip) => (
-                  <Tag
-                    key={ip}
-                    style={getPresetTagStyle(form.limitIp === ip)}
-                    onClick={() => update('limitIp', ip)}
-                  >
-                    {ip}
-                  </Tag>
-                ))}
-              </div>
-            )}
           </Form.Item>
 
           <Form.Item label={t('pages.clients.totalGB')}>
             <InputNumber value={form.totalGB} min={0} step={1} onChange={(v) => update('totalGB', Number(v) || 0)} />
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-              {PRESET_TRAFFIC_GB.map((gb) => (
-                <Tag
-                  key={gb}
-                  style={getPresetTagStyle(form.totalGB === gb)}
-                  onClick={() => update('totalGB', gb)}
-                >
-                  {gb} GB
-                </Tag>
-              ))}
-            </div>
           </Form.Item>
 
           <Form.Item label={t('pages.clients.delayedStart')}>
@@ -433,17 +384,6 @@ export default function ClientBulkAddModal({
                 min={0}
                 onChange={(v) => update('expiryTime', -86400000 * (Number(v) || 0))}
               />
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-                {PRESET_DAYS.map((days) => (
-                  <Tag
-                    key={days}
-                    style={getPresetTagStyle(delayedExpireDays === days)}
-                    onClick={() => update('expiryTime', -86400000 * days)}
-                  >
-                    {days}d
-                  </Tag>
-                ))}
-              </div>
             </Form.Item>
           ) : (
             <Form.Item label={t('pages.inbounds.expireDate')}>
@@ -451,20 +391,6 @@ export default function ClientBulkAddModal({
                 value={expiryDate}
                 onChange={(next) => update('expiryTime', next ? next.valueOf() : 0)}
               />
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-                {PRESET_DAYS.map((days) => {
-                  const isSelected = Boolean(expiryDate && Math.abs(expiryDate.diff(dayjs(), 'day') - days) <= 1);
-                  return (
-                    <Tag
-                      key={days}
-                      style={getPresetTagStyle(isSelected)}
-                      onClick={() => update('expiryTime', dayjs().add(days, 'day').valueOf())}
-                    >
-                      {days}d
-                    </Tag>
-                  );
-                })}
-              </div>
             </Form.Item>
           )}
 
