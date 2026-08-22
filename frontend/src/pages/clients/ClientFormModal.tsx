@@ -32,6 +32,21 @@ import { useFail2banStatusQuery, getLimitIpNotice } from '@/api/queries/useFail2
 import { ClientFormSchema, ClientCreateFormSchema } from '@/schemas/client';
 import { getSpeedTranslations } from '@/utils/speedI18n';
 
+const PRESET_TRAFFIC_GB = [10, 20, 30, 40, 50, 100];
+const PRESET_IP_LIMITS = [1, 2, 3, 4, 5, 6];
+const PRESET_DAYS = [30, 60, 90, 120, 182, 365];
+
+const presetTagStyle: React.CSSProperties = {
+  cursor: 'pointer',
+  margin: '2px 3px',
+  padding: '0 6px',
+  fontSize: '11px',
+  lineHeight: '18px',
+  borderRadius: '4px',
+  userSelect: 'none',
+  transition: 'all 0.15s ease',
+};
+
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
 const VMESS_SECURITY_OPTIONS = ['auto', 'aes-128-gcm', 'chacha20-poly1305', 'none', 'zero'] as const;
 
@@ -643,6 +658,18 @@ export default function ClientFormModal({
                         <Form.Item label={t('pages.clients.totalGB')} tooltip={t('pages.clients.totalGBDesc')}>
                           <InputNumber value={form.totalGB} min={0} step={1} style={{ width: '100%' }}
                             onChange={(v) => update('totalGB', Number(v) || 0)} />
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}>
+                            {PRESET_TRAFFIC_GB.map((gb) => (
+                              <Tag
+                                key={gb}
+                                color={form.totalGB === gb ? 'processing' : 'default'}
+                                style={presetTagStyle}
+                                onClick={() => update('totalGB', gb)}
+                              >
+                                {gb}
+                              </Tag>
+                            ))}
+                          </div>
                         </Form.Item>
                       </Col>
                       <Col xs={24} md={6}>
@@ -675,6 +702,20 @@ export default function ClientFormModal({
                               </Space.Compact>
                             </span>
                           </Tooltip>
+                          {!limitIpDisabled && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}>
+                              {PRESET_IP_LIMITS.map((ip) => (
+                                <Tag
+                                  key={ip}
+                                  color={form.limitIp === ip ? 'processing' : 'default'}
+                                  style={presetTagStyle}
+                                  onClick={() => update('limitIp', ip)}
+                                >
+                                  {ip}
+                                </Tag>
+                              ))}
+                            </div>
+                          )}
                         </Form.Item>
                       </Col>
                     </Row>
@@ -685,6 +726,18 @@ export default function ClientFormModal({
                           <Form.Item label={t('pages.clients.expireDays')}>
                             <InputNumber value={form.delayedDays} min={0} style={{ width: '100%' }}
                               onChange={(v) => update('delayedDays', Number(v) || 0)} />
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}>
+                              {PRESET_DAYS.map((days) => (
+                                <Tag
+                                  key={days}
+                                  color={form.delayedDays === days ? 'processing' : 'default'}
+                                  style={presetTagStyle}
+                                  onClick={() => update('delayedDays', days)}
+                                >
+                                  {days}
+                                </Tag>
+                              ))}
+                            </div>
                           </Form.Item>
                         ) : (
                           <Form.Item label={t('pages.clients.expiryTime')}>
@@ -692,6 +745,21 @@ export default function ClientFormModal({
                               value={form.expiryDate}
                               onChange={(d) => update('expiryDate', d || null)}
                             />
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}>
+                              {PRESET_DAYS.map((days) => {
+                                const isSelected = form.expiryDate && Math.abs(form.expiryDate.diff(dayjs(), 'day') - days) === 0;
+                                return (
+                                  <Tag
+                                    key={days}
+                                    color={isSelected ? 'processing' : 'default'}
+                                    style={presetTagStyle}
+                                    onClick={() => update('expiryDate', dayjs().add(days, 'day'))}
+                                  >
+                                    {days}
+                                  </Tag>
+                                );
+                              })}
+                            </div>
                           </Form.Item>
                         )}
                       </Col>
