@@ -1,7 +1,7 @@
 {
   "name": "d-ui-frontend",
   "private": true,
-  "version": "2.2.17",
+  "version": "2.2.18",
   "type": "module",
   "description": "d-ui panel frontend (React 19 + Ant Design 6 + Vite 8).",
   "engines": {
