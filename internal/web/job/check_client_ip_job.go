@@ -102,9 +102,10 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 				ts = ts / 1000
 			}
 			// Xray's statsUserOnline keeps track of seen IPs.
-			// Ignore IPs that haven't been active in the last 180 seconds
-			// so idle background connections still count, but offline devices are pruned.
-			if now-ts > 180 {
+			// Active connections refresh LastSeen continuously.
+			// Ignore IPs that haven't been active in the last 25 seconds
+			// so offline devices are quickly pruned, allowing new devices to connect after disconnect.
+			if now-ts > 25 {
 				continue
 			}
 			if _, exists := observed[user.Email]; !exists {
@@ -471,10 +472,10 @@ func partitionLiveIps(ipMap map[string]IPWithTimestamp, observedThisScan map[str
 	now := time.Now().Unix()
 	for ip, entry := range ipMap {
 		// Consider an IP "live" if it was seen locally in this scan, OR if its
-		// timestamp from the synced database is very recent (within 180 seconds).
+		// timestamp from the synced database is very recent (within 25 seconds).
 		// This ensures cluster-wide limits work even if the IP was seen on another node.
-		// Use 180 seconds as the live check since the scan runs every 2s.
-		if observedThisScan[ip] || now-entry.Timestamp < 180 {
+		// Use 25 seconds as the live window since the scan runs every 2s.
+		if observedThisScan[ip] || now-entry.Timestamp < 25 {
 			live = append(live, entry)
 		} else {
 			historical = append(historical, entry)
@@ -623,13 +624,16 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 					banIpDirectly(ipTime.IP)
 				}
 			}
-			banned = true
+			// Keep banned = false so we NEVER remove/re-add the user in Xray.
+			// This ensures User 1 (legitimate user) stays 100% online without interruption,
+			// while User 2's packets are instantly blocked at the network/fail2ban layer.
+			banned = false
 		} else {
 			for _, ipTime := range bannedLive {
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
 				banIpDirectly(ipTime.IP)
 			}
-			banned = true
+			banned = false
 		}
 	}
 
@@ -855,10 +859,16 @@ func banIpDirectly(ip string) {
 
 		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl-v6", "banip", ip).Run()
 		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
+		_ = exec.CommandContext(ctx, "ss", "-K", "dst", fmt.Sprintf("[%s]", ip)).Run()
+		_ = exec.CommandContext(ctx, "conntrack", "-D", "-s", ip).Run()
+		_ = exec.CommandContext(ctx, "conntrack", "-D", "-d", ip).Run()
 	} else {
 		// IPv4 address
 		_ = exec.CommandContext(ctx, "iptables", "-I", "INPUT", "-s", ip, "-j", "DROP").Run()
 		_ = exec.CommandContext(ctx, "iptables", "-I", "FORWARD", "-s", ip, "-j", "DROP").Run()
 		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
+		_ = exec.CommandContext(ctx, "ss", "-K", "dst", ip).Run()
+		_ = exec.CommandContext(ctx, "conntrack", "-D", "-s", ip).Run()
+		_ = exec.CommandContext(ctx, "conntrack", "-D", "-d", ip).Run()
 	}
 }
