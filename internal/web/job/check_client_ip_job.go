@@ -99,6 +99,13 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 			if ts <= 0 {
 				ts = now
 			}
+			// Xray's statsUserOnline keeps track of all seen IPs since startup/reload.
+			// To ensure accurate real-time IP limiting and prevent offline devices
+			// from blocking new ones, we ignore IPs that haven't been active in the last 60 seconds.
+			// (Changed from 10s to 60s so idle users reading pages are not falsely marked offline).
+			if now-ts > 60 {
+				continue
+			}
 			if _, exists := observed[user.Email]; !exists {
 				observed[user.Email] = make(map[string]int64)
 			}
@@ -488,9 +495,9 @@ func partitionLiveIps(ipMap map[string]IPWithTimestamp, observedThisScan map[str
 	now := time.Now().Unix()
 	for ip, entry := range ipMap {
 		// Consider an IP "live" if it was seen locally in this scan, OR if its
-		// timestamp from the synced database is recent (within 120 seconds).
+		// timestamp from the synced database is recent (within 60 seconds).
 		// This ensures cluster-wide limits work even if the IP was seen on another node.
-		if observedThisScan[ip] || now-entry.Timestamp <= 120 {
+		if observedThisScan[ip] || now-entry.Timestamp <= 60 {
 			live = append(live, entry)
 		} else {
 			historical = append(historical, entry)
