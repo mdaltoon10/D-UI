@@ -101,9 +101,9 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 			}
 			// Xray's statsUserOnline keeps track of all seen IPs since startup/reload.
 			// To ensure accurate real-time IP limiting and prevent offline devices
-			// from blocking new ones, we ignore IPs that haven't been active in the last 60 seconds.
-			// (Changed from 10s to 60s so idle users reading pages are not falsely marked offline).
-			if now-ts > 60 {
+			// from blocking new ones, we ignore IPs that haven't been active in the last 30 seconds.
+			// (Optimized to 30s so idle users reading pages are not falsely marked offline, while keeping limits highly reactive).
+			if now-ts > 30 {
 				continue
 			}
 			if _, exists := observed[user.Email]; !exists {
@@ -459,7 +459,7 @@ func mergeClientIps(old, new []IPWithTimestamp, staleCutoff int64, newAlwaysLive
 		} else {
 			// Existing IP, update Timestamp to latest activity, but PRESERVE Created!
 			if ipTime.Timestamp > existing.Timestamp {
-				if ipTime.Timestamp-existing.Timestamp > 60 {
+				if ipTime.Timestamp-existing.Timestamp > 30 {
 					existing.Created = ipTime.Timestamp
 				}
 				existing.Timestamp = ipTime.Timestamp
@@ -495,9 +495,9 @@ func partitionLiveIps(ipMap map[string]IPWithTimestamp, observedThisScan map[str
 	now := time.Now().Unix()
 	for ip, entry := range ipMap {
 		// Consider an IP "live" if it was seen locally in this scan, OR if its
-		// timestamp from the synced database is recent (within 60 seconds).
+		// timestamp from the synced database is recent (within 30 seconds).
 		// This ensures cluster-wide limits work even if the IP was seen on another node.
-		if observedThisScan[ip] || now-entry.Timestamp <= 60 {
+		if observedThisScan[ip] || now-entry.Timestamp <= 30 {
 			live = append(live, entry)
 		} else {
 			historical = append(historical, entry)
@@ -698,25 +698,29 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 	if len(bannedLive) > 0 {
 		shouldCleanLog = true
 
-		logIpFile, err := os.OpenFile(xray.GetIPLimitLogPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-		if err == nil {
-			ipLogger := log.New(logIpFile, "", log.LstdFlags)
-			for _, ipTime := range bannedLive {
-				ipLogger.Printf("[LIMIT_IP] Email = %s || Disconnecting OLD IP = %s || Timestamp = %d", clientEmail, ipTime.IP, ipTime.Timestamp)
+		isKickOnly := policy == "kick_only" || policy == "kick_oldest_kick_only" || policy == "block_newest_kick_only"
+		if !isKickOnly {
+			logIpFile, err := os.OpenFile(xray.GetIPLimitLogPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+			if err == nil {
+				ipLogger := log.New(logIpFile, "", log.LstdFlags)
+				for _, ipTime := range bannedLive {
+					j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
+					ipLogger.Printf("[LIMIT_IP] Email = %s || Disconnecting OLD IP = %s || Timestamp = %d", clientEmail, ipTime.IP, ipTime.Timestamp)
+				}
+				_ = logIpFile.Close()
 			}
-			_ = logIpFile.Close()
-		}
-
-		for _, ipTime := range bannedLive {
-			j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
+			banned = false
+		} else {
+			for _, ipTime := range bannedLive {
+				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
+			}
+			banned = true
 		}
 
 		// Direct, instant, ruthless kernel-level firewall block and socket kill
 		for _, ipTime := range bannedLive {
 			banIpDirectly(ipTime.IP)
 		}
-
-		banned = true
 	}
 
 	// keep kept-live + historical in the blob so the panel keeps showing
