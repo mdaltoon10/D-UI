@@ -624,13 +624,13 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 					banIpDirectly(ipTime.IP)
 				}
 			}
-			banned = true
+			banned = false
 		} else {
 			for _, ipTime := range bannedLive {
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
 				banIpDirectly(ipTime.IP)
 			}
-			banned = true
+			banned = false
 		}
 	}
 
@@ -838,7 +838,7 @@ func getIPv6Subnet64(ipStr string) string {
 	return fmt.Sprintf("%s/64", network.String())
 }
 
-// banIpDirectly immediately bans an IP using fail2ban-client and iptables/ip6tables for 0ms latency enforcement.
+// banIpDirectly immediately bans an IP using fail2ban-client, iptables/ip6tables, conntrack, and ss for instant kernel-level rejection.
 func banIpDirectly(ip string) {
 	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
 		return
@@ -847,28 +847,39 @@ func banIpDirectly(ip string) {
 	defer cancel()
 
 	if strings.Contains(ip, ":") {
-		// IPv6 address: drop specific IP
-		_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "-s", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "-s", ip, "-j", "DROP").Run()
+		// IPv6 address: TCP Reset + Drop at position 1
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", ip, "-p", "tcp", "-j", "REJECT", "--reject-with", "tcp-reset").Run()
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", ip, "-p", "udp", "-j", "REJECT", "--reject-with", "icmp6-port-unreachable").Run()
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "1", "-d", ip, "-j", "DROP").Run()
 
 		// Drop the /64 IPv6 subnet prefix (essential for mobile carriers using dynamic IPv6 addresses)
 		subnet64 := getIPv6Subnet64(ip)
 		if subnet64 != "" {
-			_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "-s", subnet64, "-j", "DROP").Run()
-			_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "-s", subnet64, "-j", "DROP").Run()
+			_ = exec.CommandContext(ctx, "ip6tables", "-I", "INPUT", "1", "-s", subnet64, "-j", "DROP").Run()
+			_ = exec.CommandContext(ctx, "ip6tables", "-I", "OUTPUT", "1", "-d", subnet64, "-j", "DROP").Run()
+			_ = exec.CommandContext(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", subnet64, "-j", "DROP").Run()
 		}
 
 		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl-v6", "banip", ip).Run()
 		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
 		_ = exec.CommandContext(ctx, "ss", "-K", "dst", fmt.Sprintf("[%s]", ip)).Run()
+		_ = exec.CommandContext(ctx, "ss", "-K", "src", fmt.Sprintf("[%s]", ip)).Run()
 		_ = exec.CommandContext(ctx, "conntrack", "-D", "-s", ip).Run()
 		_ = exec.CommandContext(ctx, "conntrack", "-D", "-d", ip).Run()
 	} else {
-		// IPv4 address
-		_ = exec.CommandContext(ctx, "iptables", "-I", "INPUT", "-s", ip, "-j", "DROP").Run()
-		_ = exec.CommandContext(ctx, "iptables", "-I", "FORWARD", "-s", ip, "-j", "DROP").Run()
+		// IPv4 address: TCP Reset + Drop at position 1
+		_ = exec.CommandContext(ctx, "iptables", "-I", "INPUT", "1", "-s", ip, "-p", "tcp", "-j", "REJECT", "--reject-with", "tcp-reset").Run()
+		_ = exec.CommandContext(ctx, "iptables", "-I", "INPUT", "1", "-s", ip, "-p", "udp", "-j", "REJECT", "--reject-with", "icmp-port-unreachable").Run()
+		_ = exec.CommandContext(ctx, "iptables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "iptables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "iptables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP").Run()
+		_ = exec.CommandContext(ctx, "iptables", "-I", "FORWARD", "1", "-d", ip, "-j", "DROP").Run()
 		_ = exec.CommandContext(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip).Run()
 		_ = exec.CommandContext(ctx, "ss", "-K", "dst", ip).Run()
+		_ = exec.CommandContext(ctx, "ss", "-K", "src", ip).Run()
 		_ = exec.CommandContext(ctx, "conntrack", "-D", "-s", ip).Run()
 		_ = exec.CommandContext(ctx, "conntrack", "-D", "-d", ip).Run()
 	}
