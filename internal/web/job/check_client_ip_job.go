@@ -102,8 +102,8 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 			}
 			// Xray's statsUserOnline keeps track of all seen IPs since startup/reload.
 			// To ensure accurate real-time IP limiting and prevent offline devices
-			// from blocking new ones, we ignore IPs that haven't been active in the last 15 seconds.
-			if now-ts > 15 {
+			// from blocking new ones, we ignore IPs that haven't been active in the last 10 seconds.
+			if now-ts > 10 {
 				continue
 			}
 			if _, exists := observed[user.Email]; !exists {
@@ -430,8 +430,8 @@ func mergeClientIps(old, new []IPWithTimestamp, staleCutoff int64, newAlwaysLive
 		} else {
 			// Existing IP, update Timestamp to latest activity, but PRESERVE Created!
 			if ipTime.Timestamp > existing.Timestamp {
-				// If the IP was offline/unseen for more than 5 seconds, treat it as a new session
-				if ipTime.Timestamp-existing.Timestamp > 5 {
+				// If the IP was offline/unseen for more than 30 seconds, treat it as a new session
+				if ipTime.Timestamp-existing.Timestamp > 30 {
 					existing.Created = ipTime.Timestamp
 				}
 				existing.Timestamp = ipTime.Timestamp
@@ -467,9 +467,9 @@ func partitionLiveIps(ipMap map[string]IPWithTimestamp, observedThisScan map[str
 	now := time.Now().Unix()
 	for ip, entry := range ipMap {
 		// Consider an IP "live" if it was seen locally in this scan, OR if its
-		// timestamp from the synced database is very recent (e.g. within 5 seconds).
+		// timestamp from the synced database is very recent (e.g. within 10 seconds).
 		// This ensures cluster-wide limits work even if the IP was seen on another node.
-		if observedThisScan[ip] || now-entry.Timestamp < 5 {
+		if observedThisScan[ip] || now-entry.Timestamp < 10 {
 			live = append(live, entry)
 		} else {
 			historical = append(historical, entry)
@@ -586,6 +586,7 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 	keptLive, bannedLive := selectIpsToBan(liveIps, limitIp, policy)
 	if len(bannedLive) > 0 {
 		shouldCleanLog = true
+		isKickOnly := policy == "kick_only" || policy == "kick_oldest_kick_only" || policy == "block_newest_kick_only"
 
 		logIpFile, err := os.OpenFile(xray.GetIPLimitLogPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 		if err == nil {
@@ -611,7 +612,7 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 			banIpDirectly(ipTime.IP)
 		}
 
-		banned = true
+		banned = isKickOnly
 	}
 
 	// keep kept-live + historical in the blob so the panel keeps showing
