@@ -56,7 +56,31 @@ func NewCheckClientIpJob() *CheckClientIpJob {
 	return job
 }
 
+var lastFullFlushTime time.Time
+
+func (j *CheckClientIpJob) checkPeriodicFullFlush() {
+	blackholeMu.Lock()
+	defer blackholeMu.Unlock()
+
+	now := time.Now()
+	if lastFullFlushTime.IsZero() {
+		lastFullFlushTime = now
+		return
+	}
+
+	if now.Sub(lastFullFlushTime) >= 1*time.Minute {
+		logger.Infof("[LIMIT_IP] PERIODIC 1-MINUTE CLEANUP: Wiping all blocked/banned IPs from Fail2ban, UFW, Firewall, and routing table to prevent stale locks...")
+		for ip := range blackholeIPs {
+			unbanIpDirectlyNoLock(ip)
+		}
+		blackholeIPs = make(map[string]int64)
+		blackholeEmails = make(map[string]string)
+		lastFullFlushTime = now
+	}
+}
+
 func (j *CheckClientIpJob) Run() {
+	j.checkPeriodicFullFlush()
 	j.cleanExpiredBlackholes()
 
 	observed, apiMode := j.collectFromOnlineAPI()
@@ -654,7 +678,7 @@ func (j *CheckClientIpJob) cleanExpiredBlackholes() {
 	now := time.Now().Unix()
 	for ip, expireAt := range blackholeIPs {
 		if now >= expireAt {
-			unbanIpDirectly(ip)
+			unbanIpDirectlyNoLock(ip)
 			delete(blackholeIPs, ip)
 			delete(blackholeEmails, ip)
 		}
@@ -666,10 +690,54 @@ func unbanClientIps(email string) {
 	defer blackholeMu.Unlock()
 	for ip, e := range blackholeEmails {
 		if e == email {
-			unbanIpDirectly(ip)
+			unbanIpDirectlyNoLock(ip)
 			delete(blackholeIPs, ip)
 			delete(blackholeEmails, ip)
 		}
+	}
+}
+
+func unbanIpDirectly(ip string) {
+	blackholeMu.Lock()
+	defer blackholeMu.Unlock()
+	unbanIpDirectlyNoLock(ip)
+}
+
+func unbanIpDirectlyNoLock(ip string) {
+	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	logger.Infof("[LIMIT_IP] Removing kernel blackhole route and firewall rule for IP: %s", ip)
+
+	if strings.Contains(ip, ":") {
+		runSysCmd(ctx, "ip6tables", "-D", "INPUT", "-s", ip, "-j", "DROP")
+		runSysCmd(ctx, "ip6tables", "-D", "OUTPUT", "-d", ip, "-j", "DROP")
+		runSysCmd(ctx, "ip6tables", "-D", "FORWARD", "-s", ip, "-j", "DROP")
+		subnet64 := getIPv6Subnet64(ip)
+		if subnet64 != "" {
+			runSysCmd(ctx, "ip6tables", "-D", "INPUT", "-s", subnet64, "-j", "DROP")
+			runSysCmd(ctx, "ip6tables", "-D", "OUTPUT", "-d", subnet64, "-j", "DROP")
+			runSysCmd(ctx, "ip6tables", "-D", "FORWARD", "-s", subnet64, "-j", "DROP")
+		}
+		runSysCmd(ctx, "ip", "-6", "route", "del", "blackhole", ip)
+		runSysCmd(ctx, "ip", "-6", "route", "del", ip)
+		runSysCmd(ctx, "ufw", "delete", "deny", "from", ip)
+		runSysCmd(ctx, "fail2ban-client", "unban", ip)
+		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl-v6", "unbanip", ip)
+		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl", "unbanip", ip)
+	} else {
+		runSysCmd(ctx, "iptables", "-D", "INPUT", "-s", ip, "-j", "DROP")
+		runSysCmd(ctx, "iptables", "-D", "OUTPUT", "-d", ip, "-j", "DROP")
+		runSysCmd(ctx, "iptables", "-D", "FORWARD", "-s", ip, "-j", "DROP")
+		runSysCmd(ctx, "ip", "route", "del", "blackhole", ip)
+		runSysCmd(ctx, "ip", "route", "del", ip)
+		runSysCmd(ctx, "ufw", "delete", "deny", "from", ip)
+		runSysCmd(ctx, "fail2ban-client", "unban", ip)
+		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl", "unbanip", ip)
 	}
 }
 
@@ -751,37 +819,6 @@ func banIpDirectly(ip string, email string) {
 		runSysCmd(ctx, "conntrack", "-D", "-s", ip)
 		runSysCmd(ctx, "conntrack", "-D", "-d", ip)
 		runSysCmd(ctx, "ufw", "deny", "from", ip)
-	}
-}
-
-func unbanIpDirectly(ip string) {
-	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	logger.Infof("[LIMIT_IP] Removing kernel blackhole route and firewall rule for IP: %s", ip)
-
-	if strings.Contains(ip, ":") {
-		runSysCmd(ctx, "ip6tables", "-D", "INPUT", "-s", ip, "-j", "DROP")
-		runSysCmd(ctx, "ip6tables", "-D", "OUTPUT", "-d", ip, "-j", "DROP")
-		runSysCmd(ctx, "ip6tables", "-D", "FORWARD", "-s", ip, "-j", "DROP")
-		subnet64 := getIPv6Subnet64(ip)
-		if subnet64 != "" {
-			runSysCmd(ctx, "ip6tables", "-D", "INPUT", "-s", subnet64, "-j", "DROP")
-			runSysCmd(ctx, "ip6tables", "-D", "OUTPUT", "-d", subnet64, "-j", "DROP")
-			runSysCmd(ctx, "ip6tables", "-D", "FORWARD", "-s", subnet64, "-j", "DROP")
-		}
-		runSysCmd(ctx, "ip", "-6", "route", "del", "blackhole", ip)
-		runSysCmd(ctx, "ip", "-6", "route", "del", ip)
-	} else {
-		runSysCmd(ctx, "iptables", "-D", "INPUT", "-s", ip, "-j", "DROP")
-		runSysCmd(ctx, "iptables", "-D", "OUTPUT", "-d", ip, "-j", "DROP")
-		runSysCmd(ctx, "iptables", "-D", "FORWARD", "-s", ip, "-j", "DROP")
-		runSysCmd(ctx, "ip", "route", "del", "blackhole", ip)
-		runSysCmd(ctx, "ip", "route", "del", ip)
 	}
 }
 
