@@ -48,10 +48,10 @@ D-UI 作为原始 D-UI 项目的增强分支（fork），增加了更广泛的�
 bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh)
 ```
 
-若要安装特定版本，请在命令后附加对应的标签（例如 `v3.0.0`）：
+若要安装特定版本，请在命令后附加对应的标签（例如 `v3.0.1`）：
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v3.0.0
+bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v3.0.1
 ```
 
 若要安装滚动更新的 **dev** 版本（来自 `main` 的最新逐次提交预发布版本，而非稳定版本），请传入 `dev-latest`：

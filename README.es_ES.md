@@ -48,10 +48,10 @@ Construido como un fork mejorado del proyecto D-UI original, D-UI añade un sopo
 bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh)
 ```
 
-Para instalar una versión específica, añade su etiqueta (p. ej. `v3.0.0`):
+Para instalar una versión específica, añade su etiqueta (p. ej. `v3.0.1`):
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v3.0.0
+bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v3.0.1
 ```
 
 Para instalar la versión **dev** continua (la última prelanzamiento por commit desde `main`, no una versión estable), pasa `dev-latest`:
