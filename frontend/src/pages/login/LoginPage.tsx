@@ -240,7 +240,7 @@ export default function LoginPage() {
             ) : (
               <div className="login-card">
                 <div className="brand">
-                  <span className="brand-name">D-UI</span>
+                  <span className="brand-name">Daltoon-UI</span>
                   {isResellerPortal ? (
                     <div className="portal-tag reseller">
                       <SafetyOutlined />

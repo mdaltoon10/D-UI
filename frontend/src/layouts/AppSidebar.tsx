@@ -133,8 +133,8 @@ function VersionBadge({ version, collapsed }: { version: string; collapsed?: boo
       target="_blank"
       rel="noopener noreferrer"
       className={`sider-version${collapsed ? ' is-collapsed' : ''}`}
-      aria-label={`GitHub D-UI ${label}`}
-      title={`GitHub D-UI ${label}`}
+      aria-label={`GitHub Daltoon-UI ${label}`}
+      title={`GitHub Daltoon-UI ${label}`}
     >
       <GithubOutlined style={{ fontSize: 16 }} />
       {!collapsed && <span className="sider-version-text">{label}</span>}
@@ -226,7 +226,7 @@ export default function AppSidebar() {
   const brandName = useMemo(() => {
     if (currentAdmin?.remark) return currentAdmin.remark;
     if (currentAdmin?.username) return currentAdmin.username;
-    return 'D-UI';
+    return 'Daltoon-UI';
   }, [currentAdmin]);
 
   const currentTheme: 'light' | 'dark' = isDark ? 'dark' : 'light';
