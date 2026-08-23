@@ -76,26 +76,15 @@ func (lw *LogWriter) Write(m []byte) (n int, err error) {
 
 			if strings.Contains(msgBodyLower, "tls handshake error") ||
 				strings.Contains(msgBodyLower, "connection ends") {
-				logger.Debug("XRAY: " + msgBody)
 				lw.setLastLine("")
 				continue
 			}
 
-			if strings.Contains(msgBodyLower, "failed") {
-				logger.Error("XRAY: " + msgBody)
-			} else {
-				switch level {
-				case "Debug":
-					logger.Debug("XRAY: " + msgBody)
-				case "Info":
-					logger.Info("XRAY: " + msgBody)
-				case "Warning":
-					logger.Warning("XRAY: " + msgBody)
-				case "Error":
-					logger.Error("XRAY: " + msgBody)
-				default:
-					logger.Debug("XRAY: " + msg)
-				}
+			switch level {
+			case "Warning", "Error":
+				logger.Debug("XRAY: " + msgBody)
+			default:
+				// suppress routine info/debug from saturating disk and logger mutex
 			}
 			lw.setLastLine("")
 		} else if msg != "" {
@@ -103,14 +92,11 @@ func (lw *LogWriter) Write(m []byte) (n int, err error) {
 
 			if strings.Contains(msgLower, "tls handshake error") ||
 				strings.Contains(msgLower, "connection ends") {
-				logger.Debug("XRAY: " + msg)
 				lw.setLastLine(msg)
 				continue
 			}
 
-			if strings.Contains(msgLower, "failed") {
-				logger.Error("XRAY: " + msg)
-			} else {
+			if strings.Contains(msgLower, "failed") || strings.Contains(msgLower, "error") {
 				logger.Debug("XRAY: " + msg)
 			}
 			lw.setLastLine(msg)

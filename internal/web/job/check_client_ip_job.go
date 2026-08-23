@@ -649,42 +649,46 @@ func (j *CheckClientIpJob) delInboundClientIps(tx *gorm.DB, clientEmail string) 
 }
 
 func (j *CheckClientIpJob) cleanExpiredBlackholes() {
+	var ipsToUnban []string
 	blackholeMu.Lock()
-	defer blackholeMu.Unlock()
 	now := time.Now().Unix()
 	for ip, expireAt := range blackholeIPs {
 		if now >= expireAt {
-			unbanIpDirectlyNoLock(ip)
+			ipsToUnban = append(ipsToUnban, ip)
 			delete(blackholeIPs, ip)
 			delete(blackholeEmails, ip)
 		}
+	}
+	blackholeMu.Unlock()
+
+	for _, ip := range ipsToUnban {
+		unbanIpDirectly(ip)
 	}
 }
 
 func unbanClientIps(email string) {
+	var ipsToUnban []string
 	blackholeMu.Lock()
-	defer blackholeMu.Unlock()
 	for ip, e := range blackholeEmails {
 		if e == email {
-			unbanIpDirectlyNoLock(ip)
+			ipsToUnban = append(ipsToUnban, ip)
 			delete(blackholeIPs, ip)
 			delete(blackholeEmails, ip)
 		}
 	}
+	blackholeMu.Unlock()
+
+	for _, ip := range ipsToUnban {
+		unbanIpDirectly(ip)
+	}
 }
 
 func unbanIpDirectly(ip string) {
-	blackholeMu.Lock()
-	defer blackholeMu.Unlock()
-	unbanIpDirectlyNoLock(ip)
-}
-
-func unbanIpDirectlyNoLock(ip string) {
 	if ip == "" || ip == "127.0.0.1" || ip == "::1" {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	logger.Infof("[LIMIT_IP] Removing kernel blackhole route and firewall rule for IP: %s", ip)
@@ -701,19 +705,12 @@ func unbanIpDirectlyNoLock(ip string) {
 		}
 		runSysCmd(ctx, "ip", "-6", "route", "del", "blackhole", ip)
 		runSysCmd(ctx, "ip", "-6", "route", "del", ip)
-		runSysCmd(ctx, "ufw", "delete", "deny", "from", ip)
-		runSysCmd(ctx, "fail2ban-client", "unban", ip)
-		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl-v6", "unbanip", ip)
-		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl", "unbanip", ip)
 	} else {
 		deleteIptablesRuleAll(ctx, "iptables", "INPUT", "-s", ip)
 		deleteIptablesRuleAll(ctx, "iptables", "OUTPUT", "-d", ip)
 		deleteIptablesRuleAll(ctx, "iptables", "FORWARD", "-s", ip)
 		runSysCmd(ctx, "ip", "route", "del", "blackhole", ip)
 		runSysCmd(ctx, "ip", "route", "del", ip)
-		runSysCmd(ctx, "ufw", "delete", "deny", "from", ip)
-		runSysCmd(ctx, "fail2ban-client", "unban", ip)
-		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl", "unbanip", ip)
 	}
 }
 
@@ -808,25 +805,20 @@ func banIpDirectly(ip string, email string) {
 			runSysCmd(ctx, "ip6tables", "-I", "FORWARD", "1", "-s", subnet64, "-j", "DROP")
 		}
 		runSysCmd(ctx, "ip", "-6", "route", "replace", "blackhole", ip)
-		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl-v6", "banip", ip)
-		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip)
 		runSysCmd(ctx, "ss", "-K", "dst", fmt.Sprintf("[%s]", ip))
 		runSysCmd(ctx, "ss", "-K", "src", fmt.Sprintf("[%s]", ip))
 		runSysCmd(ctx, "conntrack", "-D", "-s", ip)
 		runSysCmd(ctx, "conntrack", "-D", "-d", ip)
-		runSysCmd(ctx, "ufw", "deny", "from", ip)
 	} else {
 		// IPv4 address: Drop at position 1, add blackhole, & reset connections
 		runSysCmd(ctx, "iptables", "-I", "INPUT", "1", "-s", ip, "-j", "DROP")
 		runSysCmd(ctx, "iptables", "-I", "OUTPUT", "1", "-d", ip, "-j", "DROP")
 		runSysCmd(ctx, "iptables", "-I", "FORWARD", "1", "-s", ip, "-j", "DROP")
 		runSysCmd(ctx, "ip", "route", "replace", "blackhole", ip)
-		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl", "banip", ip)
 		runSysCmd(ctx, "ss", "-K", "dst", ip)
 		runSysCmd(ctx, "ss", "-K", "src", ip)
 		runSysCmd(ctx, "conntrack", "-D", "-s", ip)
 		runSysCmd(ctx, "conntrack", "-D", "-d", ip)
-		runSysCmd(ctx, "ufw", "deny", "from", ip)
 	}
 }
 
@@ -937,15 +929,13 @@ func (j *CheckClientIpJob) updateInboundClientIps(tx *gorm.DB, inboundClientIps 
 				}
 				_ = logIpFile.Close()
 			}
-			banned = true // Always force banned = true to trigger Xray API disconnect for robust socket killing
 		} else {
 			for _, ipTime := range bannedLive {
 				j.disAllowedIps = append(j.disAllowedIps, ipTime.IP)
 			}
-			banned = true
 		}
 
-		// Direct, instant, ruthless kernel-level firewall block and socket kill
+		// Direct, instant kernel-level firewall block and socket kill for the banned IP only
 		for _, ipTime := range bannedLive {
 			banIpDirectly(ipTime.IP, clientEmail)
 		}
