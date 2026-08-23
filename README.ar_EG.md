@@ -48,10 +48,10 @@
 bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh)
 ```
 
-لتثبيت إصدار محدد، أضِف وسمه (مثل `v3.0.1`):
+لتثبيت إصدار محدد، أضِف وسمه (مثل `v3.0.2`):
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v3.0.1
+bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v3.0.2
 ```
 
 لتثبيت بنية **dev** المتجددة (أحدث إصدار أولي لكل التزام (commit) من `main`، وليس إصدارًا مستقرًا)، مرّر `dev-latest`:

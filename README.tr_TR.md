@@ -48,10 +48,10 @@ Orijinal D-UI projesinin geliştirilmiş bir çatallaması (fork) olarak inşa e
 bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh)
 ```
 
-Belirli bir sürümü kurmak için, etiketini (ör. `v3.0.1`) ekleyin:
+Belirli bir sürümü kurmak için, etiketini (ör. `v3.0.2`) ekleyin:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v3.0.1
+bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v3.0.2
 ```
 
 Sürekli güncellenen **dev** sürümünü (kararlı bir sürüm değil; `main` dalından her commit'te oluşturulan en son ön sürüm) kurmak için `dev-latest` değerini geçirin:

@@ -48,10 +48,10 @@ Built as an enhanced fork of the original D-UI project, D-UI adds broader protoc
 bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh)
 ```
 
-To install a specific version, append its tag (e.g. `v3.0.1`):
+To install a specific version, append its tag (e.g. `v3.0.2`):
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v3.0.1
+bash <(curl -Ls https://raw.githubusercontent.com/mdaltoon10/D-UI/main/install.sh) v3.0.2
 ```
 
 To install the rolling **dev** build (latest per-commit pre-release from `main`, not a stable release), pass `dev-latest`:

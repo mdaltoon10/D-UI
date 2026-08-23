@@ -58,10 +58,10 @@ func InitLogger(level logging.Level) {
 		backends = append(backends, leveledBackend)
 	}
 
-	// File backend with DEBUG level for comprehensive logging
+	// File backend with bounded log level to prevent disk saturation
 	if fileBackend := initFileBackend(); fileBackend != nil {
 		leveledBackend := logging.AddModuleLevel(fileBackend)
-		leveledBackend.SetLevel(logging.DEBUG, "d-ui")
+		leveledBackend.SetLevel(level, "d-ui")
 		backends = append(backends, leveledBackend)
 	}
 

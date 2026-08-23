@@ -690,14 +690,14 @@ func unbanIpDirectlyNoLock(ip string) {
 	logger.Infof("[LIMIT_IP] Removing kernel blackhole route and firewall rule for IP: %s", ip)
 
 	if strings.Contains(ip, ":") {
-		runSysCmd(ctx, "ip6tables", "-D", "INPUT", "-s", ip, "-j", "DROP")
-		runSysCmd(ctx, "ip6tables", "-D", "OUTPUT", "-d", ip, "-j", "DROP")
-		runSysCmd(ctx, "ip6tables", "-D", "FORWARD", "-s", ip, "-j", "DROP")
+		deleteIptablesRuleAll(ctx, "ip6tables", "INPUT", "-s", ip)
+		deleteIptablesRuleAll(ctx, "ip6tables", "OUTPUT", "-d", ip)
+		deleteIptablesRuleAll(ctx, "ip6tables", "FORWARD", "-s", ip)
 		subnet64 := getIPv6Subnet64(ip)
 		if subnet64 != "" {
-			runSysCmd(ctx, "ip6tables", "-D", "INPUT", "-s", subnet64, "-j", "DROP")
-			runSysCmd(ctx, "ip6tables", "-D", "OUTPUT", "-d", subnet64, "-j", "DROP")
-			runSysCmd(ctx, "ip6tables", "-D", "FORWARD", "-s", subnet64, "-j", "DROP")
+			deleteIptablesRuleAll(ctx, "ip6tables", "INPUT", "-s", subnet64)
+			deleteIptablesRuleAll(ctx, "ip6tables", "OUTPUT", "-d", subnet64)
+			deleteIptablesRuleAll(ctx, "ip6tables", "FORWARD", "-s", subnet64)
 		}
 		runSysCmd(ctx, "ip", "-6", "route", "del", "blackhole", ip)
 		runSysCmd(ctx, "ip", "-6", "route", "del", ip)
@@ -706,14 +706,32 @@ func unbanIpDirectlyNoLock(ip string) {
 		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl-v6", "unbanip", ip)
 		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl", "unbanip", ip)
 	} else {
-		runSysCmd(ctx, "iptables", "-D", "INPUT", "-s", ip, "-j", "DROP")
-		runSysCmd(ctx, "iptables", "-D", "OUTPUT", "-d", ip, "-j", "DROP")
-		runSysCmd(ctx, "iptables", "-D", "FORWARD", "-s", ip, "-j", "DROP")
+		deleteIptablesRuleAll(ctx, "iptables", "INPUT", "-s", ip)
+		deleteIptablesRuleAll(ctx, "iptables", "OUTPUT", "-d", ip)
+		deleteIptablesRuleAll(ctx, "iptables", "FORWARD", "-s", ip)
 		runSysCmd(ctx, "ip", "route", "del", "blackhole", ip)
 		runSysCmd(ctx, "ip", "route", "del", ip)
 		runSysCmd(ctx, "ufw", "delete", "deny", "from", ip)
 		runSysCmd(ctx, "fail2ban-client", "unban", ip)
 		runSysCmd(ctx, "fail2ban-client", "set", "dui-ipl", "unbanip", ip)
+	}
+}
+
+func deleteIptablesRuleAll(ctx context.Context, cmdName, chain, flag, ip string) {
+	for i := 0; i < 20; i++ {
+		binPath, err := exec.LookPath(cmdName)
+		if err != nil {
+			binPath = "/sbin/" + cmdName
+		}
+		var cmd *exec.Cmd
+		if os.Geteuid() == 0 {
+			cmd = exec.CommandContext(ctx, binPath, "-D", chain, flag, ip, "-j", "DROP")
+		} else {
+			cmd = exec.CommandContext(ctx, "sudo", "-n", binPath, "-D", chain, flag, ip, "-j", "DROP")
+		}
+		if err := cmd.Run(); err != nil {
+			break
+		}
 	}
 }
 
@@ -728,24 +746,32 @@ func getIPv6Subnet64(ipStr string) string {
 }
 
 func runSysCmd(ctx context.Context, name string, args ...string) {
-	paths := []string{name, "/sbin/" + name, "/usr/sbin/" + name, "/usr/bin/" + name, "/bin/" + name}
-	for _, p := range paths {
-		// 1. Try with sudo -n (non-interactive sudo)
-		sudoArgs := append([]string{"-n", p}, args...)
-		cmdSudo := exec.CommandContext(ctx, "sudo", sudoArgs...)
-		if err := cmdSudo.Run(); err == nil {
-			logger.Debugf("[LIMIT_IP] Succeeded: sudo -n %s %v", p, args)
-			return
-		}
-
-		// 2. Fallback to running directly without sudo
-		cmd := exec.CommandContext(ctx, p, args...)
-		if err := cmd.Run(); err == nil {
-			logger.Debugf("[LIMIT_IP] Succeeded: %s %v", p, args)
-			return
+	binPath, err := exec.LookPath(name)
+	if err != nil {
+		for _, p := range []string{"/sbin/" + name, "/usr/sbin/" + name, "/usr/bin/" + name, "/bin/" + name} {
+			if _, statErr := os.Stat(p); statErr == nil {
+				binPath = p
+				break
+			}
 		}
 	}
-	logger.Warningf("[LIMIT_IP] Failed to execute command: %s %v (tried both sudo -n and direct)", name, args)
+	if binPath == "" {
+		binPath = name
+	}
+
+	if os.Geteuid() == 0 {
+		cmd := exec.CommandContext(ctx, binPath, args...)
+		_ = cmd.Run()
+		return
+	}
+
+	cmdSudo := exec.CommandContext(ctx, "sudo", append([]string{"-n", binPath}, args...)...)
+	if err := cmdSudo.Run(); err == nil {
+		return
+	}
+
+	cmd := exec.CommandContext(ctx, binPath, args...)
+	_ = cmd.Run()
 }
 
 func banIpDirectly(ip string, email string) {
@@ -755,14 +781,20 @@ func banIpDirectly(ip string, email string) {
 
 	// Track and manage auto-unbanning in 5 minutes (300 seconds)
 	blackholeMu.Lock()
+	_, alreadyBanned := blackholeIPs[ip]
 	blackholeIPs[ip] = time.Now().Unix() + 300
 	blackholeEmails[ip] = email
 	blackholeMu.Unlock()
 
+	// If this IP is already banned, skip re-executing firewall rules to prevent rule accumulation
+	if alreadyBanned {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	logger.Infof("[LIMIT_IP] RUTHLESS OVERRIDE: Applying kernel blackhole route and killing connections for IP: %s (Client: %s)", ip, email)
+	logger.Infof("[LIMIT_IP] Applying kernel blackhole route and killing connections for IP: %s (Client: %s)", ip, email)
 
 	if strings.Contains(ip, ":") {
 		// IPv6 address: Drop at position 1, add blackhole, & reset connections

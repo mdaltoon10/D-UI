@@ -80,15 +80,18 @@ func (j *ClearLogsJob) Run() {
 }
 
 // wipeAccessLog truncates the user-configured Xray access log so it can't grow
-// unbounded. The IP-limit job no longer reads or rotates it, so this daily wipe
-// is the only thing that caps it. A disabled ("none") or unset access log is
-// left alone, and a missing file is fine — there's nothing to wipe.
+// unbounded and cause disk I/O latency or ping spikes.
 func wipeAccessLog() {
 	accessLogPath, err := xray.GetAccessLogPath()
-	if err != nil || accessLogPath == "none" || accessLogPath == "" {
-		return
+	if err == nil && accessLogPath != "none" && accessLogPath != "" {
+		if fi, statErr := os.Stat(accessLogPath); statErr == nil && fi.Size() > 5*1024*1024 {
+			_ = os.Truncate(accessLogPath, 0)
+		}
 	}
-	if err := os.Truncate(accessLogPath, 0); err != nil && !os.IsNotExist(err) {
-		logger.Warning("Failed to truncate access log:", accessLogPath, "-", err)
+	// Also check common default paths
+	for _, commonPath := range []string{"/var/log/xray/access.log", "access.log", "bin/access.log"} {
+		if fi, statErr := os.Stat(commonPath); statErr == nil && fi.Size() > 5*1024*1024 {
+			_ = os.Truncate(commonPath, 0)
+		}
 	}
 }

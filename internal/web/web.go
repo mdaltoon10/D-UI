@@ -431,8 +431,10 @@ func (s *Server) startTask(restartXray bool) {
 	// Outbound subscription auto-refresh (respects per-sub updateInterval)
 	_, _ = s.cron.AddJob(cadenceOutboundSub, job.NewOutboundSubscriptionJob())
 
-	// check client ips from log file every day
-	_, _ = s.cron.AddJob("@daily", job.NewClearLogsJob())
+	// Clean old and oversized log files every hour
+	clearLogsJob := job.NewClearLogsJob()
+	_, _ = s.cron.AddJob("@hourly", clearLogsJob)
+	go clearLogsJob.Run()
 	_, _ = s.cron.AddJob("@hourly", job.NewWarpIpJob())
 
 	// Inbound traffic reset jobs
