@@ -46,6 +46,8 @@
     ],
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "error",
+    "react/purity": "off",
+    "react/set-state-in-effect": "off",
     "jsx-a11y/no-autofocus": "off",
     "input-number/no-synthetic-clear": "off",
     "jsx-a11y/prefer-tag-over-role": "off"

@@ -49,6 +49,20 @@ import type {
 import { useFail2banStatusQuery, getLimitIpNotice } from '@/api/queries/useFail2banStatusQuery';
 import { ClientFormSchema, ClientCreateFormSchema, type ClientFormValues } from '@/schemas/client';
 
+const getPresetTagStyle = (selected: boolean): React.CSSProperties => ({
+  cursor: 'pointer',
+  userSelect: 'none',
+  margin: '2px 3px',
+  padding: '1px 8px',
+  fontSize: '12px',
+  borderRadius: '4px',
+  border: selected ? '1px solid #13c2c2' : '1px solid rgba(255,255,255,0.12)',
+  background: selected ? 'rgba(19, 194, 194, 0.2)' : 'rgba(255,255,255,0.04)',
+  color: selected ? '#13c2c2' : 'inherit',
+  fontWeight: selected ? 600 : 400,
+  transition: 'all 0.2s ease',
+});
+
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
 const VMESS_SECURITY_OPTIONS = ['auto', 'aes-128-gcm', 'chacha20-poly1305'] as const;
 
@@ -268,6 +282,8 @@ export default function ClientFormModal({
   const auth = useWatch({ control: methods.control, name: 'auth' });
   const wgPrivateKey = useWatch({ control: methods.control, name: 'wgPrivateKey' });
   const limitIp = useWatch({ control: methods.control, name: 'limitIp' });
+  const totalGB = useWatch({ control: methods.control, name: 'totalGB' });
+  const delayedDays = useWatch({ control: methods.control, name: 'delayedDays' });
   const {
     fields: externalLinkFields,
     append: appendExternalLink,
@@ -857,6 +873,17 @@ export default function ClientFormModal({
                           >
                             <InputNumber min={0} step={1} style={{ width: '100%' }} />
                           </FormField>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}>
+                            {[5, 10, 20, 30, 50, 100, 200].map((gb) => (
+                              <Tag
+                                key={gb}
+                                style={getPresetTagStyle(totalGB === gb)}
+                                onClick={() => methods.setValue('totalGB', gb)}
+                              >
+                                {gb} GB
+                              </Tag>
+                            ))}
+                          </div>
                         </Col>
                         <Col xs={24} md={6}>
                           <Form.Item
@@ -891,6 +918,21 @@ export default function ClientFormModal({
                                 </Space.Compact>
                               </span>
                             </Tooltip>
+                            {!limitIpDisabled && (
+                              <div
+                                style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}
+                              >
+                                {[0, 1, 2, 3, 5].map((ip) => (
+                                  <Tag
+                                    key={ip}
+                                    style={getPresetTagStyle(limitIp === ip)}
+                                    onClick={() => methods.setValue('limitIp', ip)}
+                                  >
+                                    {ip === 0 ? '∞' : `${ip} IP`}
+                                  </Tag>
+                                ))}
+                              </div>
+                            )}
                           </Form.Item>
                         </Col>
                         <Col xs={24} md={6}>
@@ -925,22 +967,57 @@ export default function ClientFormModal({
                       <Row gutter={16}>
                         <Col xs={24} md={12}>
                           {delayedStart ? (
-                            <FormField
-                              name="delayedDays"
-                              label={t('pages.clients.expireDays')}
-                              transform={{ output: (v) => Number(v) || 0 }}
-                            >
-                              <InputNumber min={0} style={{ width: '100%' }} />
-                            </FormField>
+                            <>
+                              <FormField
+                                name="delayedDays"
+                                label={t('pages.clients.expireDays')}
+                                transform={{ output: (v) => Number(v) || 0 }}
+                              >
+                                <InputNumber min={0} style={{ width: '100%' }} />
+                              </FormField>
+                              <div
+                                style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}
+                              >
+                                {[7, 15, 30, 60, 90, 180, 365].map((d) => (
+                                  <Tag
+                                    key={d}
+                                    style={getPresetTagStyle(delayedDays === d)}
+                                    onClick={() => methods.setValue('delayedDays', d)}
+                                  >
+                                    {d}d
+                                  </Tag>
+                                ))}
+                              </div>
+                            </>
                           ) : (
-                            <Form.Item label={t('pages.clients.expiryTime')}>
-                              <DateTimePicker
-                                value={expiryDayjs}
-                                onChange={(d) =>
-                                  methods.setValue('expiryDate', d ? d.valueOf() : 0)
-                                }
-                              />
-                            </Form.Item>
+                            <>
+                              <Form.Item label={t('pages.clients.expiryTime')}>
+                                <DateTimePicker
+                                  value={expiryDayjs}
+                                  onChange={(d) =>
+                                    methods.setValue('expiryDate', d ? d.valueOf() : 0)
+                                  }
+                                />
+                              </Form.Item>
+                              <div
+                                style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}
+                              >
+                                {[7, 15, 30, 60, 90, 180, 365].map((d) => (
+                                  <Tag
+                                    key={d}
+                                    style={getPresetTagStyle(false)}
+                                    onClick={() =>
+                                      methods.setValue(
+                                        'expiryDate',
+                                        dayjs().add(d, 'day').valueOf(),
+                                      )
+                                    }
+                                  >
+                                    +{d}d
+                                  </Tag>
+                                ))}
+                              </div>
+                            </>
                           )}
                         </Col>
                         <Col xs={12} md={6}>

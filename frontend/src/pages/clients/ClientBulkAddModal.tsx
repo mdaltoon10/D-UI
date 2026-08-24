@@ -10,6 +10,7 @@ import {
   Select,
   Space,
   Switch,
+  Tag,
   Tooltip,
   message,
 } from 'antd';
@@ -26,6 +27,20 @@ import { FormField } from '@/components/form/rhf';
 import { useClients, type InboundOption } from '@/hooks/useClients';
 import { useFail2banStatusQuery, getLimitIpNotice } from '@/api/queries/useFail2banStatusQuery';
 import { ClientBulkAddFormSchema, type ClientBulkAddFormValues } from '@/schemas/client';
+
+const getPresetTagStyle = (selected: boolean): React.CSSProperties => ({
+  cursor: 'pointer',
+  userSelect: 'none',
+  margin: '2px 3px',
+  padding: '1px 8px',
+  fontSize: '12px',
+  borderRadius: '4px',
+  border: selected ? '1px solid #13c2c2' : '1px solid rgba(255,255,255,0.12)',
+  background: selected ? 'rgba(19, 194, 194, 0.2)' : 'rgba(255,255,255,0.04)',
+  color: selected ? '#13c2c2' : 'inherit',
+  fontWeight: selected ? 600 : 400,
+  transition: 'all 0.2s ease',
+});
 
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
 
@@ -89,6 +104,7 @@ export default function ClientBulkAddModal({
   const expiryTime = useWatch({ control: methods.control, name: 'expiryTime' });
   const subId = useWatch({ control: methods.control, name: 'subId' });
   const limitIp = useWatch({ control: methods.control, name: 'limitIp' });
+  const totalGB = useWatch({ control: methods.control, name: 'totalGB' });
   const trafficReset = useWatch({ control: methods.control, name: 'trafficReset' });
   const [delayedStart, setDelayedStart] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -383,6 +399,19 @@ export default function ClientBulkAddModal({
                   />
                 </span>
               </Tooltip>
+              {!limitIpDisabled && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}>
+                  {[0, 1, 2, 3, 5].map((ip) => (
+                    <Tag
+                      key={ip}
+                      style={getPresetTagStyle(limitIp === ip)}
+                      onClick={() => methods.setValue('limitIp', ip)}
+                    >
+                      {ip === 0 ? '∞' : `${ip} IP`}
+                    </Tag>
+                  ))}
+                </div>
+              )}
             </Form.Item>
 
             <FormField
@@ -392,6 +421,26 @@ export default function ClientBulkAddModal({
             >
               <InputNumber min={0} step={1} />
             </FormField>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 2,
+                marginTop: -12,
+                marginBottom: 16,
+                marginLeft: '33.33%',
+              }}
+            >
+              {[5, 10, 20, 30, 50, 100, 200].map((gb) => (
+                <Tag
+                  key={gb}
+                  style={getPresetTagStyle(totalGB === gb)}
+                  onClick={() => methods.setValue('totalGB', gb)}
+                >
+                  {gb} GB
+                </Tag>
+              ))}
+            </div>
 
             <Form.Item label={t('pages.clients.delayedStart')}>
               <Switch
@@ -410,6 +459,17 @@ export default function ClientBulkAddModal({
                   min={0}
                   onChange={(v) => methods.setValue('expiryTime', -86400000 * (Number(v) || 0))}
                 />
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}>
+                  {[7, 15, 30, 60, 90, 180, 365].map((d) => (
+                    <Tag
+                      key={d}
+                      style={getPresetTagStyle(delayedExpireDays === d)}
+                      onClick={() => methods.setValue('expiryTime', -86400000 * d)}
+                    >
+                      {d}d
+                    </Tag>
+                  ))}
+                </div>
               </Form.Item>
             ) : (
               <Form.Item label={t('pages.inbounds.expireDate')}>
@@ -417,6 +477,19 @@ export default function ClientBulkAddModal({
                   value={expiryDate}
                   onChange={(next) => methods.setValue('expiryTime', next ? next.valueOf() : 0)}
                 />
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 4 }}>
+                  {[7, 15, 30, 60, 90, 180, 365].map((d) => (
+                    <Tag
+                      key={d}
+                      style={getPresetTagStyle(false)}
+                      onClick={() =>
+                        methods.setValue('expiryTime', dayjs().add(d, 'day').valueOf())
+                      }
+                    >
+                      +{d}d
+                    </Tag>
+                  ))}
+                </div>
               </Form.Item>
             )}
 
