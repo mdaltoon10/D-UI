@@ -103,7 +103,21 @@
     "unlimited": "Unlimited",
     "noExpiry": "No expiry",
     "copyAllConfigs": "Copy All Configs",
-    "copyAllConfigsCopied": "All configs copied"
+    "copyAllConfigsCopied": "All configs copied",
+    "daysLeft": "Days left",
+    "tabLinks": "Subscription",
+    "tabApps": "Apps",
+    "tabConfigs": "Configs",
+    "updateInterval": "Auto-updates every {hours} hours",
+    "support": "Support",
+    "expired": "Expired",
+    "depleted": "Depleted",
+    "ofTotal": "of {total}",
+    "scanTitle": "Scan QR Code",
+    "scanHint": "Scan this QR code with a compatible client application to import your subscription.",
+    "qrTitle": "QR Code",
+    "qrHint": "Scan this QR code to import configuration.",
+    "saveQr": "Save QR Code"
   },
   "menu": {
     "theme": "Theme",

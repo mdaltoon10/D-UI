@@ -103,7 +103,21 @@
     "unlimited": "نامحدود",
     "noExpiry": "بدون انقضا",
     "copyAllConfigs": "کپی همه کانفیگ‌ها",
-    "copyAllConfigsCopied": "همه کانفیگ‌ها کپی شدند"
+    "copyAllConfigsCopied": "همه کانفیگ‌ها کپی شدند",
+    "daysLeft": "روز باقیمانده",
+    "tabLinks": "اشتراک",
+    "tabApps": "برنامه‌ها",
+    "tabConfigs": "کانفیگ‌ها",
+    "updateInterval": "بروزرسانی خودکار هر {hours} ساعت",
+    "support": "پشتیبانی",
+    "expired": "منقضی شده",
+    "depleted": "اتمام حجم",
+    "ofTotal": "از {total}",
+    "scanTitle": "اسکن کد QR",
+    "scanHint": "این کد QR را با یک نرم‌افزار سازگار اسکن کنید تا اشتراک شما وارد شود.",
+    "qrTitle": "کد QR",
+    "qrHint": "این کد QR را اسکن کنید تا کانفیگ وارد شود.",
+    "saveQr": "ذخیره کد QR"
   },
   "menu": {
     "theme": "تم",
