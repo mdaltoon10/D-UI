@@ -454,11 +454,42 @@ export default function ClientsPage() {
     }
   }
 
-  // The list page renders rows the server already sorted, filtered, and
-  // paginated. Local filtering is gone — keep the variable name so the rest
-  // of the file (table dataSource, mobile cards, select-all) doesn't need
-  // a rename.
-  const filteredClients = clients;
+  const filteredClients = useMemo(() => {
+    let list = clients;
+    if (filters.buckets.length > 0) {
+      list = list.filter((row) => {
+        const bucket = clientBucket(row);
+        return filters.buckets.some((b) => {
+          if (b === 'online') {
+            return isOnline(row.email) && row.enable && bucket !== 'depleted';
+          }
+          if (b === 'deactive' || b === 'disabled' || b === 'inactive') {
+            return !row.enable || bucket === 'deactive';
+          }
+          if (b === 'depleted' || b === 'expired' || b === 'exhausted') {
+            return bucket === 'depleted';
+          }
+          if (b === 'expiring') {
+            return bucket === 'expiring';
+          }
+          if (b === 'active') {
+            return bucket === 'active' && row.enable;
+          }
+          return bucket === b;
+        });
+      });
+    }
+    if (searchKey.trim()) {
+      const q = searchKey.trim().toLowerCase();
+      list = list.filter((row) =>
+        (row.email && row.email.toLowerCase().includes(q)) ||
+        (row.comment && row.comment.toLowerCase().includes(q)) ||
+        (row.subId && row.subId.toLowerCase().includes(q)) ||
+        (row.group && row.group.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [clients, filters.buckets, clientBucket, isOnline, searchKey]);
 
   // Server-computed counts that stay stable as the user paginates/filters.
   const summary = serverSummary;
@@ -1007,13 +1038,15 @@ export default function ClientsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [t, togglingEmail, clientBucket, isOnline, inboundsById, filters, allGroups, datepicker, trafficDiff, getClientSpeed]);
 
+  const displayTotal = filters.buckets.length > 0 || searchKey.trim() ? filteredClients.length : filtered;
+
   const tablePagination = {
     current: currentPage,
     pageSize: tablePageSize,
-    total: filtered,
-    showSizeChanger: filtered > 10,
+    total: displayTotal,
+    showSizeChanger: displayTotal > 10,
     pageSizeOptions: ['10', '25', '50', '100', '200'],
-    hideOnSinglePage: filtered <= tablePageSize,
+    hideOnSinglePage: displayTotal <= tablePageSize,
     showTotal: (n: number) => `${n}`,
   };
 
@@ -1324,7 +1357,7 @@ export default function ClientsPage() {
                         )}
                         {(activeCount > 0 || debouncedSearch.trim().length > 0) && (
                           <span className="filter-count">
-                            {t('pages.clients.showingCount', { shown: filtered, total })}
+                            {t('pages.clients.showingCount', { shown: displayTotal, total })}
                           </span>
                         )}
                       </div>
