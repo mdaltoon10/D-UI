@@ -407,14 +407,26 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 	if err := database.GetDB().Model(&model.ClientRecord{}).
 		Where("id = ?", id).
 		Updates(map[string]any{
-			"reverse":       reverseStr,
-			"group_name":    updated.Group,
-			"enable":        updated.Enable,
-			"upload_mbps":   up,
-			"download_mbps": down,
-			"limit_hwid":    updated.LimitHwid,
-			"limit_ip":      updated.LimitIP,
-			"updated_at":    time.Now().UnixMilli(),
+			"uuid":            updated.ID,
+			"password":        updated.Password,
+			"auth":            updated.Auth,
+			"flow":            updated.Flow,
+			"security":        updated.Security,
+			"reverse":         reverseStr,
+			"sub_id":          updated.SubID,
+			"group_name":      updated.Group,
+			"comment":         updated.Comment,
+			"enable":          updated.Enable,
+			"total_gb":        updated.TotalGB,
+			"expiry_time":     updated.ExpiryTime,
+			"limit_ip":        updated.LimitIP,
+			"limit_hwid":      updated.LimitHwid,
+			"upload_mbps":     up,
+			"download_mbps":   down,
+			"tg_id":           updated.TgID,
+			"reset":           updated.Reset,
+			"forwarded_ports": updated.ForwardedPorts,
+			"updated_at":      time.Now().UnixMilli(),
 		}).Error; err != nil {
 		return needRestart, err
 	}

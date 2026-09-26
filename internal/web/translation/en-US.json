@@ -89,7 +89,7 @@
   "somethingWentWrong": "Something went wrong",
   "clientLimitReached": "You have reached your allowed client limit. You cannot create new clients.",
   "subscription": {
-    "title": "Subscription info",
+    "title": "Account info",
     "subId": "Subscription ID",
     "email": "Email",
     "status": "Status",

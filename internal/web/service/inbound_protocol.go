@@ -43,7 +43,11 @@ func inboundCanEnableTlsFlow(protocol, streamSettings, settings string) bool {
 	if err := json.Unmarshal([]byte(streamSettings), &stream); err != nil {
 		return false
 	}
-	switch stream.Network {
+	network := stream.Network
+	if network == "" {
+		network = "tcp"
+	}
+	switch network {
 	case "tcp":
 		return stream.Security == "tls" || stream.Security == "reality"
 	case "xhttp":
