@@ -210,6 +210,7 @@ function SummaryStat({ title, value, prefix, emails, selected, onSelect, onSelec
       className={selected ? 'summary-stat selected' : 'summary-stat'}
       onClick={onSelect}
       onKeyDown={activateOnKey(onSelect)}
+      style={{ cursor: 'pointer', userSelect: 'none' }}
     >
       <Statistic title={title} value={String(value)} prefix={prefix} />
     </div>
@@ -218,7 +219,8 @@ function SummaryStat({ title, value, prefix, emails, selected, onSelect, onSelec
   return (
     <Popover
       title={title}
-      trigger={['hover', 'click']}
+      trigger={['hover']}
+      mouseEnterDelay={0.3}
       content={
         <div className="client-email-list" style={{ maxHeight: 220, overflowY: 'auto' }}>
           {emails.map((e) => (
@@ -1076,6 +1078,7 @@ export default function ClientsPage() {
                             title={t('clients')}
                             value={summary.total}
                             prefix={<TeamOutlined />}
+                            selected={filters.buckets.length === 0}
                             onSelect={() => selectBucket(null)}
                           />
                         </Col>
@@ -1087,6 +1090,7 @@ export default function ClientsPage() {
                             prefix={<span className="dot dot-blue" />}
                             selected={isOnlyBucket('online')}
                             onSelect={() => selectBucket('online')}
+                            onSelectEmail={(e) => setSearchKey(e)}
                           />
                         </Col>
                         <Col xs={12} sm={8} md={4}>
@@ -1097,6 +1101,7 @@ export default function ClientsPage() {
                             prefix={<span className="dot dot-red" />}
                             selected={isOnlyBucket('depleted')}
                             onSelect={() => selectBucket('depleted')}
+                            onSelectEmail={(e) => setSearchKey(e)}
                           />
                         </Col>
                         <Col xs={12} sm={8} md={4}>
@@ -1107,6 +1112,7 @@ export default function ClientsPage() {
                             prefix={<span className="dot dot-orange" />}
                             selected={isOnlyBucket('expiring')}
                             onSelect={() => selectBucket('expiring')}
+                            onSelectEmail={(e) => setSearchKey(e)}
                           />
                         </Col>
                         <Col xs={12} sm={8} md={4}>
@@ -1117,6 +1123,7 @@ export default function ClientsPage() {
                             prefix={<span className="dot dot-gray" />}
                             selected={isOnlyBucket('deactive')}
                             onSelect={() => selectBucket('deactive')}
+                            onSelectEmail={(e) => setSearchKey(e)}
                           />
                         </Col>
                         <Col xs={12} sm={8} md={4}>

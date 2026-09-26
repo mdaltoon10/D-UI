@@ -526,28 +526,29 @@ func clientMatchesBucket(c ClientWithAttachments, bucket string, onlineSet map[s
 	}
 	exhausted := c.TotalGB > 0 && used >= c.TotalGB
 	expired := c.ExpiryTime > 0 && c.ExpiryTime <= nowMs
-	switch bucket {
+	switch strings.ToLower(bucket) {
 	case "online":
 		if onlineSet == nil {
 			return false
 		}
 		_, ok := onlineSet[c.Email]
 		return ok && c.Enable
-	case "depleted":
+	case "depleted", "expired", "exhausted":
 		return exhausted || expired
-	case "deactive":
+	case "deactive", "disabled", "inactive":
 		return !c.Enable
-	case "active":
+	case "active", "enabled":
 		return c.Enable && !exhausted && !expired
-	case "expiring":
+	case "expiring", "expiringsoon":
 		if !c.Enable || exhausted || expired {
 			return false
 		}
 		nearExpiry := c.ExpiryTime > 0 && c.ExpiryTime-nowMs < expireDiffMs
 		nearLimit := c.TotalGB > 0 && c.TotalGB-used < trafficDiffBytes
 		return nearExpiry || nearLimit
+	default:
+		return false
 	}
-	return true
 }
 
 func sortClients(rows []ClientWithAttachments, sortKey, order string) {
