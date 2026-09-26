@@ -22,7 +22,7 @@ import {
 import { DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RetweetOutlined, CopyOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
-import { ClipboardManager, HttpUtil, RandomUtil, Wireguard } from '@/utils';
+import { ClipboardManager, HttpUtil, IntlUtil, RandomUtil, Wireguard } from '@/utils';
 import { formatInboundLabel } from '@/lib/inbounds/label';
 import { normalizeClientIps, type ClientIpInfo } from '@/lib/clients/ip-log';
 import { DateTimePicker, SelectAllClearButtons } from '@/components/form';
@@ -31,8 +31,10 @@ import type { ClientRecord, InboundOption, ExternalLink, ExternalLinkInput } fro
 import { useFail2banStatusQuery, getLimitIpNotice } from '@/api/queries/useFail2banStatusQuery';
 import { ClientFormSchema, ClientCreateFormSchema } from '@/schemas/client';
 import { useClientHwids } from '@/hooks/useClientHwids';
+import { useDatepicker } from '@/hooks/useDatepicker';
 import ClientHwidListModal from '@/components/clients/ClientHwidList';
 import { getSpeedTranslations } from '@/utils/speedI18n';
+import './ClientFormModal.css';
 
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
 const VMESS_SECURITY_OPTIONS = ['auto', 'aes-128-gcm', 'chacha20-poly1305', 'none', 'zero'] as const;
@@ -242,6 +244,7 @@ export default function ClientFormModal({
   onOpenChange,
 }: ClientFormModalProps) {
   const { t, i18n } = useTranslation();
+  const { datepicker } = useDatepicker();
   const speedDict = useMemo(() => getSpeedTranslations(i18n.language), [i18n.language]);
   const [messageApi, messageContextHolder] = message.useMessage();
   const isEdit = mode === 'edit';
@@ -339,7 +342,7 @@ export default function ClientFormModal({
         auth: client.auth || '',
         flow: client.flow || '',
         security: client.security || 'auto',
-        reverseTag: client.reverse?.tag || '',
+        reverseTag: (typeof client.reverse === 'object' && client.reverse !== null ? client.reverse.tag : (typeof client.reverse === 'string' ? client.reverse : '')) || '',
         totalGB: bytesToGB(client.totalGB || 0),
         uploadLimit: client.uploadLimit || client.uploadMbps || 0,
         downloadLimit: client.downloadLimit || client.downloadMbps || 0,
@@ -356,7 +359,7 @@ export default function ClientFormModal({
         wgPrivateKey: client.privateKey || '',
         wgPublicKey: client.publicKey || '',
         wgPreSharedKey: client.preSharedKey || '',
-        wgAllowedIPs: client.allowedIPs || '',
+        wgAllowedIPs: Array.isArray(client.allowedIPs) ? (client.allowedIPs as string[]).join(',') : (client.allowedIPs || ''),
       };
       if (et < 0) {
         next.delayedStart = true;
@@ -465,6 +468,10 @@ export default function ClientFormModal({
   function regenerateWireguardKeys() {
     const kp = Wireguard.generateKeypair();
     setForm((prev) => ({ ...prev, wgPrivateKey: kp.privateKey, wgPublicKey: kp.publicKey }));
+  }
+
+  function generateWireguardPresharedKey() {
+    update('wgPreSharedKey', Wireguard.keyToBase64(Wireguard.generatePresharedKey()));
   }
 
   useEffect(() => {
@@ -625,7 +632,7 @@ export default function ClientFormModal({
       if (form.wgPreSharedKey) {
         clientPayload.preSharedKey = form.wgPreSharedKey;
       }
-      const allowedIPs = form.wgAllowedIPs
+      const allowedIPs = (typeof form.wgAllowedIPs === 'string' ? form.wgAllowedIPs : '')
         .split(',')
         .map((s) => s.trim())
         .filter((s) => s !== '');
@@ -672,6 +679,7 @@ export default function ClientFormModal({
         open={open}
         title={isEdit ? t('pages.clients.editClient') : t('pages.clients.addClient')}
         destroyOnHidden
+        className="client-form-modal"
         width={720}
         zIndex={CLIENT_FORM_MODAL_Z_INDEX}
         style={{ top: 20 }}
@@ -1081,7 +1089,7 @@ export default function ClientFormModal({
                           <AutoComplete
                             value={form.group}
                             placeholder={t('pages.clients.groupPlaceholder')}
-                            options={groups.map((g) => ({ value: g }))}
+                            options={(groups || []).map((g) => ({ value: g }))}
                             onChange={(v) => update('group', v ?? '')}
                             allowClear
                           />
@@ -1244,10 +1252,13 @@ export default function ClientFormModal({
                           <Input value={form.wgPublicKey} disabled />
                         </Form.Item>
                         <Form.Item label={t('pages.clients.wireguardPreSharedKey')}>
-                          <Input
-                            value={form.wgPreSharedKey}
-                            onChange={(e) => update('wgPreSharedKey', e.target.value)}
-                          />
+                          <Space.Compact style={{ width: '100%' }}>
+                            <Input
+                              value={form.wgPreSharedKey}
+                              onChange={(e) => update('wgPreSharedKey', e.target.value)}
+                            />
+                            <Button aria-label={t('regenerate')} icon={<ReloadOutlined />} onClick={generateWireguardPresharedKey} />
+                          </Space.Compact>
                         </Form.Item>
                         <Form.Item
                           label={t('pages.clients.wireguardAllowedIPs')}
@@ -1402,13 +1413,17 @@ export default function ClientFormModal({
 
       <ClientHwidListModal
         open={hwidsModalOpen}
+        email={isEdit && client?.email ? client.email : ''}
         clientEmail={isEdit && client?.email ? client.email : ''}
         hwids={clientHwids}
         loading={hwidsLoading}
         clearing={hwidsClearing}
+        deletingId={deletingHwidId}
         deletingHwidId={deletingHwidId}
+        formatDate={(ts) => (ts > 0 ? IntlUtil.formatDate(ts, datepicker) : '-')}
         onRefresh={loadHwids}
         onClearAll={clearHwids}
+        onDelete={deleteHwid}
         onDeleteSingle={deleteHwid}
         onClose={() => setHwidsModalOpen(false)}
       />

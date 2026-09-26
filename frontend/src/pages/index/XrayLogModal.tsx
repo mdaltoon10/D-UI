@@ -142,7 +142,7 @@ export default function XrayLogModal({ open, onClose }: XrayLogModalProps) {
           <Select
             value={rows}
             size="small"
-            style={{ width: 70 }}
+            style={{ width: 100 }}
             onChange={setRows}
             options={[
               { value: '20', label: '20' },

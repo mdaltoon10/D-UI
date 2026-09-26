@@ -191,6 +191,67 @@ function sortValueFor(column: string | null, order: 'ascend' | 'descend' | null)
   return `${column}:${order}`;
 }
 
+interface SummaryStatProps {
+  title: string;
+  value: number;
+  prefix: React.ReactNode;
+  emails?: string[];
+  selected?: boolean;
+  onSelect: () => void;
+  onSelectEmail?: (email: string) => void;
+}
+
+function SummaryStat({ title, value, prefix, emails, selected, onSelect, onSelectEmail }: SummaryStatProps) {
+  const stat = (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      className={selected ? 'summary-stat selected' : 'summary-stat'}
+      onClick={onSelect}
+      onKeyDown={activateOnKey(onSelect)}
+    >
+      <Statistic title={title} value={String(value)} prefix={prefix} />
+    </div>
+  );
+  if (!emails || emails.length === 0) return stat;
+  return (
+    <Popover
+      title={title}
+      trigger={['hover', 'click']}
+      content={
+        <div className="client-email-list" style={{ maxHeight: 220, overflowY: 'auto' }}>
+          {emails.map((e) => (
+            <button
+              type="button"
+              key={e}
+              style={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                padding: '4px 6px',
+                cursor: 'pointer',
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+                borderRadius: 4,
+              }}
+              onClick={(ev) => {
+                ev.stopPropagation();
+                if (onSelectEmail) onSelectEmail(e);
+              }}
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+      }
+    >
+      {stat}
+    </Popover>
+  );
+}
+
 export default function ClientsPage() {
   const { t } = useTranslation();
   const { isDark, isUltra, antdThemeConfig } = useTheme();
@@ -264,6 +325,14 @@ export default function ClientsPage() {
   const [searchKey, setSearchKey] = useState(initial.searchKey);
   const [filters, setFilters] = useState<ClientFilters>(initial.filters);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+
+  const isOnlyBucket = (b: string) =>
+    filters.buckets.length === 1 && filters.buckets[0] === b;
+
+  function selectBucket(bucket: string | null) {
+    const buckets = bucket && !isOnlyBucket(bucket) ? [bucket] : [];
+    setFilters({ ...filters, buckets });
+  }
 
   const initialSort = SORT_OPTIONS.find((o) => o.value === initial.sort) ?? DEFAULT_SORT;
   const [sortColumn, setSortColumn] = useState<string | null>(initialSort.column);
@@ -1003,46 +1072,61 @@ export default function ClientsPage() {
                     <Card size="small" hoverable className="summary-card">
                       <Row gutter={[16, 12]}>
                         <Col xs={12} sm={8} md={4}>
-                          <Statistic title={t('clients')} value={String(summary.total)} prefix={<TeamOutlined />} />
+                          <SummaryStat
+                            title={t('clients')}
+                            value={summary.total}
+                            prefix={<TeamOutlined />}
+                            onSelect={() => selectBucket(null)}
+                          />
                         </Col>
                         <Col xs={12} sm={8} md={4}>
-                          <Popover
+                          <SummaryStat
                             title={t('online')}
-                            open={summary.online.length ? undefined : false}
-                            content={<div className="client-email-list">{summary.online.map((e) => <div key={e}>{e}</div>)}</div>}
-                          >
-                            <Statistic title={t('online')} value={String(summary.online.length)} prefix={<span className="dot dot-blue" />} />
-                          </Popover>
+                            value={summary.online.length}
+                            emails={summary.online}
+                            prefix={<span className="dot dot-blue" />}
+                            selected={isOnlyBucket('online')}
+                            onSelect={() => selectBucket('online')}
+                          />
                         </Col>
                         <Col xs={12} sm={8} md={4}>
-                          <Popover
+                          <SummaryStat
                             title={t('depleted')}
-                            open={summary.depleted.length ? undefined : false}
-                            content={<div className="client-email-list">{summary.depleted.map((e) => <div key={e}>{e}</div>)}</div>}
-                          >
-                            <Statistic title={t('depleted')} value={String(summary.depleted.length)} prefix={<span className="dot dot-red" />} />
-                          </Popover>
+                            value={summary.depleted.length}
+                            emails={summary.depleted}
+                            prefix={<span className="dot dot-red" />}
+                            selected={isOnlyBucket('depleted')}
+                            onSelect={() => selectBucket('depleted')}
+                          />
                         </Col>
                         <Col xs={12} sm={8} md={4}>
-                          <Popover
+                          <SummaryStat
                             title={t('depletingSoon')}
-                            open={summary.expiring.length ? undefined : false}
-                            content={<div className="client-email-list">{summary.expiring.map((e) => <div key={e}>{e}</div>)}</div>}
-                          >
-                            <Statistic title={t('depletingSoon')} value={String(summary.expiring.length)} prefix={<span className="dot dot-orange" />} />
-                          </Popover>
+                            value={summary.expiring.length}
+                            emails={summary.expiring}
+                            prefix={<span className="dot dot-orange" />}
+                            selected={isOnlyBucket('expiring')}
+                            onSelect={() => selectBucket('expiring')}
+                          />
                         </Col>
                         <Col xs={12} sm={8} md={4}>
-                          <Popover
+                          <SummaryStat
                             title={t('disabled')}
-                            open={summary.deactive.length ? undefined : false}
-                            content={<div className="client-email-list">{summary.deactive.map((e) => <div key={e}>{e}</div>)}</div>}
-                          >
-                            <Statistic title={t('disabled')} value={String(summary.deactive.length)} prefix={<span className="dot dot-gray" />} />
-                          </Popover>
+                            value={summary.deactive.length}
+                            emails={summary.deactive}
+                            prefix={<span className="dot dot-gray" />}
+                            selected={isOnlyBucket('deactive')}
+                            onSelect={() => selectBucket('deactive')}
+                          />
                         </Col>
                         <Col xs={12} sm={8} md={4}>
-                          <Statistic title={t('subscription.active')} value={String(summary.active)} prefix={<span className="dot dot-green" />} />
+                          <SummaryStat
+                            title={t('subscription.active')}
+                            value={summary.active}
+                            prefix={<span className="dot dot-green" />}
+                            selected={isOnlyBucket('active')}
+                            onSelect={() => selectBucket('active')}
+                          />
                         </Col>
                       </Row>
                     </Card>

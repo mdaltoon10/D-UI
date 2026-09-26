@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { useWebSocketBridge } from '@/api/websocketBridge';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import CommandPalette from '@/components/ui/CommandPalette';
 
 export default function PanelLayout() {
   useWebSocketBridge();
@@ -53,5 +54,10 @@ export default function PanelLayout() {
     }
   }, [location.pathname, navigate]);
 
-  return <Outlet />;
+  return (
+    <>
+      <CommandPalette />
+      <Outlet />
+    </>
+  );
 }

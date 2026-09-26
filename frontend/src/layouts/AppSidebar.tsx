@@ -274,6 +274,7 @@ export default function AppSidebar() {
       { key: '/settings#telegram', icon: <MessageOutlined style={{ color: '#0ea5e9' }} />, label: t('pages.settings.TGBotSettings') },
       { key: '/settings#email', icon: <MailOutlined style={{ color: '#f59e0b' }} />, label: t('pages.settings.emailSettings') },
       { key: '/settings#subscription', icon: <CloudServerOutlined style={{ color: '#8b5cf6' }} />, label: t('pages.settings.subSettings') },
+      { key: '/settings#happ', icon: <ApartmentOutlined style={{ color: '#06b6d4' }} />, label: 'Happ Integration' },
     ];
     if (showSubFormats) {
       children.push({ key: '/settings#subscription-formats', icon: <CodeOutlined style={{ color: '#ec4899' }} />, label: 'Sub Formats' });

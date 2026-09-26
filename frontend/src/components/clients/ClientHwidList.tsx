@@ -2,19 +2,24 @@ import { Button, Modal, Popconfirm, Tag, Typography } from 'antd';
 import { DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { ClientHwidInfo } from '@/lib/clients/hwid-log';
+import { useDatepicker } from '@/hooks/useDatepicker';
+import { IntlUtil } from '@/utils';
 
 interface ClientHwidListModalProps {
   open: boolean;
   email?: string;
+  clientEmail?: string;
   zIndex?: number;
-  hwids: ClientHwidInfo[];
-  loading: boolean;
-  clearing: boolean;
-  deletingId: number | null;
-  formatDate: (ts: number) => string;
-  onRefresh: () => void;
-  onClearAll: () => void;
-  onDelete: (id: number) => void;
+  hwids?: ClientHwidInfo[];
+  loading?: boolean;
+  clearing?: boolean;
+  deletingId?: number | null;
+  deletingHwidId?: number | null;
+  formatDate?: (ts: number) => string;
+  onRefresh?: () => void;
+  onClearAll?: () => void;
+  onDelete?: (id: number) => void;
+  onDeleteSingle?: (id: number) => void;
   onClose: () => void;
 }
 
@@ -23,23 +28,31 @@ interface ClientHwidListModalProps {
 export default function ClientHwidListModal({
   open,
   email,
+  clientEmail,
   zIndex,
-  hwids,
-  loading,
-  clearing,
+  hwids = [],
+  loading = false,
+  clearing = false,
   deletingId,
+  deletingHwidId,
   formatDate,
-  onRefresh,
-  onClearAll,
+  onRefresh = () => {},
+  onClearAll = () => {},
   onDelete,
+  onDeleteSingle,
   onClose,
 }: ClientHwidListModalProps) {
   const { t } = useTranslation();
+  const { datepicker } = useDatepicker();
+  const effectiveEmail = email || clientEmail || '';
+  const effectiveDeletingId = deletingId !== undefined ? deletingId : (deletingHwidId !== undefined ? deletingHwidId : null);
+  const handleDelete = onDelete || onDeleteSingle || (() => {});
+  const safeFormatDate = formatDate || ((ts: number) => (ts > 0 ? IntlUtil.formatDate(ts, datepicker) : '-'));
 
   return (
     <Modal
       open={open}
-      title={`${t('pages.clients.hwidLog')}${email ? ` — ${email}` : ''}`}
+      title={`${t('pages.clients.hwidLog')}${effectiveEmail ? ` — ${effectiveEmail}` : ''}`}
       width={520}
       zIndex={zIndex}
       onCancel={onClose}
@@ -55,7 +68,7 @@ export default function ClientHwidListModal({
           okText={t('delete')}
           cancelText={t('cancel')}
         >
-          <Button danger loading={clearing} disabled={hwids.length === 0}>
+          <Button danger loading={clearing} disabled={!hwids || hwids.length === 0}>
             {t('pages.clients.clearAll')}
           </Button>
         </Popconfirm>,
@@ -64,7 +77,7 @@ export default function ClientHwidListModal({
         </Button>,
       ]}
     >
-      {hwids.length > 0 ? (
+      {Array.isArray(hwids) && hwids.length > 0 ? (
         <div style={{ maxHeight: 360, overflowY: 'auto' }}>
           {hwids.map((entry) => (
             <div
@@ -87,11 +100,11 @@ export default function ClientHwidListModal({
                 </Typography.Text>
                 <br />
                 <Typography.Text type="secondary">
-                  {t('pages.clients.firstSeen')}: {formatDate(entry.firstSeen)}
+                  {t('pages.clients.firstSeen')}: {safeFormatDate(entry.firstSeen)}
                 </Typography.Text>
                 <br />
                 <Typography.Text type="secondary">
-                  {t('pages.clients.lastSeen')}: {formatDate(entry.lastSeen)}
+                  {t('pages.clients.lastSeen')}: {safeFormatDate(entry.lastSeen)}
                 </Typography.Text>
                 {entry.userAgent && (
                   <>
@@ -104,7 +117,7 @@ export default function ClientHwidListModal({
               </div>
               <Popconfirm
                 title={t('pages.clients.deleteHwidConfirm')}
-                onConfirm={() => onDelete(entry.id)}
+                onConfirm={() => handleDelete(entry.id)}
                 okType="danger"
                 okText={t('delete')}
                 cancelText={t('cancel')}
@@ -115,7 +128,7 @@ export default function ClientHwidListModal({
                   size="small"
                   aria-label={t('pages.clients.deleteHwid')}
                   icon={<DeleteOutlined />}
-                  loading={deletingId === entry.id}
+                  loading={effectiveDeletingId === entry.id}
                 />
               </Popconfirm>
             </div>

@@ -33,6 +33,8 @@ export interface AdminTranslations {
   btnGenerate: string;
   btnCancel: string;
   btnSubmit: string;
+  btnDelete?: string;
+  btnReset?: string;
   accountStatus: string;
 
   // Status & Labels

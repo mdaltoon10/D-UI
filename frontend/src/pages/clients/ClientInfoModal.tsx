@@ -614,12 +614,16 @@ export default function ClientInfoModal({
       <ClientHwidListModal
         open={hwidsModalOpen}
         email={client?.email}
+        clientEmail={client?.email}
         hwids={clientHwids}
         loading={hwidsLoading}
         clearing={hwidsClearing}
+        deletingId={deletingHwidId}
         deletingHwidId={deletingHwidId}
+        formatDate={(ts) => (ts > 0 ? IntlUtil.formatDate(ts, datepicker) : '-')}
         onRefresh={loadHwids}
         onClearAll={clearHwids}
+        onDelete={deleteHwid}
         onDeleteSingle={deleteHwid}
         onClose={() => setHwidsModalOpen(false)}
       />

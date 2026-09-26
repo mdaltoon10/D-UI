@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Collapse, Modal, Spin, Tag } from 'antd';
-import { HttpUtil } from '@/utils';
+import { useNavigate } from 'react-router-dom';
+import { Button, Collapse, Modal, Segmented, Spin, Tag } from 'antd';
+import { LockOutlined, QrcodeOutlined, SettingOutlined } from '@ant-design/icons';
+import { Base64, HttpUtil } from '@/utils';
 import { isPostQuantumLink } from '@/lib/xray/inbound-link';
 import { LinkTags, linkMetaText, parseLinkParts } from '@/lib/xray/link-label';
 import { QrPanel } from '@/pages/inbounds/qr';
 import type { ClientRecord, InboundOption } from '@/hooks/useClients';
+import { useAllSettings } from '@/api/queries/useAllSettings';
 import { buildWireguardClientConfig, findWireguardInbound, isWireguardClient } from './wireguardConfig';
 
 interface SubSettings {
@@ -39,8 +42,11 @@ export default function ClientQrModal({
   onOpenChange,
 }: ClientQrModalProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { allSetting } = useAllSettings();
   const [links, setLinks] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [subType, setSubType] = useState<'standard' | 'happ'>('standard');
 
   const subLink = useMemo(() => {
     if (!client?.subId || !subSettings?.enable || !subSettings?.subURI) return '';
@@ -52,6 +58,12 @@ export default function ClientQrModal({
     if (!subSettings?.subJsonEnable || !subSettings?.subJsonURI) return '';
     return subSettings.subJsonURI + client.subId;
   }, [client?.subId, subSettings?.enable, subSettings?.subJsonEnable, subSettings?.subJsonURI]);
+
+  const happEncryptedLink = useMemo(() => {
+    if (!subLink) return '';
+    const b64 = Base64.encode(subLink, true);
+    return `happ://crypt5/${b64}`;
+  }, [subLink]);
 
   const wgInbound = useMemo(() => findWireguardInbound(client, inboundsById), [client, inboundsById]);
   const wgConfigText = useMemo(() => {
@@ -91,7 +103,49 @@ export default function ClientQrModal({
       out.push({
         key: 'sub',
         label: t('subscription.title'),
-        children: <QrPanel value={subLink} remark={`${client?.email || ''} — ${t('subscription.title')}`} />,
+        children: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <Segmented
+                value={subType}
+                onChange={(val) => setSubType(val as 'standard' | 'happ')}
+                options={[
+                  { label: 'Standard', value: 'standard', icon: <QrcodeOutlined /> },
+                  { label: 'Happ Encrypted Link', value: 'happ', icon: <LockOutlined /> },
+                ]}
+              />
+            </div>
+
+            {subType === 'standard' && (
+              <QrPanel value={subLink} remark={`${client?.email || ''} — ${t('subscription.title')}`} />
+            )}
+
+            {subType === 'happ' && (
+              allSetting?.happEncryptEnable ? (
+                <QrPanel value={happEncryptedLink} remark={`${client?.email || ''} — Happ Encrypted`} />
+              ) : (
+                <div style={{ textAlign: 'center', padding: '36px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                  <LockOutlined style={{ fontSize: 44, opacity: 0.35 }} />
+                  <div style={{ fontSize: 16, fontWeight: 600 }}>Happ encrypted link generation is not enabled</div>
+                  <div style={{ fontSize: 13, opacity: 0.6, maxWidth: 320 }}>
+                    Enable local generation of encrypted Happ subscription links. (Only for Happ)
+                  </div>
+                  <Button
+                    type="primary"
+                    icon={<SettingOutlined />}
+                    onClick={() => {
+                      onOpenChange(false);
+                      navigate('/settings#happ');
+                    }}
+                    style={{ marginTop: 6 }}
+                  >
+                    Go to Settings
+                  </Button>
+                </div>
+              )
+            )}
+          </div>
+        ),
       });
     }
     if (subJsonLink) {
@@ -136,11 +190,12 @@ export default function ClientQrModal({
       });
     }
     return out;
-  }, [subLink, subJsonLink, wgConfigText, links, client?.email, t]);
+  }, [subLink, subType, allSetting?.happEncryptEnable, happEncryptedLink, subJsonLink, links, wgConfigText, client?.email, t, onOpenChange, navigate]);
 
   useEffect(() => {
     if (!open) {
       setActiveKey([]);
+      setSubType('standard');
       return;
     }
     setActiveKey(items.length > 0 ? [items[0].key] : []);

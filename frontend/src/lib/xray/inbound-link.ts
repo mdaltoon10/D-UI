@@ -925,6 +925,20 @@ export function wireguardConfigFromLink(link: string, fallbackRemark = ''): stri
   return lines.join('\n');
 }
 
+export function amneziawgConfigFromLink(link: string): string {
+  if (!link || !link.startsWith('vpn://')) return '';
+  let b64 = link.replace(/^vpn:\/\//, '');
+  b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4 !== 0) {
+    b64 += '=';
+  }
+  try {
+    return Base64.decode(b64);
+  } catch {
+    return '';
+  }
+}
+
 export type { WireguardInboundPeer };
 
 function isUnixSocketListen(listen: string): boolean {

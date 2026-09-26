@@ -527,8 +527,11 @@ export function useClients() {
       comment: base.comment || '',
       enable: !!enable,
     };
-    if (base.reverse?.tag) {
-      payload.reverse = { tag: base.reverse.tag };
+    const revTag = typeof base.reverse === 'object' && base.reverse !== null
+      ? (base.reverse as { tag?: string }).tag
+      : (typeof base.reverse === 'string' ? base.reverse : '');
+    if (revTag) {
+      payload.reverse = { tag: revTag };
     }
     return update(client.email, payload);
   }, [hydrate, update]);
