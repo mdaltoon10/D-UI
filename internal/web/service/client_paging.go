@@ -173,7 +173,7 @@ func (s *ClientService) ListPaged(inboundSvc *InboundService, settingSvc *Settin
 	onlines := inboundSvc.GetOnlineClients()
 	onlineSet := make(map[string]struct{}, len(onlines))
 	for _, e := range onlines {
-		onlineSet[e] = struct{}{}
+		onlineSet[strings.ToLower(strings.TrimSpace(e))] = struct{}{}
 	}
 
 	var expireDiffMs, trafficDiffBytes int64
@@ -284,8 +284,9 @@ func buildClientsSummary(all []ClientWithAttachments, onlineSet map[string]struc
 		}
 		exhausted := c.TotalGB > 0 && used >= c.TotalGB
 		expired := c.ExpiryTime > 0 && c.ExpiryTime <= nowMs
-		if c.Enable {
-			if _, ok := onlineSet[c.Email]; ok {
+		emailKey := strings.ToLower(strings.TrimSpace(c.Email))
+		if c.Enable && !exhausted && !expired {
+			if _, ok := onlineSet[emailKey]; ok {
 				s.Online = append(s.Online, c.Email)
 			}
 		}
@@ -531,12 +532,13 @@ func clientMatchesBucket(c ClientWithAttachments, bucket string, onlineSet map[s
 		if onlineSet == nil {
 			return false
 		}
-		_, ok := onlineSet[c.Email]
-		return ok && c.Enable
+		emailKey := strings.ToLower(strings.TrimSpace(c.Email))
+		_, ok := onlineSet[emailKey]
+		return ok && c.Enable && !exhausted && !expired
 	case "depleted", "expired", "exhausted":
 		return exhausted || expired
 	case "deactive", "disabled", "inactive":
-		return !c.Enable
+		return !c.Enable && !exhausted && !expired
 	case "active", "enabled":
 		return c.Enable && !exhausted && !expired
 	case "expiring", "expiringsoon":

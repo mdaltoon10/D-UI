@@ -404,7 +404,7 @@ export default function ClientsPage() {
     setTablePageSize(pageSize > 0 ? pageSize : DISABLED_PAGE_SIZE);
   }, [pageSize]);
 
-  const onlineSet = useMemo(() => new Set(onlines || []), [onlines]);
+  const onlineSet = useMemo(() => new Set((onlines || []).map((e) => (e || '').toLowerCase().trim())), [onlines]);
   const inboundsById = useMemo(() => {
     const out: Record<number, InboundOption> = {};
     for (const ib of inbounds) out[ib.id] = ib;
@@ -422,7 +422,7 @@ export default function ClientsPage() {
     return [...values].sort((a, b) => a.localeCompare(b));
   }, [allGroups, filters.groups]);
 
-  const isOnline = useCallback((email: string) => !!email && onlineSet.has(email), [onlineSet]);
+  const isOnline = useCallback((email: string) => !!email && onlineSet.has(email.toLowerCase().trim()), [onlineSet]);
 
   function inboundLabel(id: number) {
     const ib = inboundsById[id];
@@ -464,7 +464,7 @@ export default function ClientsPage() {
             return isOnline(row.email) && row.enable && bucket !== 'depleted';
           }
           if (b === 'deactive' || b === 'disabled' || b === 'inactive') {
-            return !row.enable || bucket === 'deactive';
+            return bucket === 'deactive';
           }
           if (b === 'depleted' || b === 'expired' || b === 'exhausted') {
             return bucket === 'depleted';
@@ -473,7 +473,7 @@ export default function ClientsPage() {
             return bucket === 'expiring';
           }
           if (b === 'active') {
-            return bucket === 'active' && row.enable;
+            return bucket === 'active';
           }
           return bucket === b;
         });

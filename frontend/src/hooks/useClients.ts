@@ -100,9 +100,10 @@ export function computeClientsSummary(
     const total = c.total || 0;
     const exhausted = total > 0 && used >= total;
     const expired = (c.expiryTime || 0) > 0 && (c.expiryTime || 0) <= now;
-    if (c.enable && onlineSet.has(email)) online.push(email);
     if (exhausted || expired) { depleted.push(email); continue; }
     if (!c.enable) { deactive.push(email); continue; }
+    const emailLower = email.toLowerCase().trim();
+    if (c.enable && (onlineSet.has(email) || onlineSet.has(emailLower))) online.push(email);
     const nearExpiry = (c.expiryTime || 0) > 0 && (c.expiryTime || 0) - now < expireDiffMs;
     const nearLimit = total > 0 && total - used < trafficDiffBytes;
     if (nearExpiry || nearLimit) expiring.push(email);
