@@ -1444,7 +1444,7 @@
       "tgNotifyCpuDesc": "Get notified if CPU load exceeds this threshold. (unit: %)",
       "timeZone": "Time Zone",
       "timeZoneDesc": "Scheduled tasks will run based on this time zone.",
-      "subSettings": "Subscription",
+      "subSettings": "Account profile",
       "subEnable": "Subscription Service",
       "subEnableDesc": "Enable/Disable the subscription service.",
       "subJsonEnable": "Enable/Disable the JSON subscription endpoint independently.",
