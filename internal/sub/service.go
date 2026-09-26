@@ -743,6 +743,16 @@ func vlessEncryptionEnabled(settings map[string]any) bool {
 	return false
 }
 
+func getEffectiveFlow(clientFlow string, settings map[string]any) string {
+	if clientFlow != "" {
+		return clientFlow
+	}
+	if f, ok := settings["flow"].(string); ok {
+		return f
+	}
+	return ""
+}
+
 // vlessFlowAllowed reports whether a client's XTLS Vision flow belongs in
 // generated links/configs. Mirrors inboundCanEnableTlsFlow in
 // internal/web/service: Vision runs on TCP with tls/reality (classic), and on
@@ -795,8 +805,9 @@ func (s *SubService) genVlessLink(inbound *model.Inbound, email string) string {
 	default:
 		params["security"] = "none"
 	}
-	if len(client.Flow) > 0 && vlessFlowAllowed(streamNetwork, security, settings) {
-		params["flow"] = client.Flow
+	flow := getEffectiveFlow(client.Flow, settings)
+	if len(flow) > 0 && vlessFlowAllowed(streamNetwork, security, settings) {
+		params["flow"] = flow
 	}
 
 	externalProxies, _ := stream["externalProxy"].([]any)
@@ -845,8 +856,10 @@ func (s *SubService) genTrojanLink(inbound *model.Inbound, email string) string 
 		applyShareTLSParams(stream, params)
 	case "reality":
 		applyShareRealityParams(stream, params, subKey(client))
-		if streamNetwork == "tcp" && len(client.Flow) > 0 {
-			params["flow"] = client.Flow
+		settings := s.linkSettings(inbound)
+		flow := getEffectiveFlow(client.Flow, settings)
+		if streamNetwork == "tcp" && len(flow) > 0 {
+			params["flow"] = flow
 		}
 	default:
 		params["security"] = "none"
