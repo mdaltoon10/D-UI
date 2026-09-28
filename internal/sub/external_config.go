@@ -54,8 +54,6 @@ func (s *SubService) getClientExternalLinksBySubId(subId string) ([]externalLink
 	var rows []model.ClientExternalLink
 	now := time.Now().UnixMilli()
 	if err := db.Where("client_id IN ?", clientIds).
-		Where("(enable IS NULL OR enable = ?)", true).
-		Where("(expiry_time IS NULL OR expiry_time <= 0 OR expiry_time > ?)", now).
 		Order("client_id ASC, sort_index ASC, id ASC").
 		Find(&rows).Error; err != nil {
 		return nil, err

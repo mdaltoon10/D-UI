@@ -748,8 +748,10 @@ type ClientExternalLink struct {
 	Value      string `json:"value" gorm:"column:value"`
 	Remark     string `json:"remark" gorm:"column:remark"`
 	NamePrefix string `json:"namePrefix" gorm:"column:name_prefix"`
-	SortIndex  int    `json:"sortIndex" gorm:"column:sort_index"`
-	CreatedAt int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
+	SortIndex      int    `json:"sortIndex" gorm:"column:sort_index"`
+	LastFetchAt    int64  `json:"lastFetchAt" gorm:"column:last_fetch_at"`
+	LastFetchError string `json:"lastFetchError" gorm:"column:last_fetch_error"`
+	CreatedAt      int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
 }
 
 func (ClientExternalLink) TableName() string { return "client_external_links" }
