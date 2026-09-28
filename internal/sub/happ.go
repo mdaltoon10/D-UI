@@ -34,6 +34,7 @@ type HappConfig struct {
 	AutoConnectType     string
 	PerAppMode          string
 	PerAppList          string
+	LocalProxyAuth      bool
 }
 
 // IsHappClient checks if the client user-agent identifies as Happ.
