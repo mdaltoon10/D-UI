@@ -25,7 +25,7 @@ import (
 	"github.com/mdaltoon10/D-UI/v3/internal/util/netproxy"
 	"github.com/mdaltoon10/D-UI/v3/internal/util/random"
 	"github.com/mdaltoon10/D-UI/v3/internal/util/reflect_util"
-	"github.com/mdaltoon10/D-UI/v3/internal/util/totp"
+	"github.com/xlzd/gotp"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/entity"
 	"github.com/mdaltoon10/D-UI/v3/internal/xray"
 	"github.com/mdaltoon10/D-UI/v3/internal/xray/dnsconf"
@@ -674,7 +674,7 @@ func (s *SettingService) VerifyTwoFactorCode(code string) error {
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(token) == "" || !totp.VerifyWithSkew(token, strings.TrimSpace(code), time.Now()) {
+	if strings.TrimSpace(token) == "" || !gotp.NewDefaultTOTP(token).Verify(strings.TrimSpace(code), time.Now().Unix()) {
 		return common.NewError("invalid two factor code")
 	}
 	return nil
