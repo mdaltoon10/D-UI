@@ -68,6 +68,7 @@ type Inbound struct {
 	Tag               string   `json:"tag" form:"tag" gorm:"unique" example:"in-443-tcp"`
 	Sniffing          string   `json:"sniffing" form:"sniffing"`
 	NodeID            *int     `json:"nodeId,omitempty" form:"nodeId" gorm:"index"`
+	DisableFlow       bool     `json:"disableFlow" form:"disableFlow" gorm:"column:disable_flow;default:false"`
 	ShareAddrStrategy string   `json:"shareAddrStrategy" form:"shareAddrStrategy" gorm:"column:share_addr_strategy;default:node" validate:"omitempty,oneof=node listen custom"`
 	ShareAddr         string   `json:"shareAddr" form:"shareAddr" gorm:"column:share_addr"`
 
@@ -626,6 +627,10 @@ type Client struct {
 	ForwardedPorts string       `json:"forwardedPorts,omitempty" form:"forwardedPorts"`
 }
 
+func (c *Client) KeepAliveSeconds() int {
+	return c.KeepAlive
+}
+
 type ClientRecord struct {
 	Id           int    `json:"id" gorm:"primaryKey;autoIncrement"`
 	CreatedBy    string `json:"createdBy" gorm:"column:created_by"`
@@ -735,10 +740,11 @@ func (ClientInbound) TableName() string { return "client_inbounds" }
 type ClientExternalLink struct {
 	Id        int    `json:"id" gorm:"primaryKey;autoIncrement"`
 	ClientId  int    `json:"clientId" gorm:"index;column:client_id"`
-	Kind      string `json:"kind" gorm:"column:kind"`
-	Value     string `json:"value" gorm:"column:value"`
-	Remark    string `json:"remark" gorm:"column:remark"`
-	SortIndex int    `json:"sortIndex" gorm:"column:sort_index"`
+	Kind       string `json:"kind" gorm:"column:kind"`
+	Value      string `json:"value" gorm:"column:value"`
+	Remark     string `json:"remark" gorm:"column:remark"`
+	NamePrefix string `json:"namePrefix" gorm:"column:name_prefix"`
+	SortIndex  int    `json:"sortIndex" gorm:"column:sort_index"`
 	CreatedAt int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
 }
 
@@ -1131,12 +1137,13 @@ type ClientHwid struct {
 func (ClientHwid) TableName() string { return "client_hwids" }
 
 type SubBalancer struct {
-	Id         int    `json:"id" gorm:"primaryKey;autoIncrement"`
-	Remark     string `json:"remark" gorm:"column:remark;type:varchar(256);not null"`
-	Strategy   string `json:"strategy" gorm:"column:strategy;type:varchar(64);default:'random'"`
-	InboundIds []int  `json:"inboundIds" gorm:"column:inbound_ids;serializer:json"`
-	SortOrder  int    `json:"sortOrder" gorm:"column:sort_order;default:1"`
-	Enabled    bool   `json:"enabled" gorm:"column:enabled;default:true"`
+	Id            int             `json:"id" gorm:"primaryKey;autoIncrement"`
+	Remark        string          `json:"remark" gorm:"column:remark;type:varchar(256);not null"`
+	Strategy      string          `json:"strategy" gorm:"column:strategy;type:varchar(64);default:'random'"`
+	InboundIds    []int           `json:"inboundIds" gorm:"column:inbound_ids;serializer:json"`
+	MemberWeights map[int]float64 `json:"memberWeights,omitempty" gorm:"column:member_weights;serializer:json"`
+	SortOrder     int             `json:"sortOrder" gorm:"column:sort_order;default:1"`
+	Enabled       bool            `json:"enabled" gorm:"column:enabled;default:true"`
 }
 
 func (SubBalancer) TableName() string { return "sub_balancers" }

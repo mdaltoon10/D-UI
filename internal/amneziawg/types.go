@@ -243,3 +243,13 @@ type InboundSettings struct {
 	Server  *ServerSettings `json:"server"`
 	Clients []model.Client  `json:"clients"`
 }
+
+func EffectiveMTU(mtu, s4 int) int {
+	if mtu <= 0 {
+		mtu = 1420
+	}
+	if s4 > 0 && mtu > 1420-s4 {
+		mtu = 1420 - s4
+	}
+	return mtu
+}

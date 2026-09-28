@@ -290,3 +290,41 @@ func clearClientHwidsBySubIDTx(tx *gorm.DB, subIDs ...string) error {
 	}
 	return nil
 }
+
+type HwidSlotStatus struct {
+	Limit      int `json:"limit"`
+	Registered int `json:"registered"`
+	Available  int `json:"available"`
+}
+
+func (s *ClientService) HwidSlotStatusForSubID(subID string) (HwidSlotStatus, bool, error) {
+	subID = strings.TrimSpace(subID)
+	if subID == "" {
+		return HwidSlotStatus{}, false, nil
+	}
+	db := database.GetDB()
+	var count int64
+	if err := db.Model(&model.ClientRecord{}).Where("sub_id = ? AND enable = ?", subID, true).Count(&count).Error; err != nil {
+		return HwidSlotStatus{}, false, err
+	}
+	if count == 0 {
+		return HwidSlotStatus{}, false, nil
+	}
+	limit, err := effectiveHwidLimitForSubID(db, subID)
+	if err != nil {
+		return HwidSlotStatus{}, true, err
+	}
+	var registered int64
+	if err := db.Model(&model.ClientHwid{}).Where("sub_id = ?", subID).Count(&registered).Error; err != nil {
+		return HwidSlotStatus{}, true, err
+	}
+	available := limit - int(registered)
+	if available < 0 {
+		available = 0
+	}
+	return HwidSlotStatus{
+		Limit:      limit,
+		Registered: int(registered),
+		Available:  available,
+	}, true, nil
+}
