@@ -27,5 +27,10 @@ func (j *RemoteRoutingJob) Run() {
 		logger.Warning("Could not read Clash routing source:", err)
 		return
 	}
-	sub.RefreshRemoteRoutingSources(happ, clash)
+	jsonRules, err := j.settingService.GetSubJsonRoutingRules()
+	if err != nil {
+		logger.Warning("Could not read JSON routing source:", err)
+		return
+	}
+	sub.RefreshRemoteRoutingSources(happ, clash, jsonRules)
 }
