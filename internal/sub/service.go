@@ -567,9 +567,9 @@ func (s *SubService) AggregateTrafficByEmails(emails []string) (xray.ClientTraff
 		if ct.LastOnline > lastOnline {
 			lastOnline = ct.LastOnline
 		}
-		total, expiry, resetDay := ct.Total, ct.ExpiryTime, ct.ResetDay
+		total, expiry, resetDay := ct.Total, ct.ExpiryTime, ct.Reset
 		if lim, ok := limits[ct.Email]; ok {
-			resetDay = lim.ResetDay
+			resetDay = lim.Reset
 			if total == 0 {
 				total = lim.TotalGB
 			}
@@ -585,14 +585,14 @@ func (s *SubService) AggregateTrafficByEmails(emails []string) (xray.ClientTraff
 			agg.Down = ct.Down
 			agg.Total = total
 			agg.ExpiryTime = subscriptionExpiryFromClient(now, expiry)
-			agg.ResetDay = resetDay
+			agg.Reset = resetDay
 			first = false
 			continue
 		}
 		agg.Up += ct.Up
 		agg.Down += ct.Down
-		if resetDay != agg.ResetDay {
-			agg.ResetDay = 0
+		if resetDay != agg.Reset {
+			agg.Reset = 0
 		}
 		if agg.Total == 0 || total == 0 {
 			agg.Total = 0

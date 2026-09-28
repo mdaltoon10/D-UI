@@ -440,6 +440,10 @@ func (s *InboundService) GetClientsBySubId(inboundId int, subId string) ([]model
 	return s.clientService.ListForInboundBySubId(nil, inboundId, subId)
 }
 
+func (s *InboundService) ListClientsForInbound(inboundId int) ([]model.Client, error) {
+	return s.clientService.ListForInbound(nil, inboundId)
+}
+
 func (s *InboundService) GetAllEmails() ([]string, error) {
 	db := database.GetDB()
 	var emails []string

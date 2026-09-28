@@ -297,7 +297,7 @@ type HwidSlotStatus struct {
 	Available  int `json:"available"`
 }
 
-func (s *ClientService) HwidSlotStatusForSubID(subID string) (HwidSlotStatus, bool, error) {
+func (s ClientService) HwidSlotStatusForSubID(subID string) (HwidSlotStatus, bool, error) {
 	subID = strings.TrimSpace(subID)
 	if subID == "" {
 		return HwidSlotStatus{}, false, nil

@@ -623,11 +623,13 @@ type Client struct {
 	Reset        int            `json:"reset" form:"reset"`           // Reset period in days
 	CreatedAt    int64          `json:"created_at,omitempty"`         // Creation timestamp
 	UpdatedAt    int64          `json:"updated_at,omitempty"`         // Last update timestamp
-	LimitHwid    int            `json:"limitHwid" form:"limitHwid"`
-	ForwardedPorts string       `json:"forwardedPorts,omitempty" form:"forwardedPorts"`
+	LimitHwid      int            `json:"limitHwid" form:"limitHwid"`
+	ForwardedPorts string         `json:"forwardedPorts,omitempty" form:"forwardedPorts"`
+	Secret         string         `json:"secret,omitempty"`
+	AdTag          string         `json:"adTag,omitempty"`
 }
 
-func (c *Client) KeepAliveSeconds() int {
+func (c Client) KeepAliveSeconds() int {
 	return c.KeepAlive
 }
 
@@ -661,8 +663,10 @@ type ClientRecord struct {
 	Reset        int    `json:"reset" gorm:"default:0"`
 	CreatedAt    int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
 	UpdatedAt    int64  `json:"updatedAt" gorm:"autoUpdateTime:milli"`
-	LimitHwid    int    `json:"limitHwid" gorm:"column:limit_hwid;default:0"`
+	LimitHwid      int    `json:"limitHwid" gorm:"column:limit_hwid;default:0"`
 	ForwardedPorts string `json:"forwardedPorts" gorm:"column:forwarded_ports;default:''"`
+	Secret         string `json:"secret" gorm:"column:secret;default:''"`
+	AdTag          string `json:"adTag" gorm:"column:ad_tag;default:''"`
 }
 
 func (ClientRecord) TableName() string { return "clients" }
@@ -864,6 +868,8 @@ func (c *Client) ToRecord() *ClientRecord {
 		KeepAlive:    c.KeepAlive,
 		LimitHwid:    c.LimitHwid,
 		ForwardedPorts: c.ForwardedPorts,
+		Secret:       c.Secret,
+		AdTag:        c.AdTag,
 	}
 	if c.Reverse != nil {
 		if b, err := json.Marshal(c.Reverse); err == nil {
@@ -930,6 +936,8 @@ func (r *ClientRecord) ToClient() *Client {
 		KeepAlive:    r.KeepAlive,
 		LimitHwid:    r.LimitHwid,
 		ForwardedPorts: r.ForwardedPorts,
+		Secret:       r.Secret,
+		AdTag:        r.AdTag,
 	}
 	if r.Reverse != "" {
 		var rev ClientReverse
@@ -989,6 +997,18 @@ func MergeClientRecord(existing *ClientRecord, incoming *ClientRecord) []ClientM
 		if incomingNewer || existing.Password == "" {
 			existing.Password = incoming.Password
 			keepSecret("password")
+		}
+	}
+	if existing.Secret != incoming.Secret && incoming.Secret != "" {
+		if incomingNewer || existing.Secret == "" {
+			existing.Secret = incoming.Secret
+			keepSecret("secret")
+		}
+	}
+	if existing.AdTag != incoming.AdTag && incoming.AdTag != "" {
+		if incomingNewer || existing.AdTag == "" {
+			existing.AdTag = incoming.AdTag
+			keepSecret("adTag")
 		}
 	}
 	if existing.Auth != incoming.Auth && incoming.Auth != "" {
