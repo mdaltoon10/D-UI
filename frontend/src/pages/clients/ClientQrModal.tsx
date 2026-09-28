@@ -4,8 +4,6 @@ import { useNavigate } from 'react-router';
 import { Alert, Button, Collapse, Empty, Modal, Segmented, Spin, Tag, Typography } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import { HttpUtil } from '@/utils';
-import type { HappLinkResult } from '@/generated/types';
-import { HappLinkResultSchema } from '@/generated/zod';
 import { isPostQuantumLink } from '@/lib/xray/inbound-link';
 import { LinkTags, linkMetaText, parseLinkParts } from '@/lib/xray/link-label';
 import { QrPanel } from '@/pages/inbounds/qr';
@@ -264,16 +262,16 @@ function ClientQrModalContent({
 
     (async () => {
       try {
-        const msg = await HttpUtil.post<HappLinkResult>(
+        const msg = await HttpUtil.post<{ encryptedLink?: string }>(
           `/panel/api/clients/happLink/${clientId}`,
           undefined,
           { silent: true },
         );
         if (cancelled) return;
 
-        const result = HappLinkResultSchema.safeParse(msg?.obj);
-        if (msg?.success && result.success && isValidHappCrypt5Link(result.data.encryptedLink)) {
-          setHappLink(result.data.encryptedLink);
+        const encryptedLink = typeof msg?.obj?.encryptedLink === 'string' ? msg.obj.encryptedLink : '';
+        if (msg?.success && isValidHappCrypt5Link(encryptedLink)) {
+          setHappLink(encryptedLink);
         } else {
           // Only this fixed API code is safe to localize; arbitrary error messages stay hidden.
           setHappError(
