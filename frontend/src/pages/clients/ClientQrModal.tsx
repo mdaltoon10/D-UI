@@ -1,18 +1,31 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { Button, Collapse, Modal, Segmented, Spin, Tag } from 'antd';
-import { LockOutlined, QrcodeOutlined, SettingOutlined } from '@ant-design/icons';
-import { Base64, HttpUtil } from '@/utils';
+import { useNavigate } from 'react-router';
+import { Alert, Button, Collapse, Empty, Modal, Segmented, Spin, Tag, Typography } from 'antd';
+import { LockOutlined } from '@ant-design/icons';
+import { HttpUtil } from '@/utils';
+import type { HappLinkResult } from '@/generated/types';
+import { HappLinkResultSchema } from '@/generated/zod';
 import { isPostQuantumLink } from '@/lib/xray/inbound-link';
 import { LinkTags, linkMetaText, parseLinkParts } from '@/lib/xray/link-label';
 import { QrPanel } from '@/pages/inbounds/qr';
 import type { ClientRecord, InboundOption } from '@/hooks/useClients';
-import { useAllSettings } from '@/api/queries/useAllSettings';
-import { buildWireguardClientConfig, findWireguardInbound, isWireguardClient } from './wireguardConfig';
+import { formatTunnelConfigMeta } from '@/lib/inbounds/label';
+import {
+  buildWireguardClientConfig,
+  findWireguardInbounds,
+  isWireguardClient,
+} from './wireguardConfig';
+import {
+  buildAmneziaWGClientConfig,
+  findAmneziaWGInbounds,
+  isAmneziaWGClient,
+} from './amneziawgConfig';
+import { buildTuicClientConfig, findTuicInbound, isTuicClient } from './tuicConfig';
 
 interface SubSettings {
   enable: boolean;
+  happLinkEnable?: boolean;
   subURI: string;
   subJsonURI: string;
   subJsonEnable: boolean;
@@ -23,6 +36,7 @@ interface ClientQrModalProps {
   open: boolean;
   client: ClientRecord | null;
   inboundsById: Record<number, InboundOption>;
+  tunnelAllowedIPs?: Record<number, string>;
   subSettings?: SubSettings;
   onOpenChange: (open: boolean) => void;
 }
@@ -32,59 +46,362 @@ interface ApiMsg<T = unknown> {
   obj?: T;
 }
 
-const DEFAULT_SUB: SubSettings = { enable: false, subURI: '', subJsonURI: '', subJsonEnable: false, publicHost: '' };
+type QrVariant = 'standard' | 'happ';
+type HappError = 'too_long' | 'unavailable' | null;
 
-export default function ClientQrModal({
+const HAPP_CRYPT5_PREFIX = 'happ://crypt5/';
+const HAPP_SETTINGS_PATH = '/settings?subscriptionTab=happ&happTab=links#subscription';
+// QrPanel encodes at error level L; QR version 40 holds 2953 UTF-8 bytes at that level.
+const HAPP_QR_MAX_BYTES = 2953;
+const UTF8_ENCODER = new TextEncoder();
+
+function hasHappForbiddenCharacter(link: string) {
+  return Array.from(link).some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return /\s/u.test(character) || codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f);
+  });
+}
+
+function isValidHappCrypt5Link(link: string) {
+  return (
+    link.startsWith(HAPP_CRYPT5_PREFIX) &&
+    link.length > HAPP_CRYPT5_PREFIX.length &&
+    !hasHappForbiddenCharacter(link)
+  );
+}
+
+function canRenderHappQr(link: string) {
+  return UTF8_ENCODER.encode(link).byteLength <= HAPP_QR_MAX_BYTES;
+}
+
+interface SubscriptionQrPresentationProps {
+  variant: QrVariant;
+  standardLink: string;
+  remark: string;
+  happLink: string;
+  happLoading: boolean;
+  happError: HappError;
+  happLinkEnabled: boolean;
+  onVariantChange: (variant: QrVariant) => void;
+  onRegenerate: () => void;
+  onOpenHappSettings: () => void;
+}
+
+function SubscriptionQrPresentation({
+  variant,
+  standardLink,
+  remark,
+  happLink,
+  happLoading,
+  happError,
+  happLinkEnabled,
+  onVariantChange,
+  onRegenerate,
+  onOpenHappSettings,
+}: SubscriptionQrPresentationProps) {
+  const { t } = useTranslation();
+  const showHappQr = canRenderHappQr(happLink);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Segmented<QrVariant>
+        block
+        value={variant}
+        options={[
+          { label: t('pages.clients.qrStandard'), value: 'standard' },
+          {
+            label: (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {!happLinkEnabled ? (
+                  <LockOutlined aria-label={t('pages.clients.happLinkDisabledHint')} />
+                ) : null}
+                <span>{t('pages.clients.happLinkOptionLabel')}</span>
+              </span>
+            ),
+            value: 'happ',
+          },
+        ]}
+        onChange={onVariantChange}
+      />
+      {variant === 'standard' ? (
+        <QrPanel value={standardLink} remark={remark} />
+      ) : !happLinkEnabled ? (
+        <Empty
+          image={<LockOutlined aria-hidden style={{ fontSize: 40, opacity: 0.45 }} />}
+          styles={{ image: { height: 44, marginBottom: 12 } }}
+          style={{
+            minHeight: 190,
+            margin: 0,
+            padding: '20px 12px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+          }}
+          description={
+            <div style={{ maxWidth: 400, margin: '0 auto' }}>
+              <Typography.Text strong>{t('pages.clients.happLinkDisabledTitle')}</Typography.Text>
+              <Typography.Paragraph type="secondary" style={{ margin: '6px 0 0' }}>
+                {t('pages.clients.happLinkDisabledDescription')}
+              </Typography.Paragraph>
+            </div>
+          }
+        >
+          <Button type="primary" onClick={onOpenHappSettings}>
+            {t('pages.clients.happLinkSettingsAction')}
+          </Button>
+        </Empty>
+      ) : (
+        <div>
+          <Alert
+            style={{ marginBottom: 16 }}
+            type="warning"
+            showIcon
+            title={t('pages.clients.happLinkDisclosure')}
+          />
+          <Spin spinning={happLoading}>
+            <div style={{ minHeight: happLoading ? 48 : undefined }}>
+              {happLink ? (
+                <>
+                  {!showHappQr ? (
+                    <Alert
+                      style={{ marginBottom: 12 }}
+                      type="info"
+                      showIcon
+                      title={t('pages.clients.happLinkQrTooLong')}
+                    />
+                  ) : null}
+                  <QrPanel value={happLink} remark={remark} showQr={showHappQr} />
+                </>
+              ) : null}
+              {happError ? (
+                <Alert
+                  type="error"
+                  showIcon
+                  title={
+                    happError === 'too_long'
+                      ? t('pages.clients.happLinkSourceTooLong')
+                      : t('pages.clients.happLinkErrorHint', {
+                          dashboard: t('menu.dashboard'),
+                          logs: t('pages.index.logs'),
+                        })
+                  }
+                />
+              ) : null}
+            </div>
+          </Spin>
+          {happLink || happError === 'unavailable' ? (
+            <Button style={{ marginTop: 12 }} onClick={onRegenerate}>
+              {happError ? t('pages.clients.happLinkRetry') : t('regenerate')}
+            </Button>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const DEFAULT_SUB: SubSettings = {
+  enable: false,
+  happLinkEnable: false,
+  subURI: '',
+  subJsonURI: '',
+  subJsonEnable: false,
+  publicHost: '',
+};
+
+export default function ClientQrModal(props: ClientQrModalProps) {
+  const subSettings = props.subSettings ?? DEFAULT_SUB;
+  const subId = props.client?.subId ?? '';
+  const subLink =
+    subId && subSettings.enable && subSettings.subURI ? subSettings.subURI + subId : '';
+  const happLinkEnabled = subSettings.happLinkEnable === true;
+  // A gate or source change remounts this scope to clear Happ state and retire any in-flight response.
+  const scopeKey = `${props.client?.id ?? ''}\0${subId}\0${subLink}\0${happLinkEnabled ? 1 : 0}`;
+
+  return <ClientQrModalContent key={scopeKey} {...props} />;
+}
+
+function ClientQrModalContent({
   open,
   client,
   inboundsById,
+  tunnelAllowedIPs,
   subSettings = DEFAULT_SUB,
   onOpenChange,
 }: ClientQrModalProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { allSetting } = useAllSettings();
   const [links, setLinks] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [subType, setSubType] = useState<'standard' | 'happ'>('standard');
 
-  const subLink = useMemo(() => {
-    if (!client?.subId || !subSettings?.enable || !subSettings?.subURI) return '';
-    return subSettings.subURI + client.subId;
-  }, [client?.subId, subSettings?.enable, subSettings?.subURI]);
-
-  const subJsonLink = useMemo(() => {
-    if (!client?.subId || !subSettings?.enable) return '';
-    if (!subSettings?.subJsonEnable || !subSettings?.subJsonURI) return '';
-    return subSettings.subJsonURI + client.subId;
-  }, [client?.subId, subSettings?.enable, subSettings?.subJsonEnable, subSettings?.subJsonURI]);
-
-  const happEncryptedLink = useMemo(() => {
-    if (!subLink) return '';
-    const b64 = Base64.encode(subLink, true);
-    return `happ://crypt5/${b64}`;
-  }, [subLink]);
-
-  const wgInbound = useMemo(() => findWireguardInbound(client, inboundsById), [client, inboundsById]);
-  const wgConfigText = useMemo(() => {
-    if (!client || !wgInbound || !isWireguardClient(client)) return '';
-    return buildWireguardClientConfig(client, wgInbound, window.location.hostname, subSettings?.publicHost ?? '');
-  }, [client, wgInbound, subSettings?.publicHost]);
-
-  const hasAnything = !!subLink || !!subJsonLink || !!wgConfigText || links.length > 0;
+  const subId = client?.subId;
+  const subEnabled = !!subSettings?.enable;
+  const subLink = subId && subEnabled && subSettings?.subURI ? subSettings.subURI + subId : '';
+  const subJsonLink =
+    subId && subEnabled && subSettings?.subJsonEnable && subSettings?.subJsonURI
+      ? subSettings.subJsonURI + subId
+      : '';
+  const clientId = client?.id;
+  const clientSubId = subId ?? '';
+  const happLinkEnabled = subSettings.happLinkEnable === true;
+  const [variant, setVariant] = useState<QrVariant>('standard');
+  const [happAttempt, setHappAttempt] = useState(0);
+  const [happLink, setHappLink] = useState('');
+  const [happLoading, setHappLoading] = useState(false);
+  const [happError, setHappError] = useState<HappError>(null);
+  const canGenerateHapp =
+    happLinkEnabled &&
+    typeof clientId === 'number' &&
+    Number.isSafeInteger(clientId) &&
+    clientId > 0 &&
+    !!clientSubId &&
+    !!subLink;
 
   useEffect(() => {
-    if (!open || !client?.subId) {
-      setLinks([]);
-      return;
-    }
+    if (!open || variant !== 'happ' || !canGenerateHapp) return;
+
     let cancelled = false;
-    setLoading(true);
+
     (async () => {
       try {
-        const msg = await HttpUtil.get(
+        const msg = await HttpUtil.post<HappLinkResult>(
+          `/panel/api/clients/happLink/${clientId}`,
+          undefined,
+          { silent: true },
+        );
+        if (cancelled) return;
+
+        const result = HappLinkResultSchema.safeParse(msg?.obj);
+        if (msg?.success && result.success && isValidHappCrypt5Link(result.data.encryptedLink)) {
+          setHappLink(result.data.encryptedLink);
+        } else {
+          // Only this fixed API code is safe to localize; arbitrary error messages stay hidden.
+          setHappError(
+            msg?.success === false && msg.msg === 'happ_source_too_long'
+              ? 'too_long'
+              : 'unavailable',
+          );
+        }
+      } catch {
+        if (!cancelled) setHappError('unavailable');
+      } finally {
+        if (!cancelled) setHappLoading(false);
+      }
+    })();
+
+    return () => {
+      // A retired generation must never replace the QR for a newer modal scope.
+      cancelled = true;
+    };
+  }, [open, variant, clientId, clientSubId, subLink, happAttempt, canGenerateHapp]);
+
+  const selectVariant = useCallback(
+    (nextVariant: QrVariant) => {
+      const generateHapp = nextVariant === 'happ' && happLinkEnabled;
+      setVariant(nextVariant);
+      setHappLink('');
+      setHappLoading(generateHapp && canGenerateHapp);
+      setHappError(generateHapp && !canGenerateHapp ? 'unavailable' : null);
+    },
+    [canGenerateHapp, happLinkEnabled],
+  );
+
+  const regenerateHappLink = useCallback(() => {
+    setHappLink('');
+    setHappLoading(canGenerateHapp);
+    setHappError(canGenerateHapp ? null : 'unavailable');
+    if (!canGenerateHapp) return;
+    setHappAttempt((attempt) => attempt + 1);
+  }, [canGenerateHapp]);
+
+  const openHappSettings = useCallback(() => {
+    // This path only exposes the operator gate; authorization and saving remain explicit in Settings.
+    onOpenChange(false);
+    navigate(HAPP_SETTINGS_PATH);
+  }, [navigate, onOpenChange]);
+
+  const wgInbounds = useMemo(
+    () => findWireguardInbounds(client, inboundsById),
+    [client, inboundsById],
+  );
+  const wgConfigs = useMemo(() => {
+    if (!client || !isWireguardClient(client)) return [];
+    return wgInbounds
+      .map((ib) => {
+        const address = tunnelAllowedIPs?.[ib.id] ?? '';
+        const text = buildWireguardClientConfig(
+          client,
+          ib,
+          window.location.hostname,
+          subSettings.publicHost ?? '',
+          address,
+        );
+        return { inbound: ib, text };
+      })
+      .filter((c) => !!c.text);
+  }, [client, wgInbounds, tunnelAllowedIPs, subSettings.publicHost]);
+
+  const awgInbounds = useMemo(
+    () => findAmneziaWGInbounds(client, inboundsById),
+    [client, inboundsById],
+  );
+  const awgConfigs = useMemo(() => {
+    if (!client || !isAmneziaWGClient(client)) return [];
+    return awgInbounds
+      .map((ib) => {
+        const address = tunnelAllowedIPs?.[ib.id] ?? '';
+        const text = buildAmneziaWGClientConfig(
+          client,
+          ib,
+          window.location.hostname,
+          subSettings.publicHost ?? '',
+          address,
+        );
+        return { inbound: ib, text };
+      })
+      .filter((c) => !!c.text);
+  }, [client, awgInbounds, tunnelAllowedIPs, subSettings.publicHost]);
+
+  const tuicInbound = useMemo(() => findTuicInbound(client, inboundsById), [client, inboundsById]);
+  const tuicConfigText = useMemo(() => {
+    if (!client || !tuicInbound || !isTuicClient(client)) return '';
+    return buildTuicClientConfig(
+      client,
+      tuicInbound,
+      window.location.hostname,
+      subSettings.publicHost ?? '',
+    );
+  }, [client, tuicInbound, subSettings.publicHost]);
+
+  const hasAnything =
+    !!subLink ||
+    !!subJsonLink ||
+    wgConfigs.length > 0 ||
+    awgConfigs.length > 0 ||
+    !!tuicConfigText ||
+    links.length > 0;
+
+  // The reset runs during render so the effect only carries the request.
+  const openSubId = open ? (client?.subId ?? '') : '';
+  const [syncedSubId, setSyncedSubId] = useState(openSubId);
+  if (openSubId !== syncedSubId) {
+    setSyncedSubId(openSubId);
+    setLinks([]);
+    setLoading(!!openSubId);
+    setVariant('standard');
+    setHappLink('');
+    setHappLoading(false);
+    setHappError(null);
+  }
+
+  useEffect(() => {
+    if (!open || !client?.subId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const msg = (await HttpUtil.get(
           `/panel/api/clients/subLinks/${encodeURIComponent(client.subId!)}`,
-        ) as ApiMsg<string[]>;
+        )) as ApiMsg<string[]>;
         if (!cancelled) {
           setLinks(msg?.success && Array.isArray(msg.obj) ? msg.obj : []);
         }
@@ -92,7 +409,9 @@ export default function ClientQrModal({
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [open, client?.subId]);
 
   const [activeKey, setActiveKey] = useState<string[]>([]);
@@ -104,47 +423,18 @@ export default function ClientQrModal({
         key: 'sub',
         label: t('subscription.title'),
         children: (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <Segmented
-                value={subType}
-                onChange={(val) => setSubType(val as 'standard' | 'happ')}
-                options={[
-                  { label: 'Standard', value: 'standard', icon: <QrcodeOutlined /> },
-                  { label: 'Happ Encrypted Link', value: 'happ', icon: <LockOutlined /> },
-                ]}
-              />
-            </div>
-
-            {subType === 'standard' && (
-              <QrPanel value={subLink} remark={`${client?.email || ''} — ${t('subscription.title')}`} />
-            )}
-
-            {subType === 'happ' && (
-              allSetting?.happEncryptEnable ? (
-                <QrPanel value={happEncryptedLink} remark={`${client?.email || ''} — Happ Encrypted`} />
-              ) : (
-                <div style={{ textAlign: 'center', padding: '36px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                  <LockOutlined style={{ fontSize: 44, opacity: 0.35 }} />
-                  <div style={{ fontSize: 16, fontWeight: 600 }}>Happ encrypted link generation is not enabled</div>
-                  <div style={{ fontSize: 13, opacity: 0.6, maxWidth: 320 }}>
-                    Enable local generation of encrypted Happ subscription links. (Only for Happ)
-                  </div>
-                  <Button
-                    type="primary"
-                    icon={<SettingOutlined />}
-                    onClick={() => {
-                      onOpenChange(false);
-                      navigate('/settings#happ');
-                    }}
-                    style={{ marginTop: 6 }}
-                  >
-                    Go to Settings
-                  </Button>
-                </div>
-              )
-            )}
-          </div>
+          <SubscriptionQrPresentation
+            variant={variant}
+            standardLink={subLink}
+            remark={`${client?.email || ''} — ${t('subscription.title')}`}
+            happLink={happLink}
+            happLoading={happLoading}
+            happError={happError}
+            happLinkEnabled={happLinkEnabled}
+            onVariantChange={selectVariant}
+            onRegenerate={regenerateHappLink}
+            onOpenHappSettings={openHappSettings}
+          />
         ),
       });
     }
@@ -163,7 +453,9 @@ export default function ClientQrModal({
           <LinkTags parts={parts} />
           {meta && <span style={{ opacity: 0.6, fontSize: 12 }}>({meta})</span>}
         </span>
-      ) : `${t('pages.clients.link')} ${idx + 1}`;
+      ) : (
+        `${t('pages.clients.link')} ${idx + 1}`
+      );
       out.push({
         key: `l${idx}`,
         label,
@@ -176,30 +468,82 @@ export default function ClientQrModal({
         ),
       });
     });
-    if (wgConfigText) {
+    wgConfigs.forEach(({ inbound, text }) => {
+      const meta = formatTunnelConfigMeta(inbound, client?.email, wgConfigs.length);
+      const label = (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Tag color="cyan" style={{ margin: 0 }}>
+            {t('pages.clients.wireguardConfig')}
+          </Tag>
+          {meta.label && <span style={{ opacity: 0.85, fontSize: 12 }}>{meta.label}</span>}
+        </span>
+      );
       out.push({
-        key: 'wg-config',
-        label: <Tag color="cyan" style={{ margin: 0 }}>{t('pages.clients.wireguardConfig')}</Tag>,
+        key: `wg-config-${inbound.id}`,
+        label,
+        children: <QrPanel value={text} remark={meta.qrRemark} downloadName={meta.fileName} />,
+      });
+    });
+    awgConfigs.forEach(({ inbound, text }) => {
+      const meta = formatTunnelConfigMeta(inbound, client?.email, awgConfigs.length);
+      const label = (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Tag color="purple" style={{ margin: 0 }}>
+            {t('pages.clients.amneziaWgConfig')}
+          </Tag>
+          {meta.label && <span style={{ opacity: 0.85, fontSize: 12 }}>{meta.label}</span>}
+        </span>
+      );
+      out.push({
+        key: `awg-config-${inbound.id}`,
+        label,
+        children: <QrPanel value={text} remark={meta.qrRemark} downloadName={meta.fileName} />,
+      });
+    });
+    if (tuicConfigText) {
+      out.push({
+        key: 'tuic-config',
+        label: (
+          <Tag color="orange" style={{ margin: 0 }}>
+            {t('pages.clients.tuicConfig')}
+          </Tag>
+        ),
         children: (
           <QrPanel
-            value={wgConfigText}
-            remark={client?.email || 'peer'}
-            downloadName={`${client?.email || 'peer'}.conf`}
+            value={tuicConfigText}
+            remark={client?.email || 'tuic'}
+            downloadName={`${client?.email || 'tuic'}.yaml`}
           />
         ),
       });
     }
     return out;
-  }, [subLink, subType, allSetting?.happEncryptEnable, happEncryptedLink, subJsonLink, links, wgConfigText, client?.email, t, onOpenChange, navigate]);
+  }, [
+    subLink,
+    subJsonLink,
+    variant,
+    happLink,
+    happLoading,
+    happError,
+    happLinkEnabled,
+    wgConfigs,
+    awgConfigs,
+    links,
+    client?.email,
+    selectVariant,
+    regenerateHappLink,
+    openHappSettings,
+    tuicConfigText,
+    t,
+  ]);
 
-  useEffect(() => {
-    if (!open) {
-      setActiveKey([]);
-      setSubType('standard');
-      return;
-    }
-    setActiveKey(items.length > 0 ? [items[0].key] : []);
-  }, [open, items]);
+  // Expanding the first panel is a render-time adjustment, not a side effect.
+  const firstKey = open && items.length > 0 ? items[0].key : null;
+  const [syncedFirstKey, setSyncedFirstKey] = useState<string | null>(null);
+  if (firstKey !== syncedFirstKey) {
+    setSyncedFirstKey(firstKey);
+    setActiveKey(firstKey ? [firstKey] : []);
+  }
 
   return (
     <Modal
@@ -212,15 +556,21 @@ export default function ClientQrModal({
     >
       <Spin spinning={loading}>
         {!client?.subId && !loading && (
-          <div style={{ padding: 24, textAlign: 'center', opacity: 0.6 }}>{t('pages.clients.noSubId')}</div>
+          <div style={{ padding: 24, textAlign: 'center', opacity: 0.6 }}>
+            {t('pages.clients.noSubId')}
+          </div>
         )}
         {client?.subId && !hasAnything && !loading && (
-          <div style={{ padding: 24, textAlign: 'center', opacity: 0.6 }}>{t('pages.clients.noLinks')}</div>
+          <div style={{ padding: 24, textAlign: 'center', opacity: 0.6 }}>
+            {t('pages.clients.noLinks')}
+          </div>
         )}
         {hasAnything && (
           <Collapse
             activeKey={activeKey}
-            onChange={(keys) => setActiveKey(typeof keys === 'string' ? [keys] : (keys as string[]))}
+            onChange={(keys) =>
+              setActiveKey(typeof keys === 'string' ? [keys] : (keys as string[]))
+            }
             items={items}
           />
         )}

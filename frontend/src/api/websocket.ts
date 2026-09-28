@@ -190,3 +190,12 @@ export class WebSocketClient {
     }
   }
 }
+
+let sharedClientInstance: WebSocketClient | null = null;
+
+export function getSharedWebSocketClient(basePath?: string): WebSocketClient {
+  if (sharedClientInstance) return sharedClientInstance;
+  const path = basePath ?? ((typeof window !== "undefined" && (window as any).X_UI_BASE_PATH) || "");
+  sharedClientInstance = new WebSocketClient(path);
+  return sharedClientInstance;
+}

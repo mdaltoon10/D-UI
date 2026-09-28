@@ -33,6 +33,7 @@ const (
 	Hysteria    Protocol = "hysteria"
 	MTProto     Protocol = "mtproto"
 	AmneziaWG   Protocol = "amneziawg"
+	TUIC        Protocol = "tuic"
 )
 
 // User represents a user account in the d-ui panel.

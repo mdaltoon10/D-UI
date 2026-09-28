@@ -2,13 +2,16 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/mdaltoon10/D-UI/v3/internal/database"
 	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
+	"github.com/mdaltoon10/D-UI/v3/internal/web/entity"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/service"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/session"
 	"github.com/mdaltoon10/D-UI/v3/internal/web/websocket"
@@ -108,10 +111,13 @@ type ClientController struct {
 	inboundService service.InboundService
 	xrayService    service.XrayService
 	settingService service.SettingService
+	happGenerator  service.HappLinkGenerator
 }
 
 func NewClientController(g *gin.RouterGroup) *ClientController {
-	a := &ClientController{}
+	a := &ClientController{
+		happGenerator: service.NewHappService(&service.ClientService{}, &service.SettingService{}),
+	}
 	a.initRouter(g)
 	return a
 }
@@ -123,6 +129,7 @@ func (a *ClientController) initRouter(g *gin.RouterGroup) {
 	g.GET("/traffic/:email", a.getTrafficByEmail)
 	g.GET("/subLinks/:subId", a.getSubLinks)
 	g.GET("/links/:email", a.getClientLinks)
+	g.POST("/happLink/:id", a.generateHappLink)
 
 	g.POST("/add", a.create)
 	g.POST("/update/:email", a.update)
@@ -950,3 +957,23 @@ func (a *ClientController) bulkResetTraffic(c *gin.Context) {
 	a.xrayService.SetToNeedRestart()
 	notifyClientsChanged()
 }
+
+func (a *ClientController) generateHappLink(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	clientID, err := strconv.Atoi(c.Param("id"))
+	if err != nil || clientID < 1 {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), service.ErrHappLinkUnavailable)
+		return
+	}
+	result, err := a.happGenerator.Generate(c.Request.Context(), clientID, c.Request.Host)
+	if err != nil {
+		if errors.Is(err, service.ErrHappSourceTooLong) {
+			c.JSON(http.StatusOK, entity.Msg{Success: false, Msg: "happ_source_too_long", Obj: nil})
+			return
+		}
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), service.ErrHappLinkUnavailable)
+		return
+	}
+	jsonObj(c, result, nil)
+}
+

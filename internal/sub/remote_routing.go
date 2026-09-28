@@ -30,6 +30,7 @@ type remoteRoutingKind string
 
 const (
 	remoteRoutingHapp  remoteRoutingKind = "happ"
+	remoteRoutingJson  remoteRoutingKind = "jsonhapp"
 	remoteRoutingClash remoteRoutingKind = "clash"
 
 	remoteRoutingCacheTTL     = 10 * time.Minute
@@ -39,6 +40,12 @@ const (
 	remoteRoutingHappMaxValue = 8 << 10  // normalized Routing header value
 	remoteRoutingClashMaxBody = 2 << 20  // 2 MiB
 )
+
+// isHappPayloadKind reports whether the kind carries a happ-payload source:
+// same validation and size caps, but a separate persisted cache row.
+func isHappPayloadKind(kind remoteRoutingKind) bool {
+	return kind == remoteRoutingHapp || kind == remoteRoutingJson
+}
 
 var errRemoteRoutingUnavailable = errors.New("remote routing source is temporarily unavailable")
 
@@ -66,6 +73,7 @@ type remoteRoutingFetch struct {
 }
 
 type remoteRoutingResolver struct {
+	refreshWG    sync.WaitGroup
 	mu           sync.Mutex
 	loadMu       sync.Mutex
 	loaded       bool
@@ -154,7 +162,11 @@ func (r *remoteRoutingResolver) resolveEntry(kind remoteRoutingKind, raw string)
 	r.inflight[key] = fetch
 	r.mu.Unlock()
 
-	common.GoRecover("remote-routing-refresh", func() { r.refresh(key, cached, hasCached, fetch) })
+	r.refreshWG.Add(1)
+	common.GoRecover("remote-routing-refresh", func() {
+		defer r.refreshWG.Done()
+		r.refresh(key, cached, hasCached, fetch)
+	})
 	if hasCached {
 		return cached, true, nil
 	}
@@ -162,19 +174,22 @@ func (r *remoteRoutingResolver) resolveEntry(kind remoteRoutingKind, raw string)
 }
 
 // RefreshRemoteRoutingSources warms and refreshes configured remote sources
-// from the cron job. Concurrent resolver reads are safe; fetches coalesce.
-func RefreshRemoteRoutingSources(happ, clash string) {
-	for kind, raw := range map[remoteRoutingKind]string{
-		remoteRoutingHapp:  happ,
-		remoteRoutingClash: clash,
+// from the cron job; concurrent resolver reads are safe, fetches coalesce.
+func RefreshRemoteRoutingSources(happ, clash, jsonRouting string) {
+	for kind, raw := range map[remoteRoutingKind][]string{
+		remoteRoutingHapp:  {happ},
+		remoteRoutingJson:  {jsonRouting},
+		remoteRoutingClash: {clash},
 	} {
-		_, remote, parseErr := common.ParseRemoteRoutingURL(raw)
-		if parseErr != nil {
-			logger.Warningf("Remote %s routing source is invalid", kind)
-			continue
-		}
-		if remote {
-			_ = routingSourceResolver.refreshSource(kind, raw)
+		for _, source := range raw {
+			_, remote, parseErr := common.ParseRemoteRoutingURL(source)
+			if parseErr != nil {
+				logger.Warningf("Remote %s routing source is invalid", kind)
+				continue
+			}
+			if remote {
+				_ = routingSourceResolver.refreshSource(kind, source)
+			}
 		}
 	}
 }
@@ -281,7 +296,7 @@ func (r *remoteRoutingResolver) fetch(key remoteRoutingKey, previous remoteRouti
 		}
 		return previous, nil
 	}
-	if key.kind == remoteRoutingHapp && isRemoteHappRedirect(resp.StatusCode) {
+	if isHappPayloadKind(key.kind) && isRemoteHappRedirect(resp.StatusCode) {
 		location := strings.TrimSpace(resp.Header.Get("Location"))
 		content, locationErr := normalizeHappRouting([]byte(location))
 		if locationErr != nil {
@@ -316,7 +331,7 @@ func (r *remoteRoutingResolver) fetch(key remoteRoutingKey, previous remoteRouti
 	if err != nil {
 		return remoteRoutingCacheEntry{}, err
 	}
-	if key.kind == remoteRoutingHapp && len(content) > remoteRoutingHappMaxValue {
+	if isHappPayloadKind(key.kind) && len(content) > remoteRoutingHappMaxValue {
 		return remoteRoutingCacheEntry{}, errors.New("Happ routing header exceeds the size limit")
 	}
 	return remoteRoutingCacheEntry{
@@ -341,7 +356,7 @@ func isRemoteHappRedirect(status int) bool {
 
 func normalizeRemoteRoutingContent(kind remoteRoutingKind, body []byte) (string, map[string]any, error) {
 	switch kind {
-	case remoteRoutingHapp:
+	case remoteRoutingHapp, remoteRoutingJson:
 		content, err := normalizeHappRouting(body)
 		return content, nil, err
 	case remoteRoutingClash:
@@ -363,6 +378,9 @@ func normalizeHappRouting(body []byte) (string, error) {
 			return "", fmt.Errorf("invalid Happ routing JSON: %w", err)
 		}
 		return "happ://routing/onadd/" + base64.StdEncoding.EncodeToString(compact), nil
+	}
+	if text == "happ://routing/off" {
+		return text, nil
 	}
 	if strings.ContainsAny(text, "\r\n") {
 		return "", errors.New("Happ deeplink must be a single line")
@@ -565,7 +583,7 @@ func (r *remoteRoutingResolver) triggerPersistedLoad() {
 
 func (r *remoteRoutingResolver) loadPersisted() {
 	loaded := make(map[remoteRoutingKey]remoteRoutingCacheEntry, 2)
-	for _, kind := range []remoteRoutingKind{remoteRoutingHapp, remoteRoutingClash} {
+	for _, kind := range []remoteRoutingKind{remoteRoutingHapp, remoteRoutingJson, remoteRoutingClash} {
 		var setting model.Setting
 		err := database.GetDB().Where("key = ?", remoteRoutingSettingKey(kind)).First(&setting).Error
 		if err != nil {
@@ -582,7 +600,7 @@ func (r *remoteRoutingResolver) loadPersisted() {
 		if err != nil {
 			continue
 		}
-		if kind == remoteRoutingHapp && len(normalized) > remoteRoutingHappMaxValue {
+		if isHappPayloadKind(kind) && len(normalized) > remoteRoutingHappMaxValue {
 			continue
 		}
 		entry.Content = normalized
@@ -620,238 +638,4 @@ func (r *remoteRoutingResolver) persistEntry(kind remoteRoutingKind, entry remot
 	if err != nil {
 		logger.Warningf("Could not persist the last valid %s remote routing value", kind)
 	}
-}
-
-func clashProxyGroupName(v any) string {
-	if m, ok := v.(map[string]any); ok {
-		if name, ok := m["name"].(string); ok {
-			return name
-		}
-	}
-	return ""
-}
-
-func remoteClashAllowedKey(key string) bool {
-	switch key {
-	case "proxy-groups", "rules", "rule-providers":
-		return true
-	default:
-		return false
-	}
-}
-
-func mergeRemoteClashRules(base map[string]any, document map[string]any) error {
-	if base == nil || document == nil {
-		return nil
-	}
-
-	// 1. Validate remote proxy-groups if present
-	var remoteGroups []map[string]any
-	if rawGroups, ok := document["proxy-groups"]; ok {
-		groupsSlice, ok := asAnySlice(rawGroups)
-		if !ok {
-			return errors.New("proxy-groups must be a slice")
-		}
-		seenNames := make(map[string]bool, len(groupsSlice))
-		for _, item := range groupsSlice {
-			gMap, ok := item.(map[string]any)
-			if !ok {
-				return errors.New("named group maps required")
-			}
-			name, _ := gMap["name"].(string)
-			name = strings.TrimSpace(name)
-			if name == "" {
-				return errors.New("named group maps required")
-			}
-			if seenNames[name] {
-				return fmt.Errorf("duplicated group name %q", name)
-			}
-			seenNames[name] = true
-
-			if useRaw, exists := gMap["use"]; exists {
-				if useSlice, ok := asAnySlice(useRaw); ok && len(useSlice) > 0 {
-					return errors.New("cannot use proxy-providers in remote proxy-groups")
-				}
-			}
-			remoteGroups = append(remoteGroups, gMap)
-		}
-	}
-
-	// 2. Gather all known proxies and groups
-	knownTargets := map[string]bool{
-		"DIRECT":     true,
-		"REJECT":     true,
-		"GLOBAL":     true,
-		"COMPATIBLE": true,
-	}
-
-	// Collect base proxies
-	if rawProxies, ok := base["proxies"]; ok {
-		if pSlice, ok := asAnySlice(rawProxies); ok {
-			for _, item := range pSlice {
-				if pMap, ok := item.(map[string]any); ok {
-					if name, ok := pMap["name"].(string); ok && name != "" {
-						knownTargets[name] = true
-					}
-				}
-			}
-		}
-	}
-
-	// Collect base proxy-groups
-	if rawGroups, ok := base["proxy-groups"]; ok {
-		if gSlice, ok := asAnySlice(rawGroups); ok {
-			for _, item := range gSlice {
-				name := clashProxyGroupName(item)
-				if name != "" {
-					knownTargets[name] = true
-				}
-			}
-		}
-	}
-
-	// Collect remote proxy-groups
-	for _, gMap := range remoteGroups {
-		if name, ok := gMap["name"].(string); ok && name != "" {
-			knownTargets[name] = true
-		}
-	}
-
-	// Validate proxies inside remote groups
-	for _, gMap := range remoteGroups {
-		if rawProxies, ok := gMap["proxies"]; ok {
-			if pSlice, ok := asAnySlice(rawProxies); ok {
-				for _, p := range pSlice {
-					if pStr, ok := p.(string); ok {
-						if !knownTargets[pStr] {
-							return fmt.Errorf("unknown proxy or group %q", pStr)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// 3. Validate rule-providers if present
-	knownRuleProviders := make(map[string]bool)
-	if rawProviders, ok := base["rule-providers"]; ok {
-		if pMap, ok := rawProviders.(map[string]any); ok {
-			for name := range pMap {
-				knownRuleProviders[name] = true
-			}
-		}
-	}
-
-	var remoteRuleProviders map[string]any
-	if rawProviders, ok := document["rule-providers"]; ok {
-		if pMap, ok := rawProviders.(map[string]any); ok {
-			remoteRuleProviders = pMap
-			for name, val := range pMap {
-				knownRuleProviders[name] = true
-				if valMap, ok := val.(map[string]any); ok {
-					if downloadProxy, ok := valMap["proxy"].(string); ok && downloadProxy != "" {
-						if !knownTargets[downloadProxy] {
-							return fmt.Errorf("rule-provider %q references unknown proxy or group %q", name, downloadProxy)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// 4. Validate rules if present
-	var remoteRules []string
-	if rawRules, ok := document["rules"]; ok {
-		if rSlice, ok := asAnySlice(rawRules); ok {
-			for _, item := range rSlice {
-				rStr, ok := item.(string)
-				if !ok {
-					continue
-				}
-				rStr = strings.TrimSpace(rStr)
-				if rStr == "" {
-					continue
-				}
-				parts := strings.Split(rStr, ",")
-				for i := range parts {
-					parts[i] = strings.TrimSpace(parts[i])
-				}
-				ruleType := strings.ToUpper(parts[0])
-				if ruleType == "RULE-SET" {
-					if len(parts) >= 3 {
-						providerName := parts[1]
-						targetGroup := parts[2]
-						if !knownRuleProviders[providerName] {
-							return fmt.Errorf("unknown rule-provider %q", providerName)
-						}
-						if !knownTargets[targetGroup] {
-							return fmt.Errorf("unknown proxy or group %q", targetGroup)
-						}
-					}
-				} else if len(parts) >= 2 {
-					target := parts[len(parts)-1]
-					if target == "no-resolve" || target == "src" {
-						if len(parts) >= 3 {
-							target = parts[len(parts)-2]
-						}
-					}
-					if target == "no-resolve" || target == "src" {
-						if len(parts) >= 4 {
-							target = parts[len(parts)-3]
-						}
-					}
-					if !knownTargets[target] {
-						return fmt.Errorf("unknown proxy or group %q", target)
-					}
-				}
-				remoteRules = append(remoteRules, rStr)
-			}
-		}
-	}
-
-	// 5. Apply changes to base
-	if len(remoteRuleProviders) > 0 {
-		baseProviders, ok := base["rule-providers"].(map[string]any)
-		if !ok || baseProviders == nil {
-			baseProviders = make(map[string]any)
-		}
-		for k, v := range remoteRuleProviders {
-			baseProviders[k] = v
-		}
-		base["rule-providers"] = baseProviders
-	}
-
-	if len(remoteGroups) > 0 {
-		baseGroups, _ := asAnySlice(base["proxy-groups"])
-		mergedGroups := make([]any, 0, len(remoteGroups)+len(baseGroups))
-		seen := make(map[string]bool)
-		for _, g := range remoteGroups {
-			name := clashProxyGroupName(g)
-			if name != "" {
-				seen[name] = true
-				mergedGroups = append(mergedGroups, g)
-			}
-		}
-		for _, g := range baseGroups {
-			name := clashProxyGroupName(g)
-			if !seen[name] {
-				mergedGroups = append(mergedGroups, g)
-			}
-		}
-		base["proxy-groups"] = mergedGroups
-	}
-
-	if len(remoteRules) > 0 {
-		baseRules, _ := asAnySlice(base["rules"])
-		mergedRules := make([]any, 0, len(remoteRules)+len(baseRules))
-		for _, r := range remoteRules {
-			mergedRules = append(mergedRules, r)
-		}
-		for _, r := range baseRules {
-			mergedRules = append(mergedRules, r)
-		}
-		base["rules"] = mergedRules
-	}
-
-	return nil
 }

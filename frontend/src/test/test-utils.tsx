@@ -1,3 +1,4 @@
+import { QueryClient } from "@tanstack/react-query";
 import type { ReactElement } from 'react';
 import { render, fireEvent } from '@testing-library/react';
 
@@ -48,4 +49,17 @@ export function chooseSelectOption(fieldId: string, optionText: string) {
     .find((o) => (o.getAttribute('title') ?? o.textContent ?? '').trim() === optionText);
   if (!option) throw new Error(`Option '${optionText}' not found for field '${fieldId}'`);
   fireEvent.click(option);
+}
+
+export function makeTestQueryClient() {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        
+      },
+    },
+  });
+  (client as any).query = (options: any) => client.fetchQuery(options);
+  return client;
 }

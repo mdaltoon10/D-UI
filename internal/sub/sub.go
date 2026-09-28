@@ -1,4 +1,4 @@
-// Package sub provides subscription server functionality for the d-ui panel,
+// Package sub provides subscription server functionality for the 3x-ui panel,
 // including HTTP/HTTPS servers for serving subscription links and JSON configurations.
 package sub
 
@@ -89,6 +89,31 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 		return nil, err
 	}
 
+	subClashAutoDetect, err := s.settingService.GetSubClashAutoDetect()
+	if err != nil {
+		subClashAutoDetect = false
+	}
+
+	subJsonAutoDetect, err := s.settingService.GetSubJsonAutoDetect()
+	if err != nil {
+		subJsonAutoDetect = false
+	}
+
+	subJsonAlwaysArray, err := s.settingService.GetSubJsonAlwaysArray()
+	if err != nil {
+		subJsonAlwaysArray = false
+	}
+
+	subJsonUserAgentRegex, err := s.settingService.GetSubJsonUserAgentRegex()
+	if err != nil {
+		subJsonUserAgentRegex = service.DefaultSubJsonUserAgentRegex
+	}
+
+	subClashUserAgentRegex, err := s.settingService.GetSubClashUserAgentRegex()
+	if err != nil {
+		subClashUserAgentRegex = service.DefaultSubClashUserAgentRegex
+	}
+
 	// Set base_path based on LinksPath for template rendering
 	// Ensure LinksPath ends with "/" for proper asset URL generation
 	basePath := LinksPath
@@ -125,9 +150,24 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 		SubJsonRules = ""
 	}
 
+	SubJsonRoutingRules, err := s.settingService.GetSubJsonRoutingRules()
+	if err != nil {
+		SubJsonRoutingRules = ""
+	}
+
+	SubJsonDns, err := s.settingService.GetSubJsonDns()
+	if err != nil {
+		SubJsonDns = ""
+	}
+
 	SubJsonFinalMask, err := s.settingService.GetSubJsonFinalMask()
 	if err != nil {
 		SubJsonFinalMask = ""
+	}
+
+	SubJsonObservatory, err := s.settingService.GetSubJsonObservatory()
+	if err != nil {
+		SubJsonObservatory = ""
 	}
 
 	SubClashEnableRouting, err := s.settingService.GetSubClashEnableRouting()
@@ -153,6 +193,10 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	SubProfileUrl, err := s.settingService.GetSubProfileUrl()
 	if err != nil {
 		SubProfileUrl = ""
+	}
+	SubProfileMode, err := s.settingService.GetSubProfileMode()
+	if err != nil {
+		SubProfileMode = service.SubProfileModeNone
 	}
 
 	SubAnnounce, err := s.settingService.GetSubAnnounce()
@@ -184,6 +228,62 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	if err != nil {
 		SubIncyRoutingRules = ""
 	}
+
+	happCfg := HappConfig{}
+	happCfg.AutoDetect, _ = s.settingService.GetSubHappAutoDetect()
+	happCfg.ProviderId, _ = s.settingService.GetSubHappProviderId()
+	happCfg.NewUrl, _ = s.settingService.GetSubHappNewUrl()
+	happCfg.FallbackUrl, _ = s.settingService.GetSubHappFallbackUrl()
+	happCfg.SubInfoColor, _ = s.settingService.GetSubHappSubInfoColor()
+	happCfg.SubInfoText, _ = s.settingService.GetSubHappSubInfoText()
+	happCfg.SubInfoButtonText, _ = s.settingService.GetSubHappSubInfoButtonText()
+	happCfg.SubInfoButtonLink, _ = s.settingService.GetSubHappSubInfoButtonLink()
+	happCfg.SubExpire, _ = s.settingService.GetSubHappSubExpire()
+	happCfg.SubExpireButtonLink, _ = s.settingService.GetSubHappSubExpireButtonLink()
+	happCfg.NotificationExpire, _ = s.settingService.GetSubHappNotificationExpire()
+	happCfg.NoLimit, _ = s.settingService.GetSubHappNoLimit()
+	happCfg.AlwaysHwid, _ = s.settingService.GetSubHappAlwaysHwid()
+	happCfg.TunMode, _ = s.settingService.GetSubHappTunMode()
+	happCfg.TunType, _ = s.settingService.GetSubHappTunType()
+	happCfg.ExcludeRoutes, _ = s.settingService.GetSubHappExcludeRoutes()
+	happCfg.ExcludeApns, _ = s.settingService.GetSubHappExcludeApns()
+	happCfg.ColorProfile, _ = s.settingService.GetSubHappColorProfile()
+	happCfg.PingType, _ = s.settingService.GetSubHappPingType()
+	happCfg.AutoConnect, _ = s.settingService.GetSubHappAutoConnect()
+	happCfg.AutoConnectType, _ = s.settingService.GetSubHappAutoConnectType()
+	happCfg.PerAppMode, _ = s.settingService.GetSubHappPerAppMode()
+	happCfg.PerAppList, _ = s.settingService.GetSubHappPerAppList()
+	happCfg.LocalProxyAuth, _ = s.settingService.GetSubHappLocalProxyAuth()
+
+	incyCfg := IncyConfig{}
+	incyCfg.AutoDetect, _ = s.settingService.GetSubIncyAppAutoDetect()
+	incyCfg.ProfileDescription, _ = s.settingService.GetSubIncyProfileDescription()
+	incyCfg.SortOrder, _ = s.settingService.GetSubIncySortOrder()
+	incyCfg.SupportEmail, _ = s.settingService.GetSubIncySupportEmail()
+	incyCfg.AnnounceUrl, _ = s.settingService.GetSubIncyAnnounceUrl()
+	incyCfg.PremiumUrl, _ = s.settingService.GetSubIncyPremiumUrl()
+	incyCfg.BannerText, _ = s.settingService.GetSubIncyBannerText()
+	incyCfg.BannerButtonText, _ = s.settingService.GetSubIncyBannerButtonText()
+	incyCfg.BannerButtonUrl, _ = s.settingService.GetSubIncyBannerButtonUrl()
+	incyCfg.BannerBgColor, _ = s.settingService.GetSubIncyBannerBgColor()
+	incyCfg.BannerButtonColor, _ = s.settingService.GetSubIncyBannerButtonColor()
+	incyCfg.HideUrl, _ = s.settingService.GetSubIncyHideUrl()
+	incyCfg.HideCheck, _ = s.settingService.GetSubIncyHideCheck()
+	incyCfg.NoLimitEnabled, _ = s.settingService.GetSubIncyNoLimitEnabled()
+	incyCfg.PerAppProxyEnable, _ = s.settingService.GetSubIncyPerAppEnable()
+	incyCfg.PerAppProxyMode, _ = s.settingService.GetSubIncyPerAppMode()
+	incyCfg.PerAppProxyList, _ = s.settingService.GetSubIncyPerAppList()
+	incyCfg.FragmentationEnable, _ = s.settingService.GetSubIncyFragmentationEnable()
+	incyCfg.FragmentationLength, _ = s.settingService.GetSubIncyFragmentLength()
+	incyCfg.FragmentationInterval, _ = s.settingService.GetSubIncyFragmentInterval()
+	incyCfg.FragmentationPackets, _ = s.settingService.GetSubIncyFragmentPackets()
+	incyCfg.NoisesEnable, _ = s.settingService.GetSubIncyNoisesEnable()
+	incyCfg.NoisesType, _ = s.settingService.GetSubIncyNoisesType()
+	incyCfg.NoisesPacket, _ = s.settingService.GetSubIncyNoisesPacket()
+	incyCfg.NoisesDelay, _ = s.settingService.GetSubIncyNoisesDelay()
+	incyCfg.ServerAddressResolveEnable, _ = s.settingService.GetSubIncyResolveEnable()
+	incyCfg.ServerAddressResolveDnsDomain, _ = s.settingService.GetSubIncyResolveDnsDomain()
+	incyCfg.ServerAddressResolveDnsIp, _ = s.settingService.GetSubIncyResolveDnsIp()
 
 	// set per-request localizer from headers/cookies
 	engine.Use(locale.LocalizerMiddleware())
@@ -239,11 +339,41 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 
 	g := engine.Group("/")
 
-	s.sub = NewSUBController(
-		g, LinksPath, JsonPath, ClashPath, subJsonEnable, subClashEnable, Encrypt, RemarkTemplate, SubUpdates,
-		SubJsonMux, SubJsonRules, SubJsonFinalMask, SubClashEnableRouting, SubClashRules, SubTitle, SubSupportUrl,
-		SubProfileUrl, SubAnnounce, SubEnableRouting, SubRoutingRules, SubHideSettings,
-		SubIncyEnableRouting, SubIncyRoutingRules)
+	s.sub = NewSUBController(g,
+		WithSUBPath(LinksPath),
+		WithSUBJsonPath(JsonPath),
+		WithSUBClashPath(ClashPath),
+		WithSUBClashAutoDetect(subClashAutoDetect),
+		WithSUBClashUserAgentRegex(subClashUserAgentRegex),
+		WithSUBJsonAutoDetect(subJsonAutoDetect),
+		WithSUBJsonUserAgentRegex(subJsonUserAgentRegex),
+		WithSUBJsonAlwaysArray(subJsonAlwaysArray),
+		WithSUBJsonEnabled(subJsonEnable),
+		WithSUBClashEnabled(subClashEnable),
+		WithSUBEncryption(Encrypt),
+		WithSUBRemarkTemplate(RemarkTemplate),
+		WithSUBUpdateInterval(SubUpdates),
+		WithSUBJsonMux(SubJsonMux),
+		WithSUBJsonRules(SubJsonRules),
+		WithSUBJsonRoutingRules(SubJsonRoutingRules),
+		WithSUBJsonDns(SubJsonDns),
+		WithSUBJsonFinalMask(SubJsonFinalMask),
+		WithSUBJsonObservatory(SubJsonObservatory),
+		WithSUBClashEnableRouting(SubClashEnableRouting),
+		WithSUBClashRules(SubClashRules),
+		WithSUBTitle(SubTitle),
+		WithSUBSupportURL(SubSupportUrl),
+		WithSUBProfileURL(SubProfileUrl),
+		WithSUBProfileMode(SubProfileMode),
+		WithSUBAnnounce(SubAnnounce),
+		WithSUBEnableRouting(SubEnableRouting),
+		WithSUBRoutingRules(SubRoutingRules),
+		WithSUBHideSettings(SubHideSettings),
+		WithSUBHappConfig(happCfg),
+		WithSUBIncyConfig(incyCfg),
+		WithSUBIncyEnableRouting(SubIncyEnableRouting),
+		WithSUBIncyRoutingRules(SubIncyRoutingRules),
+	)
 
 	return engine, nil
 }
@@ -322,9 +452,7 @@ func (s *Server) Start() (err error) {
 		IdleTimeout:       120 * time.Second,
 	}
 
-	go func() {
-		_ = s.httpServer.Serve(listener)
-	}()
+	go network.ServeHTTP(s.httpServer, listener, "Subscription server")
 
 	return nil
 }

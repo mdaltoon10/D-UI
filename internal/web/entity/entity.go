@@ -1,156 +1,159 @@
-// Package entity defines data structures and entities used by the web layer of the d-ui panel.
 package entity
 
 import (
 	"crypto/tls"
 	"math"
 	"net"
+	"net/mail"
+	"net/netip"
 	"strings"
 	"time"
 
 	"github.com/mdaltoon10/D-UI/v3/internal/util/common"
 )
 
-// Msg represents a standard API response message with success status, message text, and optional data object.
 type Msg struct {
-	Success bool   `json:"success"` // Indicates if the operation was successful
-	Msg     string `json:"msg"`     // Response message text
-	Obj     any    `json:"obj"`     // Optional data object
+	Success bool   `json:"success"`
+	Msg     string `json:"msg"`
+	Obj     any    `json:"obj"`
 }
 
-// AllSetting contains all configuration settings for the d-ui panel including web server, Telegram bot, and subscription settings.
 type AllSetting struct {
-	// Web server settings
-	WebListen         string `json:"webListen" form:"webListen"`                                     // Web server listen IP address
-	WebDomain         string `json:"webDomain" form:"webDomain"`                                     // Web server domain for domain validation
-	WebPort           int    `json:"webPort" form:"webPort" validate:"gte=1,lte=65535"`              // Web server port number
-	WebCertFile       string `json:"webCertFile" form:"webCertFile"`                                 // Path to SSL certificate file for web server
-	WebKeyFile        string `json:"webKeyFile" form:"webKeyFile"`                                   // Path to SSL private key file for web server
-	WebBasePath       string `json:"webBasePath" form:"webBasePath"`                                 // Base path for web panel URLs
-	SessionMaxAge     int    `json:"sessionMaxAge" form:"sessionMaxAge" validate:"gte=1,lte=525600"` // Session maximum age in minutes (cap at one year)
-	TrustedProxyCIDRs string `json:"trustedProxyCIDRs" form:"trustedProxyCIDRs"`                     // Trusted reverse proxy IPs/CIDRs for forwarded headers
-	PanelOutbound     string `json:"panelOutbound" form:"panelOutbound"`                             // Xray outbound tag for the panel's own outbound HTTP (update checks/downloads, Telegram, geo updates, outbound-subscription fetches)
+	WebListen             string `json:"webListen" form:"webListen"`
+	WebDomain             string `json:"webDomain" form:"webDomain"`
+	WebPort               int    `json:"webPort" form:"webPort" validate:"gte=1,lte=65535"`
+	WebCertFile           string `json:"webCertFile" form:"webCertFile"`
+	WebKeyFile            string `json:"webKeyFile" form:"webKeyFile"`
+	WebBasePath           string `json:"webBasePath" form:"webBasePath"`
+	SessionMaxAge         int    `json:"sessionMaxAge" form:"sessionMaxAge" validate:"gte=1,lte=525600"`
+	TrustedProxyCIDRs     string `json:"trustedProxyCIDRs" form:"trustedProxyCIDRs"`
+	RealityScanCandidates string `json:"realityScanCandidates" form:"realityScanCandidates"`
+	IpLimitAllowlist      string `json:"ipLimitAllowlist" form:"ipLimitAllowlist"`
+	PanelOutbound         string `json:"panelOutbound" form:"panelOutbound"`
 
-	// UI settings
-	PageSize       int    `json:"pageSize" form:"pageSize" validate:"gte=0,lte=1000"`      // Number of items per page in lists (0 disables pagination)
-	ExpireDiff     int    `json:"expireDiff" form:"expireDiff" validate:"gte=0"`           // Expiration warning threshold in days
-	TrafficDiff    int    `json:"trafficDiff" form:"trafficDiff" validate:"gte=0,lte=100"` // Traffic warning threshold percentage
-	RemarkTemplate string `json:"remarkTemplate" form:"remarkTemplate"`                    // Subscription remark template ({{VAR}} tokens) rendered per client
-	Datepicker     string `json:"datepicker" form:"datepicker"`                            // Date picker format
+	PageSize                   int    `json:"pageSize" form:"pageSize" validate:"gte=0,lte=1000"`
+	ExpireDiff                 int    `json:"expireDiff" form:"expireDiff" validate:"gte=0"`
+	TrafficDiff                int    `json:"trafficDiff" form:"trafficDiff" validate:"gte=0,lte=100"`
+	RemarkTemplate             string `json:"remarkTemplate" form:"remarkTemplate"`
+	SubShowIdentityOnAllLinks  bool   `json:"subShowIdentityOnAllLinks" form:"subShowIdentityOnAllLinks"`
+	SubInfoNodeEnable          bool   `json:"subInfoNodeEnable" form:"subInfoNodeEnable"`
+	SubCalendarExpireInclusive bool   `json:"subCalendarExpireInclusive" form:"subCalendarExpireInclusive"`
+	SubExpiredTemplate         string `json:"subExpiredTemplate" form:"subExpiredTemplate"`
+	SubTrafficDepletedTemplate string `json:"subTrafficDepletedTemplate" form:"subTrafficDepletedTemplate"`
+	Datepicker                 string `json:"datepicker" form:"datepicker"`
 
-	// Telegram bot settings
-	TgBotEnable     bool   `json:"tgBotEnable" form:"tgBotEnable"`                    // Enable Telegram bot notifications
-	TgBotToken      string `json:"tgBotToken" form:"tgBotToken"`                      // Telegram bot token
-	TgBotProxy      string `json:"tgBotProxy" form:"tgBotProxy"`                      // Proxy URL for Telegram bot
-	TgBotAPIServer  string `json:"tgBotAPIServer" form:"tgBotAPIServer"`              // Custom API server for Telegram bot
-	TgBotChatId     string `json:"tgBotChatId" form:"tgBotChatId"`                    // Telegram chat ID for notifications
-	TgRunTime       string `json:"tgRunTime" form:"tgRunTime"`                        // Cron schedule for Telegram notifications
-	TgBotBackup     bool   `json:"tgBotBackup" form:"tgBotBackup"`                    // Enable database backup via Telegram
-	TgCpu           int    `json:"tgCpu" form:"tgCpu" validate:"gte=0,lte=100"`       // CPU usage threshold for alerts (percent)
-	TgMemory        int    `json:"tgMemory" form:"tgMemory" validate:"gte=0,lte=100"` // Memory usage threshold for alerts (percent)
-	TgLang          string `json:"tgLang" form:"tgLang"`                              // Telegram bot language
-	TgEnabledEvents string `json:"tgEnabledEvents" form:"tgEnabledEvents"`            // Comma-separated event types to send via Telegram
+	TgBotEnable     bool   `json:"tgBotEnable" form:"tgBotEnable"`
+	TgBotToken      string `json:"tgBotToken" form:"tgBotToken"`
+	TgBotProxy      string `json:"tgBotProxy" form:"tgBotProxy"`
+	TgBotAPIServer  string `json:"tgBotAPIServer" form:"tgBotAPIServer"`
+	TgBotChatId     string `json:"tgBotChatId" form:"tgBotChatId"`
+	TgRunTime       string `json:"tgRunTime" form:"tgRunTime"`
+	TgBotBackup     bool   `json:"tgBotBackup" form:"tgBotBackup"`
+	TgCpu           int    `json:"tgCpu" form:"tgCpu" validate:"gte=0,lte=100"`
+	TgMemory        int    `json:"tgMemory" form:"tgMemory" validate:"gte=0,lte=100"`
+	TgLang          string `json:"tgLang" form:"tgLang"`
+	TgEnabledEvents string `json:"tgEnabledEvents" form:"tgEnabledEvents"`
 
-	// Email (SMTP) notification settings
-	SmtpEnable         bool   `json:"smtpEnable" form:"smtpEnable"`                          // Enable email notifications
-	SmtpHost           string `json:"smtpHost" form:"smtpHost"`                              // SMTP server host
-	SmtpPort           int    `json:"smtpPort" form:"smtpPort" validate:"gte=1,lte=65535"`   // SMTP server port
-	SmtpUsername       string `json:"smtpUsername" form:"smtpUsername"`                      // SMTP username
-	SmtpPassword       string `json:"smtpPassword" form:"smtpPassword"`                      // SMTP password
-	SmtpTo             string `json:"smtpTo" form:"smtpTo"`                                  // Comma-separated recipient emails
-	SmtpEncryptionType string `json:"smtpEncryptionType" form:"smtpEncryptionType"`          // SMTP encryption: none, starttls, tls
-	SmtpEnabledEvents  string `json:"smtpEnabledEvents" form:"smtpEnabledEvents"`            // Comma-separated event types to send via email
-	SmtpCpu            int    `json:"smtpCpu" form:"smtpCpu" validate:"gte=0,lte=100"`       // CPU threshold for email notifications
-	SmtpMemory         int    `json:"smtpMemory" form:"smtpMemory" validate:"gte=0,lte=100"` // Memory threshold for email notifications
+	SmtpEnable         bool   `json:"smtpEnable" form:"smtpEnable"`
+	SmtpHost           string `json:"smtpHost" form:"smtpHost"`
+	SmtpPort           int    `json:"smtpPort" form:"smtpPort" validate:"gte=1,lte=65535"`
+	SmtpUsername       string `json:"smtpUsername" form:"smtpUsername"`
+	SmtpPassword       string `json:"smtpPassword" form:"smtpPassword"`
+	SmtpFrom           string `json:"smtpFrom" form:"smtpFrom"`
+	SmtpFromName       string `json:"smtpFromName" form:"smtpFromName"`
+	SmtpTo             string `json:"smtpTo" form:"smtpTo"`
+	SmtpEncryptionType string `json:"smtpEncryptionType" form:"smtpEncryptionType"`
+	SmtpEnabledEvents  string `json:"smtpEnabledEvents" form:"smtpEnabledEvents"`
+	SmtpCpu            int    `json:"smtpCpu" form:"smtpCpu" validate:"gte=0,lte=100"`
+	SmtpMemory         int    `json:"smtpMemory" form:"smtpMemory" validate:"gte=0,lte=100"`
 
-	// Security settings
-	TimeLocation    string `json:"timeLocation" form:"timeLocation"`       // Time zone location
-	TwoFactorEnable bool   `json:"twoFactorEnable" form:"twoFactorEnable"` // Enable two-factor authentication
-	TwoFactorToken  string `json:"twoFactorToken" form:"twoFactorToken"`   // Two-factor authentication token
-
-	// Subscription server settings
-	SubEnable                   bool   `json:"subEnable" form:"subEnable"`                                     // Enable subscription server
-	SubJsonEnable               bool   `json:"subJsonEnable" form:"subJsonEnable"`                             // Enable JSON subscription endpoint
-	SubTitle                    string `json:"subTitle" form:"subTitle"`                                       // Subscription title
-	SubSupportUrl               string `json:"subSupportUrl" form:"subSupportUrl"`                             // Subscription support URL
-	SubProfileUrl               string `json:"subProfileUrl" form:"subProfileUrl"`                             // Subscription profile URL
-	SubAnnounce                 string `json:"subAnnounce" form:"subAnnounce"`                                 // Subscription announce
-	SubEnableRouting            bool   `json:"subEnableRouting" form:"subEnableRouting"`                       // Enable routing for subscription
-	SubRoutingRules             string `json:"subRoutingRules" form:"subRoutingRules"`                         // Subscription global routing rules (Only for Happ)
-	SubIncyEnableRouting        bool   `json:"subIncyEnableRouting" form:"subIncyEnableRouting"`               // Enable routing injection for the Incy client
-	SubIncyRoutingRules         string `json:"subIncyRoutingRules" form:"subIncyRoutingRules"`                 // Incy routing deep-link injected into the subscription body (Only for Incy)
-	SubListen                   string `json:"subListen" form:"subListen"`                                     // Subscription server listen IP
-	SubPort                     int    `json:"subPort" form:"subPort" validate:"gte=1,lte=65535"`              // Subscription server port
-	SubPath                     string `json:"subPath" form:"subPath"`                                         // Base path for subscription URLs
-	SubDomain                   string `json:"subDomain" form:"subDomain"`                                     // Domain for subscription server validation
-	SubCertFile                 string `json:"subCertFile" form:"subCertFile"`                                 // SSL certificate file for subscription server
-	SubKeyFile                  string `json:"subKeyFile" form:"subKeyFile"`                                   // SSL private key file for subscription server
-	SubUpdates                  int    `json:"subUpdates" form:"subUpdates" validate:"gte=0,lte=525600"`       // Subscription update interval in minutes
-	ExternalTrafficInformEnable bool   `json:"externalTrafficInformEnable" form:"externalTrafficInformEnable"` // Enable external traffic reporting
-	ExternalTrafficInformURI    string `json:"externalTrafficInformURI" form:"externalTrafficInformURI"`       // URI for external traffic reporting
-	RestartXrayOnClientDisable  bool   `json:"restartXrayOnClientDisable" form:"restartXrayOnClientDisable"`   // Restart Xray when clients are auto-disabled by expiry/traffic limit
-	IpLimitPolicy               string `json:"ipLimitPolicy" form:"ipLimitPolicy"`                             // Policy for IP limit enforcement: kick_oldest or block_newest
-	SubEncrypt                  bool   `json:"subEncrypt" form:"subEncrypt"`                                   // Encrypt subscription responses
-	SubURI                      string `json:"subURI" form:"subURI"`                                           // Subscription server URI
-	SubJsonPath                 string `json:"subJsonPath" form:"subJsonPath"`                                 // Path for JSON subscription endpoint
-	SubJsonURI                  string `json:"subJsonURI" form:"subJsonURI"`                                   // JSON subscription server URI
-	SubClashEnable              bool   `json:"subClashEnable" form:"subClashEnable"`                           // Enable Clash/Mihomo subscription endpoint
-	SubClashPath                string `json:"subClashPath" form:"subClashPath"`                               // Path for Clash/Mihomo subscription endpoint
-	SubClashURI                 string `json:"subClashURI" form:"subClashURI"`                                 // Clash/Mihomo subscription server URI
-	SubClashEnableRouting       bool   `json:"subClashEnableRouting" form:"subClashEnableRouting"`             // Enable global routing rules for Clash/Mihomo
-	SubClashRules               string `json:"subClashRules" form:"subClashRules"`                             // Clash/Mihomo global routing rules
-	SubJsonMux                  string `json:"subJsonMux" form:"subJsonMux"`                                   // JSON subscription mux configuration
-	SubJsonRules                string `json:"subJsonRules" form:"subJsonRules"`
-	SubJsonFinalMask            string `json:"subJsonFinalMask" form:"subJsonFinalMask"` // JSON subscription global finalmask (tcp/udp masks + quicParams)
-	SubThemeDir                 string `json:"subThemeDir" form:"subThemeDir"`           // Absolute path to a folder containing a custom subscription page template
-	SubHideSettings             bool   `json:"subHideSettings" form:"subHideSettings"`   // Hide server settings in happ subscription (Only for Happ)
-	SubDaltoonTemplate          bool   `json:"subDaltoonTemplate" form:"subDaltoonTemplate"`
-	SubShowGauges               bool   `json:"subShowGauges" form:"subShowGauges"`
-	SubIranDirect               bool   `json:"subIranDirect" form:"subIranDirect"`
-	SubIranRules                string `json:"subIranRules" form:"subIranRules"`
-
-	// Happ Settings
-	HappHeaderAutoDetect bool   `json:"happHeaderAutoDetect" form:"happHeaderAutoDetect"`
-	HappRoutingEnable    bool   `json:"happRoutingEnable" form:"happRoutingEnable"`
-	HappRoutingPreset    string `json:"happRoutingPreset" form:"happRoutingPreset"`
-	HappRoutingRules     string `json:"happRoutingRules" form:"happRoutingRules"`
-	HappNoLimitMode      bool   `json:"happNoLimitMode" form:"happNoLimitMode"`
-	HappHideSettings     bool   `json:"happHideSettings" form:"happHideSettings"`
-	HappEncryptEnable    bool   `json:"happEncryptEnable" form:"happEncryptEnable"`
-	HappBannerText       string `json:"happBannerText" form:"happBannerText"`
-	HappBannerColor      string `json:"happBannerColor" form:"happBannerColor"`
-	HappBannerBtnText    string `json:"happBannerBtnText" form:"happBannerBtnText"`
-	HappBannerBtnLink    string `json:"happBannerBtnLink" form:"happBannerBtnLink"`
-	HappExpiredBanner    bool   `json:"happExpiredBanner" form:"happExpiredBanner"`
-	HappRenewalLink      string `json:"happRenewalLink" form:"happRenewalLink"`
-	HappExpireNotify     bool   `json:"happExpireNotify" form:"happExpireNotify"`
-	HappTunMode          string `json:"happTunMode" form:"happTunMode"`
-	HappTunEngine        string `json:"happTunEngine" form:"happTunEngine"`
-	HappExcludeCidr      string `json:"happExcludeCidr" form:"happExcludeCidr"`
-	HappExcludeApns      bool   `json:"happExcludeApns" form:"happExcludeApns"`
-	HappPingMethod       string `json:"happPingMethod" form:"happPingMethod"`
-	HappAutoConnect      bool   `json:"happAutoConnect" form:"happAutoConnect"`
-	HappAutoConnectTarget string `json:"happAutoConnectTarget" form:"happAutoConnectTarget"`
-	HappColorTheme       string `json:"happColorTheme" form:"happColorTheme"`
-	HappProviderId       string `json:"happProviderId" form:"happProviderId"`
-	HappNewSubUrl        string `json:"happNewSubUrl" form:"happNewSubUrl"`
-	HappFallbackSubUrl   string `json:"happFallbackSubUrl" form:"happFallbackSubUrl"`
-	HappEnforceHwid      bool   `json:"happEnforceHwid" form:"happEnforceHwid"`
-	HappAndroidPerApp    string `json:"happAndroidPerApp" form:"happAndroidPerApp"`
-	HappAndroidPackages  string `json:"happAndroidPackages" form:"happAndroidPackages"`
-
-	// Discord Bot settings
-	DiscordEnable        bool   `json:"discordEnable" form:"discordEnable"`
-	DiscordToken         string `json:"discordToken" form:"discordToken"`
+	DiscordBotEnable     bool   `json:"discordBotEnable" form:"discordBotEnable"`
+	DiscordBotToken      string `json:"discordBotToken" form:"discordBotToken"`
 	DiscordChannelId     string `json:"discordChannelId" form:"discordChannelId"`
-	DiscordAdminUsers    string `json:"discordAdminUsers" form:"discordAdminUsers"`
-	DiscordLang          string `json:"discordLang" form:"discordLang"`
-	DiscordBackup        bool   `json:"discordBackup" form:"discordBackup"`
-	DiscordEnabledEvents string `json:"discordEnabledEvents" form:"discordEnabledEvents"`
+	DiscordAdminIds      string `json:"discordAdminIds" form:"discordAdminIds"`
+	DiscordRunTime       string `json:"discordRunTime" form:"discordRunTime"`
+	DiscordBotBackup     bool   `json:"discordBotBackup" form:"discordBotBackup"`
 	DiscordCpu           int    `json:"discordCpu" form:"discordCpu" validate:"gte=0,lte=100"`
 	DiscordMemory        int    `json:"discordMemory" form:"discordMemory" validate:"gte=0,lte=100"`
+	DiscordLang          string `json:"discordLang" form:"discordLang"`
+	DiscordEnabledEvents string `json:"discordEnabledEvents" form:"discordEnabledEvents"`
 
-	// LDAP settings
+	OutboundDownThreshold int `json:"outboundDownThreshold" form:"outboundDownThreshold" validate:"gte=1,lte=100"`
+
+	TimeLocation    string `json:"timeLocation" form:"timeLocation"`
+	TwoFactorEnable bool   `json:"twoFactorEnable" form:"twoFactorEnable"`
+	TwoFactorToken  string `json:"twoFactorToken" form:"twoFactorToken"`
+
+	HappLinkEnable              bool   `json:"happLinkEnable" form:"happLinkEnable"`
+	SubEnable                   bool   `json:"subEnable" form:"subEnable"`
+	SubJsonEnable               bool   `json:"subJsonEnable" form:"subJsonEnable"`
+	SubJsonAutoDetect           bool   `json:"subJsonAutoDetect" form:"subJsonAutoDetect"`
+	SubJsonAlwaysArray          bool   `json:"subJsonAlwaysArray" form:"subJsonAlwaysArray"`
+	SubJsonUserAgentRegex       string `json:"subJsonUserAgentRegex" form:"subJsonUserAgentRegex"`
+	SubClashAutoDetect          bool   `json:"subClashAutoDetect" form:"subClashAutoDetect"`
+	SubClashUserAgentRegex      string `json:"subClashUserAgentRegex" form:"subClashUserAgentRegex"`
+	SubTitle                    string `json:"subTitle" form:"subTitle"`
+	SubSupportUrl               string `json:"subSupportUrl" form:"subSupportUrl"`
+	SubProfileMode              string `json:"subProfileMode" form:"subProfileMode"`
+	SubProfileUrl               string `json:"subProfileUrl" form:"subProfileUrl"`
+	SubAnnounce                 string `json:"subAnnounce" form:"subAnnounce"`
+	SubEnableRouting            bool   `json:"subEnableRouting" form:"subEnableRouting"`
+	SubRoutingRules             string `json:"subRoutingRules" form:"subRoutingRules"`
+	SubIncyEnableRouting        bool   `json:"subIncyEnableRouting" form:"subIncyEnableRouting"`
+	SubIncyRoutingRules         string `json:"subIncyRoutingRules" form:"subIncyRoutingRules"`
+	SubListen                   string `json:"subListen" form:"subListen"`
+	SubPort                     int    `json:"subPort" form:"subPort" validate:"gte=1,lte=65535"`
+	SubPath                     string `json:"subPath" form:"subPath"`
+	SubDomain                   string `json:"subDomain" form:"subDomain"`
+	SubCertFile                 string `json:"subCertFile" form:"subCertFile"`
+	SubKeyFile                  string `json:"subKeyFile" form:"subKeyFile"`
+	SubUpdates                  int    `json:"subUpdates" form:"subUpdates" validate:"gte=0,lte=525600"`
+	ExternalTrafficInformEnable bool   `json:"externalTrafficInformEnable" form:"externalTrafficInformEnable"`
+	ExternalTrafficInformURI    string `json:"externalTrafficInformURI" form:"externalTrafficInformURI"`
+	RestartXrayOnClientDisable  bool   `json:"restartXrayOnClientDisable" form:"restartXrayOnClientDisable"`
+	SubEncrypt                  bool   `json:"subEncrypt" form:"subEncrypt"`
+	SubURI                      string `json:"subURI" form:"subURI"`
+	SubJsonPath                 string `json:"subJsonPath" form:"subJsonPath"`
+	SubJsonURI                  string `json:"subJsonURI" form:"subJsonURI"`
+	SubClashEnable              bool   `json:"subClashEnable" form:"subClashEnable"`
+	SubClashPath                string `json:"subClashPath" form:"subClashPath"`
+	SubClashURI                 string `json:"subClashURI" form:"subClashURI"`
+	SubClashEnableRouting       bool   `json:"subClashEnableRouting" form:"subClashEnableRouting"`
+	SubClashRules               string `json:"subClashRules" form:"subClashRules"`
+	SubJsonMux                  string `json:"subJsonMux" form:"subJsonMux"`
+	SubJsonRules                string `json:"subJsonRules" form:"subJsonRules"`
+	SubJsonRoutingRules         string `json:"subJsonRoutingRules" form:"subJsonRoutingRules"`
+	SubJsonDns                  string `json:"subJsonDns" form:"subJsonDns"`
+	SubJsonFinalMask            string `json:"subJsonFinalMask" form:"subJsonFinalMask"`
+	SubJsonObservatory          string `json:"subJsonObservatory" form:"subJsonObservatory"`
+	SubThemeDir                 string `json:"subThemeDir" form:"subThemeDir"`
+	SubHideSettings             bool   `json:"subHideSettings" form:"subHideSettings"`
+
+	// Happ client customization settings (app-management / routing / UX).
+	SubHappAutoDetect          bool   `json:"subHappAutoDetect" form:"subHappAutoDetect"`
+	SubHappProviderId          string `json:"subHappProviderId" form:"subHappProviderId"`
+	SubHappNewUrl              string `json:"subHappNewUrl" form:"subHappNewUrl"`
+	SubHappFallbackUrl         string `json:"subHappFallbackUrl" form:"subHappFallbackUrl"`
+	SubHappSubInfoColor        string `json:"subHappSubInfoColor" form:"subHappSubInfoColor"`
+	SubHappSubInfoText         string `json:"subHappSubInfoText" form:"subHappSubInfoText"`
+	SubHappSubInfoButtonText   string `json:"subHappSubInfoButtonText" form:"subHappSubInfoButtonText"`
+	SubHappSubInfoButtonLink   string `json:"subHappSubInfoButtonLink" form:"subHappSubInfoButtonLink"`
+	SubHappSubExpire           bool   `json:"subHappSubExpire" form:"subHappSubExpire"`
+	SubHappSubExpireButtonLink string `json:"subHappSubExpireButtonLink" form:"subHappSubExpireButtonLink"`
+	SubHappNotificationExpire  bool   `json:"subHappNotificationExpire" form:"subHappNotificationExpire"`
+	SubHappNoLimit             bool   `json:"subHappNoLimit" form:"subHappNoLimit"`
+	SubHappAlwaysHwid          bool   `json:"subHappAlwaysHwid" form:"subHappAlwaysHwid"`
+	SubHappTunMode             string `json:"subHappTunMode" form:"subHappTunMode"`
+	SubHappTunType             string `json:"subHappTunType" form:"subHappTunType"`
+	SubHappExcludeRoutes       string `json:"subHappExcludeRoutes" form:"subHappExcludeRoutes"`
+	SubHappExcludeApns         bool   `json:"subHappExcludeApns" form:"subHappExcludeApns"`
+	SubHappColorProfile        string `json:"subHappColorProfile" form:"subHappColorProfile"`
+	SubHappPingType            string `json:"subHappPingType" form:"subHappPingType"`
+	SubHappAutoConnect         bool   `json:"subHappAutoConnect" form:"subHappAutoConnect"`
+	SubHappAutoConnectType     string `json:"subHappAutoConnectType" form:"subHappAutoConnectType"`
+	SubHappPerAppMode          string `json:"subHappPerAppMode" form:"subHappPerAppMode"`
+	SubHappPerAppList          string `json:"subHappPerAppList" form:"subHappPerAppList"`
+
 	LdapEnable             bool   `json:"ldapEnable" form:"ldapEnable"`
 	LdapHost               string `json:"ldapHost" form:"ldapHost"`
 	LdapPort               int    `json:"ldapPort" form:"ldapPort" validate:"gte=0,lte=65535"`
@@ -160,41 +163,35 @@ type AllSetting struct {
 	LdapPassword           string `json:"ldapPassword" form:"ldapPassword"`
 	LdapBaseDN             string `json:"ldapBaseDN" form:"ldapBaseDN"`
 	LdapUserFilter         string `json:"ldapUserFilter" form:"ldapUserFilter"`
-	LdapUserAttr           string `json:"ldapUserAttr" form:"ldapUserAttr"` // e.g., mail or uid
+	LdapUserAttr           string `json:"ldapUserAttr" form:"ldapUserAttr"`
 	LdapVlessField         string `json:"ldapVlessField" form:"ldapVlessField"`
 	LdapSyncCron           string `json:"ldapSyncCron" form:"ldapSyncCron"`
-	// Generic flag configuration
-	LdapFlagField         string `json:"ldapFlagField" form:"ldapFlagField"`
-	LdapTruthyValues      string `json:"ldapTruthyValues" form:"ldapTruthyValues"`
-	LdapInvertFlag        bool   `json:"ldapInvertFlag" form:"ldapInvertFlag"`
-	LdapInboundTags       string `json:"ldapInboundTags" form:"ldapInboundTags"`
-	LdapAutoCreate        bool   `json:"ldapAutoCreate" form:"ldapAutoCreate"`
-	LdapAutoDelete        bool   `json:"ldapAutoDelete" form:"ldapAutoDelete"`
-	LdapDefaultTotalGB    int    `json:"ldapDefaultTotalGB" form:"ldapDefaultTotalGB" validate:"gte=0"`
-	LdapDefaultExpiryDays int    `json:"ldapDefaultExpiryDays" form:"ldapDefaultExpiryDays" validate:"gte=0"`
-	LdapDefaultLimitIP    int    `json:"ldapDefaultLimitIP" form:"ldapDefaultLimitIP" validate:"gte=0"`
-	// JSON subscription routing rules
+	LdapFlagField          string `json:"ldapFlagField" form:"ldapFlagField"`
+	LdapTruthyValues       string `json:"ldapTruthyValues" form:"ldapTruthyValues"`
+	LdapInvertFlag         bool   `json:"ldapInvertFlag" form:"ldapInvertFlag"`
+	LdapInboundTags        string `json:"ldapInboundTags" form:"ldapInboundTags"`
+	LdapAutoCreate         bool   `json:"ldapAutoCreate" form:"ldapAutoCreate"`
+	LdapAutoDelete         bool   `json:"ldapAutoDelete" form:"ldapAutoDelete"`
+	LdapDefaultTotalGB     int    `json:"ldapDefaultTotalGB" form:"ldapDefaultTotalGB" validate:"gte=0"`
+	LdapDefaultExpiryDays  int    `json:"ldapDefaultExpiryDays" form:"ldapDefaultExpiryDays" validate:"gte=0"`
+	LdapDefaultLimitIP     int    `json:"ldapDefaultLimitIP" form:"ldapDefaultLimitIP" validate:"gte=0"`
 
-	// WARP
 	WarpUpdateInterval int `json:"warpUpdateInterval" form:"warpUpdateInterval" validate:"gte=0"`
 }
 
-// AllSettingView is the browser-safe settings read model. Secret values
-// are redacted from the embedded write model and represented by presence
-// flags so the UI can show configured/not configured state.
 type AllSettingView struct {
 	AllSetting
 
-	HasTgBotToken     bool `json:"hasTgBotToken"`
-	HasTwoFactorToken bool `json:"hasTwoFactorToken"`
-	HasLdapPassword   bool `json:"hasLdapPassword"`
-	HasApiToken       bool `json:"hasApiToken"`
-	HasWarpSecret     bool `json:"hasWarpSecret"`
-	HasNordSecret     bool `json:"hasNordSecret"`
-	HasSmtpPassword   bool `json:"hasSmtpPassword"`
+	HasTgBotToken      bool `json:"hasTgBotToken"`
+	HasTwoFactorToken  bool `json:"hasTwoFactorToken"`
+	HasLdapPassword    bool `json:"hasLdapPassword"`
+	HasApiToken        bool `json:"hasApiToken"`
+	HasWarpSecret      bool `json:"hasWarpSecret"`
+	HasNordSecret      bool `json:"hasNordSecret"`
+	HasSmtpPassword    bool `json:"hasSmtpPassword"`
+	HasDiscordBotToken bool `json:"hasDiscordBotToken"`
 }
 
-// CheckValid validates all settings in the AllSetting struct, checking IP addresses, ports, SSL certificates, and other configuration values.
 func pathHasForbiddenChar(s string) bool {
 	for _, r := range s {
 		if r == '\\' || r == ' ' || r < 0x20 || r == 0x7f {
@@ -202,6 +199,42 @@ func pathHasForbiddenChar(s string) bool {
 		}
 	}
 	return false
+}
+
+// CheckNetipAddrOrPrefixList mirrors parseIpLimitAllowlist exactly: net and netip
+// disagree (net accepts "/024", netip does not), so save and scan must share rules.
+func CheckNetipAddrOrPrefixList(list, message string) error {
+	for entry := range strings.SplitSeq(list, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		if _, err := netip.ParseAddr(entry); err == nil {
+			continue
+		}
+		if _, err := netip.ParsePrefix(entry); err != nil {
+			return common.NewError(message, entry)
+		}
+	}
+	return nil
+}
+
+// checkIPOrCIDRList rejects the first comma-separated entry that is neither a
+// bare address nor a CIDR, naming it with the caller's message.
+func checkIPOrCIDRList(list, message string) error {
+	for entry := range strings.SplitSeq(list, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		if ip := net.ParseIP(entry); ip != nil {
+			continue
+		}
+		if _, _, err := net.ParseCIDR(entry); err != nil {
+			return common.NewError(message, entry)
+		}
+	}
+	return nil
 }
 
 func (s *AllSetting) CheckValid() error {
@@ -227,7 +260,7 @@ func (s *AllSetting) CheckValid() error {
 		return common.NewError("Sub port is not a valid port:", s.SubPort)
 	}
 
-	if (s.SubPort == s.WebPort) && (s.WebListen == s.SubListen) {
+	if (s.SubPort == s.WebPort) && listenAddressesConflict(s.WebListen, s.SubListen) {
 		return common.NewError("Sub and Web could not use same ip:port, ", s.SubListen, ":", s.SubPort, " & ", s.WebListen, ":", s.WebPort)
 	}
 
@@ -286,17 +319,14 @@ func (s *AllSetting) CheckValid() error {
 		s.SubClashPath += "/"
 	}
 
-	for cidr := range strings.SplitSeq(s.TrustedProxyCIDRs, ",") {
-		cidr = strings.TrimSpace(cidr)
-		if cidr == "" {
-			continue
-		}
-		if ip := net.ParseIP(cidr); ip != nil {
-			continue
-		}
-		if _, _, err := net.ParseCIDR(cidr); err != nil {
-			return common.NewError("trusted proxy CIDR is not valid:", cidr)
-		}
+	if err := checkIPOrCIDRList(s.TrustedProxyCIDRs, "trusted proxy CIDR is not valid:"); err != nil {
+		return err
+	}
+
+	// Rejected here rather than skipped at scan time: a typo in an allowlist
+	// entry silently leaves the address unprotected until a trusted network gets banned.
+	if err := CheckNetipAddrOrPrefixList(s.IpLimitAllowlist, "IP limit allowlist entry is not valid:"); err != nil {
+		return err
 	}
 
 	_, err := time.LoadLocation(s.TimeLocation)
@@ -304,5 +334,67 @@ func (s *AllSetting) CheckValid() error {
 		return common.NewError("time location not exist:", s.TimeLocation)
 	}
 
+	if s.SmtpFrom != "" {
+		if _, err := mail.ParseAddress(s.SmtpFrom); err != nil {
+			return common.NewError("SMTP from address is not valid:", s.SmtpFrom)
+		}
+	}
+
 	return nil
+}
+
+// listenAddressesConflict reports whether two listen addresses on the same port
+// would collide at bind time. A wildcard listen ("", "0.0.0.0", "::") overlaps
+// every address, so it conflicts with anything on that port; two specific
+// addresses conflict only when identical.
+func listenAddressesConflict(a, b string) bool {
+	if a == b {
+		return true
+	}
+	return isWildcardListen(a) || isWildcardListen(b)
+}
+
+func isWildcardListen(listen string) bool {
+	if listen == "" {
+		return true
+	}
+	if ip := net.ParseIP(listen); ip != nil {
+		return ip.IsUnspecified()
+	}
+	return false
+}
+
+type HostGroup struct {
+	GroupId    string   `json:"groupId"`
+	InboundIds []int    `json:"inboundIds" validate:"required,min=1"`
+	Hosts      []string `json:"hosts" validate:"omitempty"`
+
+	SortOrder              int      `json:"sortOrder"`
+	Remark                 string   `json:"remark" validate:"required,max=256"`
+	ServerDescription      string   `json:"serverDescription" validate:"omitempty,max=64"`
+	IsDisabled             bool     `json:"isDisabled"`
+	IsHidden               bool     `json:"isHidden"`
+	Tags                   []string `json:"tags"`
+	Port                   int      `json:"port" validate:"gte=0,lte=65535"`
+	Security               string   `json:"security" validate:"omitempty,oneof=same tls none reality"`
+	Sni                    string   `json:"sni"`
+	HostHeader             string   `json:"hostHeader"`
+	Path                   string   `json:"path"`
+	Alpn                   []string `json:"alpn"`
+	Fingerprint            string   `json:"fingerprint"`
+	OverrideSniFromAddress bool     `json:"overrideSniFromAddress"`
+	KeepSniBlank           bool     `json:"keepSniBlank"`
+	PinnedPeerCertSha256   []string `json:"pinnedPeerCertSha256"`
+	VerifyPeerCertByName   string   `json:"verifyPeerCertByName"`
+	AllowInsecure          bool     `json:"allowInsecure"`
+	EchConfigList          string   `json:"echConfigList"`
+	MuxParams              string   `json:"muxParams"`
+	SockoptParams          string   `json:"sockoptParams"`
+	FinalMask              string   `json:"finalMask"`
+	VlessRoute             string   `json:"vlessRoute"`
+	ExcludeFromSubTypes    []string `json:"excludeFromSubTypes"`
+	NodeGuids              []string `json:"nodeGuids"`
+	MihomoIpVersion        string   `json:"mihomoIpVersion" validate:"omitempty,oneof=dual ipv4 ipv6 ipv4-prefer ipv6-prefer"`
+	MihomoX25519           bool     `json:"mihomoX25519"`
+	ShuffleHost            bool     `json:"shuffleHost"`
 }
