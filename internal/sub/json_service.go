@@ -413,14 +413,8 @@ func (s *SubJsonService) genVless(subReq *SubService, inbound *model.Inbound, st
 		"encryption": encryption,
 		"level":      8,
 	}
-	flow := client.Flow
-	if flow == "" {
-		if f, ok := inboundSettings["flow"].(string); ok {
-			flow = f
-		}
-	}
-	if flow != "" {
-		settings["flow"] = flow
+	if client.Flow != "" {
+		settings["flow"] = client.Flow
 	}
 	outbound.Settings = settings
 	result, _ := json.MarshalIndent(outbound, "", "  ")

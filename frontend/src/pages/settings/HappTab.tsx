@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Button,
   Input,
@@ -20,6 +21,8 @@ import {
 } from '@ant-design/icons';
 import type { AllSetting } from '@/models/setting';
 import { SettingListItem } from '@/components/ui';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { catTabLabel } from './catTabLabel';
 
 interface HappTabProps {
   allSetting: AllSetting;
@@ -51,6 +54,8 @@ const COLOR_THEMES: Record<string, string> = {
 };
 
 export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
+  const { t } = useTranslation();
+  const { isMobile } = useMediaQuery();
   const [activeSubTab, setActiveSubTab] = useState('routing');
   const [generatorOpen, setGeneratorOpen] = useState(false);
   const [presetsOpen, setPresetsOpen] = useState(false);
@@ -59,20 +64,19 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
   const [genBlockedDomains, setGenBlockedDomains] = useState('');
 
   function applyPreset(preset: string) {
+    let rules = '';
     if (preset === 'iran_bypass') {
-      updateSetting({
-        happRoutingPreset: 'iran_bypass',
-        happRoutingRules: 'happ://routing/onadd/domain:ir,geosite:ir,geoip:ir->direct;domain:googleapis.com,geosite:google->proxy',
-      });
+      rules = 'happ://routing/onadd/domain:ir,geosite:ir,geoip:ir->direct;domain:googleapis.com,geosite:google->proxy';
     } else if (preset === 'adblock') {
-      updateSetting({
-        happRoutingPreset: 'adblock',
-        happRoutingRules: 'happ://routing/onadd/geosite:category-ads-all->block;geoip:ir,geosite:ir->direct',
-      });
+      rules = 'happ://routing/onadd/geosite:category-ads-all->block;geoip:ir,geosite:ir->direct';
     } else if (preset === 'all_proxy') {
+      rules = 'happ://routing/onadd/geoip:private->direct';
+    }
+    if (rules) {
       updateSetting({
-        happRoutingPreset: 'all_proxy',
-        happRoutingRules: 'happ://routing/onadd/geoip:private->direct',
+        happRoutingPreset: preset,
+        happRoutingRules: rules,
+        subRoutingRules: rules,
       });
     }
   }
@@ -92,13 +96,14 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
       if (doms) rules.push(`domain:${doms}->block`);
     }
     const finalDeeplink = `happ://routing/onadd/${rules.join(';') || 'geoip:private->direct'}`;
-    updateSetting({ happRoutingRules: finalDeeplink });
+    updateSetting({ happRoutingRules: finalDeeplink, subRoutingRules: finalDeeplink });
     setGeneratorOpen(false);
   }
 
   return (
     <div className="happ-settings">
       <SettingListItem
+        paddings="small"
         title="Happ Header Auto-Detection"
         description="Automatically inject Happ routing and headers when client User-Agent indicates Happ."
         control={
@@ -114,13 +119,34 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
           activeKey={activeSubTab}
           onChange={setActiveSubTab}
           items={[
-            { key: 'routing', label: <span title="Routing & Rules"><ApartmentOutlined style={{ fontSize: 16 }} /></span> },
-            { key: 'encrypted', label: <span title="Encrypted Subscription Links"><LinkOutlined style={{ fontSize: 16 }} /></span> },
-            { key: 'banner', label: <span title="Announcement Banner"><NotificationOutlined style={{ fontSize: 16 }} /></span> },
-            { key: 'tun', label: <span title="TUN & Network"><WifiOutlined style={{ fontSize: 16 }} /></span> },
-            { key: 'theme', label: <span title="Color Theme"><BgColorsOutlined style={{ fontSize: 16 }} /></span> },
-            { key: 'cloud', label: <span title="Migration & Provider"><CloudOutlined style={{ fontSize: 16 }} /></span> },
-            { key: 'mobile', label: <span title="Android Per-App Proxy"><MobileOutlined style={{ fontSize: 16 }} /></span> },
+            {
+              key: 'routing',
+              label: catTabLabel(<ApartmentOutlined />, t('pages.settings.happRouting', { defaultValue: 'Routing & Rules' }), isMobile),
+            },
+            {
+              key: 'encrypted',
+              label: catTabLabel(<LinkOutlined />, t('pages.settings.happEncrypted', { defaultValue: 'Encrypted Links' }), isMobile),
+            },
+            {
+              key: 'banner',
+              label: catTabLabel(<NotificationOutlined />, t('pages.settings.happBanner', { defaultValue: 'Banner & Alerts' }), isMobile),
+            },
+            {
+              key: 'tun',
+              label: catTabLabel(<WifiOutlined />, t('pages.settings.happTun', { defaultValue: 'TUN & Network' }), isMobile),
+            },
+            {
+              key: 'theme',
+              label: catTabLabel(<BgColorsOutlined />, t('pages.settings.happTheme', { defaultValue: 'Color Theme' }), isMobile),
+            },
+            {
+              key: 'cloud',
+              label: catTabLabel(<CloudOutlined />, t('pages.settings.happCloud', { defaultValue: 'Cloud & Provider' }), isMobile),
+            },
+            {
+              key: 'mobile',
+              label: catTabLabel(<MobileOutlined />, t('pages.settings.happMobile', { defaultValue: 'Android Per-App' }), isMobile),
+            },
           ]}
         />
       </div>
@@ -128,16 +154,18 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
       {activeSubTab === 'routing' && (
         <>
           <SettingListItem
-            title="Enable routing"
-            description="Global setting to enable routing in the VPN client. (Only for Happ)"
+            paddings="small"
+            title={t('pages.settings.subEnableRouting', { defaultValue: 'Enable routing' })}
+            description={t('pages.settings.subEnableRoutingDesc', { defaultValue: 'Global setting to enable routing in the VPN client. (Only for Happ)' })}
             control={
               <Switch
-                checked={!!allSetting.happRoutingEnable}
-                onChange={(checked) => updateSetting({ happRoutingEnable: checked })}
+                checked={!!(allSetting.happRoutingEnable || allSetting.subEnableRouting)}
+                onChange={(checked) => updateSetting({ happRoutingEnable: checked, subEnableRouting: checked })}
               />
             }
           />
           <SettingListItem
+            paddings="small"
             title="Routing Presets"
             description="Pre-configured routing rule presets tailored for Happ clients."
             control={
@@ -162,6 +190,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             }
           />
           <SettingListItem
+            paddings="small"
             title="Visual Rule Generator"
             description="Create custom routing deeplink from domain and IP lists."
             control={
@@ -171,17 +200,19 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             }
           />
           <SettingListItem
-            title="Routing rules"
-            description="Paste a ready happ:// deeplink or one permanent HTTPS URL returning a deeplink or JSON. The panel refreshes remote rules in the background and keeps the last valid value, so subscription requests never wait for the source. (Happ only)"
+            paddings="small"
+            title={t('pages.settings.subRoutingRules', { defaultValue: 'Routing rules' })}
+            description={t('pages.settings.subRoutingRulesDesc', { defaultValue: 'Paste a ready happ:// deeplink or one permanent HTTPS URL returning a deeplink or JSON. The panel refreshes remote rules in the background and keeps the last valid value, so subscription requests never wait for the source. (Happ only)' })}
           >
             <Input.TextArea
               rows={3}
-              value={allSetting.happRoutingRules || ''}
+              value={allSetting.happRoutingRules || allSetting.subRoutingRules || ''}
               placeholder="happ://routing/onadd/... or https://...DEFAULT.DEEPLINK"
-              onChange={(e) => updateSetting({ happRoutingRules: e.target.value })}
+              onChange={(e) => updateSetting({ happRoutingRules: e.target.value, subRoutingRules: e.target.value })}
             />
           </SettingListItem>
           <SettingListItem
+            paddings="small"
             title="No-Limit Mode"
             description="Raise the xray-core RAM limit in Happ for better stability and performance (beta)."
             control={
@@ -192,12 +223,13 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             }
           />
           <SettingListItem
-            title="Hide server settings"
-            description="Hide the ability to view and edit server configurations in the VPN client. (Only for Happ)"
+            paddings="small"
+            title={t('pages.settings.subHideSettings', { defaultValue: 'Hide server settings' })}
+            description={t('pages.settings.subHideSettingsDesc', { defaultValue: 'Hide the ability to view and edit server configurations in the VPN client. (Only for Happ)' })}
             control={
               <Switch
-                checked={!!allSetting.happHideSettings}
-                onChange={(checked) => updateSetting({ happHideSettings: checked })}
+                checked={!!(allSetting.happHideSettings || allSetting.subHideSettings)}
+                onChange={(checked) => updateSetting({ happHideSettings: checked, subHideSettings: checked })}
               />
             }
           />
@@ -206,6 +238,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
 
       {activeSubTab === 'encrypted' && (
         <SettingListItem
+          paddings="small"
           title="Encrypted subscription links"
           description="Allow encrypted Happ links to be generated in the client QR code window. Subscription URLs are processed locally."
           control={
@@ -220,6 +253,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
       {activeSubTab === 'banner' && (
         <>
           <SettingListItem
+            paddings="small"
             title="Banner Announcement Text"
             description="Custom announcement banner displayed at the top of the Happ client (max 200 characters)."
           >
@@ -231,6 +265,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             />
           </SettingListItem>
           <SettingListItem
+            paddings="small"
             title="Banner Accent Color"
             description="Color theme style for the announcement banner."
             control={
@@ -250,6 +285,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             }
           />
           <SettingListItem
+            paddings="small"
             title="Banner Button Text"
             description="Button label displayed inside the announcement banner (max 25 characters)."
           >
@@ -261,6 +297,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             />
           </SettingListItem>
           <SettingListItem
+            paddings="small"
             title="Banner Button Link"
             description="Target URL opened when the user clicks the banner action button."
           >
@@ -271,6 +308,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             />
           </SettingListItem>
           <SettingListItem
+            paddings="small"
             title="Expired Subscription Banner"
             description="Show an expired subscription banner in Happ when the user's traffic or validity has ended."
             control={
@@ -281,6 +319,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             }
           />
           <SettingListItem
+            paddings="small"
             title="Renewal Link"
             description="Target URL opened when the user clicks the renewal button on an expired subscription."
           >
@@ -291,6 +330,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             />
           </SettingListItem>
           <SettingListItem
+            paddings="small"
             title="Expiration Notifications"
             description="Instruct Happ to remind the user 3 days before their subscription expires."
             control={
@@ -306,6 +346,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
       {activeSubTab === 'tun' && (
         <>
           <SettingListItem
+            paddings="small"
             title="TUN Mode"
             description="Network stack used by TUN on desktop: system (OS stack) or gVisor (userspace stack)."
             control={
@@ -322,6 +363,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             }
           />
           <SettingListItem
+            paddings="small"
             title="TUN Engine"
             description="Core used for the TUN connection on desktop: sing-box, tun2proxy, default (Happ TUN), or Xray."
             control={
@@ -339,6 +381,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             }
           />
           <SettingListItem
+            paddings="small"
             title="Exclude CIDR Routes"
             description="Comma-separated IP CIDRs (e.g. 192.168.0.0/16, 10.0.0.0/8) to bypass the VPN tunnel."
           >
@@ -349,6 +392,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             />
           </SettingListItem>
           <SettingListItem
+            paddings="small"
             title="Exclude Apple APNs"
             description="Bypass Apple Push Notification services to maintain reliable background notifications on iOS."
             control={
@@ -359,6 +403,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             }
           />
           <SettingListItem
+            paddings="small"
             title="Latency Ping Method"
             description="How Happ measures node latency: via proxy (GET or HEAD), TCP, or ICMP."
             control={
@@ -376,6 +421,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             }
           />
           <SettingListItem
+            paddings="small"
             title="Auto-Connect on Launch"
             description="Instruct Happ to automatically connect to VPN when the application starts."
             control={
@@ -386,6 +432,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             }
           />
           <SettingListItem
+            paddings="small"
             title="Auto-Connect Target"
             description="Server chosen for auto-connect: lowest delay, last used, or a random node."
             control={
@@ -406,6 +453,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
 
       {activeSubTab === 'theme' && (
         <SettingListItem
+          paddings="small"
           title="Client Color Theme"
           description="Custom iOS color theme as a JSON string, or reset colors to restore the default colors."
         >
@@ -430,6 +478,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
       {activeSubTab === 'cloud' && (
         <>
           <SettingListItem
+            paddings="small"
             title="Provider ID"
             description="Unique provider identifier for Happ client management, remote configuration binding, and migration."
           >
@@ -440,6 +489,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             />
           </SettingListItem>
           <SettingListItem
+            paddings="small"
             title="New Subscription URL"
             description="Target URL for automatic client migration. When set, Happ clients will migrate to this subscription link."
           >
@@ -450,6 +500,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             />
           </SettingListItem>
           <SettingListItem
+            paddings="small"
             title="Fallback Subscription URL"
             description="Backup subscription address used by Happ if the primary subscription URL becomes unreachable."
           >
@@ -460,6 +511,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             />
           </SettingListItem>
           <SettingListItem
+            paddings="small"
             title="Enforce Hardware ID (HWID)"
             description="Prevent users from turning off HWID sending in the Happ settings."
             control={
@@ -475,6 +527,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
       {activeSubTab === 'mobile' && (
         <>
           <SettingListItem
+            paddings="small"
             title="Android Per-App Proxy Mode"
             description="Control Android application routing: off, on (proxy only listed apps), or bypass (exclude listed apps)."
             control={
@@ -491,6 +544,7 @@ export default function HappTab({ allSetting, updateSetting }: HappTabProps) {
             }
           />
           <SettingListItem
+            paddings="small"
             title="Android Package Names"
             description="Comma-separated package names of Android applications to include or exclude (e.g. org.telegram.messenger)."
           >

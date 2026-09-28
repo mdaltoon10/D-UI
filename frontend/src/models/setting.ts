@@ -17,6 +17,7 @@ export class AllSetting {
   datepicker: 'gregorian' | 'jalalian' = 'gregorian';
   tgBotEnable = false;
   tgBotToken = '';
+  tgBotProxy = '';
   tgBotAPIServer = '';
   tgBotChatId = '';
   tgRunTime = '@daily';
@@ -27,6 +28,7 @@ export class AllSetting {
   twoFactorEnable = false;
   twoFactorToken = '';
   xrayTemplateConfig = '';
+  warpUpdateInterval = 0;
   subEnable = true;
   subJsonEnable = false;
   subTitle = '';
@@ -66,6 +68,47 @@ export class AllSetting {
   subShowGauges = false;
   subIranDirect = false;
   subIranRules = 'geosite:category-ir,geoip:ir,domain:.ir';
+
+  // Happ Integration settings
+  happHeaderAutoDetect = false;
+  happRoutingEnable = false;
+  happRoutingPreset = 'iran_bypass';
+  happRoutingRules = '';
+  happNoLimitMode = false;
+  happHideSettings = false;
+  happEncryptEnable = false;
+  happBannerText = '';
+  happBannerColor = 'blue';
+  happBannerBtnText = '';
+  happBannerBtnLink = '';
+  happExpiredBanner = false;
+  happRenewalLink = '';
+  happExpireNotify = false;
+  happTunMode = 'default';
+  happTunEngine = 'default';
+  happExcludeCidr = '';
+  happExcludeApns = false;
+  happPingMethod = 'proxy_get';
+  happAutoConnect = false;
+  happAutoConnectTarget = 'lowest_delay';
+  happColorTheme = '';
+  happProviderId = '';
+  happNewSubUrl = '';
+  happFallbackSubUrl = '';
+  happEnforceHwid = false;
+  happAndroidPerApp = 'off';
+  happAndroidPackages = '';
+
+  // Discord Bot settings
+  discordEnable = false;
+  discordToken = '';
+  discordChannelId = '';
+  discordAdminUsers = '';
+  discordLang = 'en-US';
+  discordBackup = false;
+  discordEnabledEvents = '';
+  discordCpu = 80;
+  discordMemory = 80;
 
   timeLocation = 'Local';
 

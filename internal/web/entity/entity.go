@@ -109,6 +109,47 @@ type AllSetting struct {
 	SubIranDirect               bool   `json:"subIranDirect" form:"subIranDirect"`
 	SubIranRules                string `json:"subIranRules" form:"subIranRules"`
 
+	// Happ Settings
+	HappHeaderAutoDetect bool   `json:"happHeaderAutoDetect" form:"happHeaderAutoDetect"`
+	HappRoutingEnable    bool   `json:"happRoutingEnable" form:"happRoutingEnable"`
+	HappRoutingPreset    string `json:"happRoutingPreset" form:"happRoutingPreset"`
+	HappRoutingRules     string `json:"happRoutingRules" form:"happRoutingRules"`
+	HappNoLimitMode      bool   `json:"happNoLimitMode" form:"happNoLimitMode"`
+	HappHideSettings     bool   `json:"happHideSettings" form:"happHideSettings"`
+	HappEncryptEnable    bool   `json:"happEncryptEnable" form:"happEncryptEnable"`
+	HappBannerText       string `json:"happBannerText" form:"happBannerText"`
+	HappBannerColor      string `json:"happBannerColor" form:"happBannerColor"`
+	HappBannerBtnText    string `json:"happBannerBtnText" form:"happBannerBtnText"`
+	HappBannerBtnLink    string `json:"happBannerBtnLink" form:"happBannerBtnLink"`
+	HappExpiredBanner    bool   `json:"happExpiredBanner" form:"happExpiredBanner"`
+	HappRenewalLink      string `json:"happRenewalLink" form:"happRenewalLink"`
+	HappExpireNotify     bool   `json:"happExpireNotify" form:"happExpireNotify"`
+	HappTunMode          string `json:"happTunMode" form:"happTunMode"`
+	HappTunEngine        string `json:"happTunEngine" form:"happTunEngine"`
+	HappExcludeCidr      string `json:"happExcludeCidr" form:"happExcludeCidr"`
+	HappExcludeApns      bool   `json:"happExcludeApns" form:"happExcludeApns"`
+	HappPingMethod       string `json:"happPingMethod" form:"happPingMethod"`
+	HappAutoConnect      bool   `json:"happAutoConnect" form:"happAutoConnect"`
+	HappAutoConnectTarget string `json:"happAutoConnectTarget" form:"happAutoConnectTarget"`
+	HappColorTheme       string `json:"happColorTheme" form:"happColorTheme"`
+	HappProviderId       string `json:"happProviderId" form:"happProviderId"`
+	HappNewSubUrl        string `json:"happNewSubUrl" form:"happNewSubUrl"`
+	HappFallbackSubUrl   string `json:"happFallbackSubUrl" form:"happFallbackSubUrl"`
+	HappEnforceHwid      bool   `json:"happEnforceHwid" form:"happEnforceHwid"`
+	HappAndroidPerApp    string `json:"happAndroidPerApp" form:"happAndroidPerApp"`
+	HappAndroidPackages  string `json:"happAndroidPackages" form:"happAndroidPackages"`
+
+	// Discord Bot settings
+	DiscordEnable        bool   `json:"discordEnable" form:"discordEnable"`
+	DiscordToken         string `json:"discordToken" form:"discordToken"`
+	DiscordChannelId     string `json:"discordChannelId" form:"discordChannelId"`
+	DiscordAdminUsers    string `json:"discordAdminUsers" form:"discordAdminUsers"`
+	DiscordLang          string `json:"discordLang" form:"discordLang"`
+	DiscordBackup        bool   `json:"discordBackup" form:"discordBackup"`
+	DiscordEnabledEvents string `json:"discordEnabledEvents" form:"discordEnabledEvents"`
+	DiscordCpu           int    `json:"discordCpu" form:"discordCpu" validate:"gte=0,lte=100"`
+	DiscordMemory        int    `json:"discordMemory" form:"discordMemory" validate:"gte=0,lte=100"`
+
 	// LDAP settings
 	LdapEnable             bool   `json:"ldapEnable" form:"ldapEnable"`
 	LdapHost               string `json:"ldapHost" form:"ldapHost"`

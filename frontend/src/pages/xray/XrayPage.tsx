@@ -15,6 +15,7 @@ import {
   Row,
   Space,
   Spin,
+  Tabs,
 } from 'antd';
 
 import { useTheme } from '@/hooks/useTheme';
@@ -331,6 +332,19 @@ export default function XrayPage() {
 
                   <Col span={24}>
                     <Card hoverable>
+                      <Tabs
+                        activeKey={activeSection}
+                        onChange={(k) => navigate(k === 'routing' ? '/routing' : k === 'outbound' ? '/outbound' : '/xray#' + k, { replace: true })}
+                        style={{ marginBottom: 16 }}
+                        items={[
+                          { key: 'basic', label: t('pages.xray.basicTemplate') },
+                          { key: 'balancer', label: t('pages.xray.Balancers') },
+                          { key: 'dns', label: 'DNS' },
+                          { key: 'routing', label: t('menu.routing') },
+                          { key: 'outbound', label: t('menu.outbounds') },
+                          { key: 'advanced', label: t('pages.xray.advancedTemplate') },
+                        ]}
+                      />
                       {sectionBody}
                     </Card>
                   </Col>

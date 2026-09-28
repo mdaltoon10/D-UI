@@ -398,14 +398,6 @@ export default function ClientFormModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isEdit, client]);
 
-  const flowCapableIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const row of inbounds || []) {
-      if (row?.tlsFlowCapable) ids.add(row.id);
-    }
-    return ids;
-  }, [inbounds]);
-
   const vlessLikeIds = useMemo(() => {
     const ids = new Set<number>();
     for (const row of inbounds || []) {
@@ -446,8 +438,8 @@ export default function ClientFormModal({
   }
 
   const showFlow = useMemo(
-    () => (form.inboundIds || []).some((id) => flowCapableIds.has(id)),
-    [form.inboundIds, flowCapableIds],
+    () => (form.inboundIds || []).some((id) => vlessLikeIds.has(id)),
+    [form.inboundIds, vlessLikeIds],
   );
 
   const showReverseTag = useMemo(

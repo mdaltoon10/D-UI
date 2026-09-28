@@ -42,17 +42,6 @@ export default function VlessFields({
       <Form.Item name={['settings', 'encryption']} label={t('pages.inbounds.encryption')}>
         <Input />
       </Form.Item>
-      {network === 'tcp' && (security === 'tls' || security === 'reality') && (
-        <Form.Item name={['settings', 'flow']} label={t('pages.clients.flow')} initialValue="">
-          <Select
-            options={[
-              { value: '', label: t('none') },
-              { value: 'xtls-rprx-vision', label: 'xtls-rprx-vision' },
-              { value: 'xtls-rprx-vision-udp443', label: 'xtls-rprx-vision-udp443' },
-            ]}
-          />
-        </Form.Item>
-      )}
       <Form.Item label={t('pages.inbounds.vlessAuthGenerate')}>
         <Space size={8} wrap>
           <Select

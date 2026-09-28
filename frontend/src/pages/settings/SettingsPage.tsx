@@ -27,16 +27,16 @@ import GeneralTab from './GeneralTab';
 import SecurityTab from './SecurityTab';
 import TelegramTab from './TelegramTab';
 import EmailTab from './EmailTab';
+import DiscordTab from './DiscordTab';
 import SubscriptionGeneralTab from './SubscriptionGeneralTab';
 import SubscriptionFormatsTab from './SubscriptionFormatsTab';
-import HappTab from './HappTab';
 import './SettingsPage.css';
 
 interface ApiMsg {
   success?: boolean;
 }
 
-const tabSlugs = ['general', 'security', 'telegram', 'email', 'subscription', 'subscription-formats', 'happ'];
+const tabSlugs = ['general', 'security', 'telegram', 'email', 'discord', 'subscription', 'subscription-formats'];
 
 function isIp(h: string): boolean {
   if (typeof h !== 'string') return false;
@@ -201,9 +201,9 @@ export default function SettingsPage() {
       case 'security': return <SecurityTab allSetting={allSetting} updateSetting={updateSetting} saveSetting={savePayload} />;
       case 'telegram': return <TelegramTab allSetting={allSetting} updateSetting={updateSetting} />;
       case 'email': return <EmailTab allSetting={allSetting} updateSetting={updateSetting} />;
+      case 'discord': return <DiscordTab allSetting={allSetting} updateSetting={updateSetting} />;
       case 'subscription': return <SubscriptionGeneralTab allSetting={allSetting} updateSetting={updateSetting} />;
       case 'subscription-formats': return <SubscriptionFormatsTab allSetting={allSetting} updateSetting={updateSetting} />;
-      case 'happ': return <HappTab allSetting={allSetting} updateSetting={updateSetting} />;
       default: return <GeneralTab allSetting={allSetting} updateSetting={updateSetting} />;
     }
   }, [activeSlug, allSetting, updateSetting, savePayload]);

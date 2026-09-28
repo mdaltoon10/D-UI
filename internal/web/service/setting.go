@@ -120,6 +120,47 @@ var defaultValueMap = map[string]string{
 	"panelOutbound":               "",
 	"devChannelEnable":            "false",
 
+	// Happ Integration defaults
+	"happHeaderAutoDetect": "false",
+	"happRoutingEnable":    "false",
+	"happRoutingPreset":    "iran_bypass",
+	"happRoutingRules":     "",
+	"happNoLimitMode":      "false",
+	"happHideSettings":     "false",
+	"happEncryptEnable":    "false",
+	"happBannerText":       "",
+	"happBannerColor":      "blue",
+	"happBannerBtnText":    "",
+	"happBannerBtnLink":    "",
+	"happExpiredBanner":    "false",
+	"happRenewalLink":      "",
+	"happExpireNotify":     "false",
+	"happTunMode":          "default",
+	"happTunEngine":        "default",
+	"happExcludeCidr":      "",
+	"happExcludeApns":      "false",
+	"happPingMethod":       "proxy_get",
+	"happAutoConnect":      "false",
+	"happAutoConnectTarget": "lowest_delay",
+	"happColorTheme":       "",
+	"happProviderId":       "",
+	"happNewSubUrl":        "",
+	"happFallbackSubUrl":   "",
+	"happEnforceHwid":      "false",
+	"happAndroidPerApp":    "off",
+	"happAndroidPackages":  "",
+
+	// Discord Bot defaults
+	"discordEnable":        "false",
+	"discordToken":         "",
+	"discordChannelId":     "",
+	"discordAdminUsers":    "",
+	"discordLang":          "en-US",
+	"discordBackup":        "false",
+	"discordEnabledEvents": "",
+	"discordCpu":           "80",
+	"discordMemory":        "80",
+
 	// LDAP defaults
 	"ldapEnable":             "false",
 	"ldapHost":               "",
@@ -742,15 +783,27 @@ func (s *SettingService) GetSubAnnounce() (string, error) {
 }
 
 func (s *SettingService) GetSubEnableRouting() (bool, error) {
-	return s.getBool("subEnableRouting")
+	b1, _ := s.getBool("subEnableRouting")
+	b2, _ := s.getBool("happRoutingEnable")
+	return b1 || b2, nil
 }
 
 func (s *SettingService) GetSubRoutingRules() (string, error) {
+	v, _ := s.getString("happRoutingRules")
+	if strings.TrimSpace(v) != "" {
+		return v, nil
+	}
 	return s.getString("subRoutingRules")
 }
 
 func (s *SettingService) GetSubHideSettings() (bool, error) {
-	return s.getBool("subHideSettings")
+	b1, _ := s.getBool("subHideSettings")
+	b2, _ := s.getBool("happHideSettings")
+	return b1 || b2, nil
+}
+
+func (s *SettingService) GetHappHeaderAutoDetect() (bool, error) {
+	return s.getBool("happHeaderAutoDetect")
 }
 
 func (s *SettingService) GetSubIncyEnableRouting() (bool, error) {

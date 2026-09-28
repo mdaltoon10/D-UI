@@ -583,11 +583,8 @@ func (s *ClientService) bulkAdjustInboundClients(
 		wantedEmails[email] = struct{}{}
 	}
 
-	// Flow eligibility is a property of the inbound (protocol + transport), so
-	// resolve it once. Clearing flow is always allowed; setting a vision flow
-	// is only honored on an inbound that can carry it.
-	flowEligible := flow == bulkFlowClear ||
-		inboundCanEnableTlsFlow(string(oldInbound.Protocol), oldInbound.StreamSettings, oldInbound.Settings)
+	// Flow eligibility: clearing flow is always allowed; setting flow is honored on VLESS.
+	flowEligible := flow == bulkFlowClear || oldInbound.Protocol == model.VLESS
 
 	interfaceClients, _ := settings["clients"].([]any)
 	foundEmails := map[string]bool{}

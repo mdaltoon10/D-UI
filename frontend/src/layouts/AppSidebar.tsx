@@ -23,6 +23,7 @@ import {
   MoonFilled,
   MoonOutlined,
   ReadOutlined,
+  RobotOutlined,
   SafetyCertificateOutlined,
   SafetyOutlined,
   SettingOutlined,
@@ -207,8 +208,7 @@ export default function AppSidebar() {
   const { isDark, isUltra, toggleTheme, toggleUltra } = useTheme();
   const navigate = useNavigate();
   const { pathname, hash } = useLocation();
-  const { allSetting } = useAllSettings();
-  const showSubFormats = !!(allSetting.subJsonEnable || allSetting.subClashEnable);
+  const { allSetting: _allSetting } = useAllSettings();
 
   const [collapsed, setCollapsed] = useState<boolean>(() => readCollapsed());
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -245,8 +245,8 @@ export default function AppSidebar() {
       { key: 'admin-access-parent', icon: 'security' as IconName, title: adminTranslations.adminAccess },
       { key: '/outbound', icon: 'outbound' as IconName, title: t('menu.outbounds') },
       { key: '/routing', icon: 'routing' as IconName, title: t('menu.routing') },
-      { key: '/settings', icon: 'setting' as IconName, title: t('menu.settings') },
-      { key: '/xray', icon: 'tool' as IconName, title: t('menu.xray') },
+      { key: '/settings', icon: 'setting' as IconName, title: 'Panel Settings' },
+      { key: '/xray', icon: 'tool' as IconName, title: 'Xray Configs' },
       { key: '/api-docs', icon: 'apidocs' as IconName, title: t('menu.apiDocs') },
       { key: LOGOUT_KEY, icon: 'logout' as IconName, title: t('logout') },
     ];
@@ -268,19 +268,16 @@ export default function AppSidebar() {
   const utilItems = useMemo(() => tabs.filter((tab) => tab.icon === 'logout'), [tabs]);
 
   const settingsChildren = useMemo<NonNullable<MenuProps['items']>>(() => {
-    const children: NonNullable<MenuProps['items']> = [
-      { key: '/settings#general', icon: <SettingOutlined style={{ color: '#00b4d8' }} />, label: t('pages.settings.panelSettings') },
-      { key: '/settings#security', icon: <SafetyOutlined style={{ color: '#f43f5e' }} />, label: t('pages.settings.securitySettings') },
-      { key: '/settings#telegram', icon: <MessageOutlined style={{ color: '#0ea5e9' }} />, label: t('pages.settings.TGBotSettings') },
-      { key: '/settings#email', icon: <MailOutlined style={{ color: '#f59e0b' }} />, label: t('pages.settings.emailSettings') },
-      { key: '/settings#subscription', icon: <CloudServerOutlined style={{ color: '#8b5cf6' }} />, label: t('pages.settings.subSettings') },
-      { key: '/settings#happ', icon: <ApartmentOutlined style={{ color: '#06b6d4' }} />, label: 'Happ Integration' },
+    return [
+      { key: '/settings#general', icon: <SettingOutlined style={{ color: '#00b4d8' }} />, label: t('pages.settings.panelSettings', { defaultValue: 'General' }) },
+      { key: '/settings#security', icon: <SafetyOutlined style={{ color: '#f43f5e' }} />, label: t('pages.settings.securitySettings', { defaultValue: 'Authentication' }) },
+      { key: '/settings#telegram', icon: <MessageOutlined style={{ color: '#0ea5e9' }} />, label: t('pages.settings.TGBotSettings', { defaultValue: 'Telegram Bot' }) },
+      { key: '/settings#email', icon: <MailOutlined style={{ color: '#f59e0b' }} />, label: t('pages.settings.email', { defaultValue: 'Email' }) },
+      { key: '/settings#discord', icon: <RobotOutlined style={{ color: '#6366f1' }} />, label: t('pages.settings.discord', { defaultValue: 'Discord Bot' }) },
+      { key: '/settings#subscription', icon: <CloudServerOutlined style={{ color: '#8b5cf6' }} />, label: t('pages.settings.subscription', { defaultValue: 'Subscription' }) },
+      { key: '/settings#subscription-formats', icon: <CodeOutlined style={{ color: '#ec4899' }} />, label: t('pages.settings.subscriptionFormats', { defaultValue: 'Sub Formats' }) },
     ];
-    if (showSubFormats) {
-      children.push({ key: '/settings#subscription-formats', icon: <CodeOutlined style={{ color: '#ec4899' }} />, label: 'Sub Formats' });
-    }
-    return children;
-  }, [t, showSubFormats]);
+  }, [t]);
 
   const xrayChildren = useMemo<NonNullable<MenuProps['items']>>(() => [
     { key: '/xray#basic', icon: <SettingOutlined style={{ color: '#38bdf8' }} />, label: t('pages.xray.basicTemplate') },

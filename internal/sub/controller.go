@@ -505,11 +505,85 @@ func (a *SUBController) ApplyCommonHeaders(
 	}
 
 	// Advanced (Happ)
-	c.Writer.Header().Set("Routing-Enable", strconv.FormatBool(profileEnableRouting))
+	ua := strings.ToLower(c.Request.UserAgent())
+	isHapp := strings.Contains(ua, "happ")
+
+	if profileEnableRouting {
+		c.Writer.Header().Set("Routing-Enable", "true")
+	}
 	if profileRoutingRules != "" {
 		c.Writer.Header().Set("Routing", profileRoutingRules)
 	}
 	if profileHideSettings {
 		c.Writer.Header().Set("Hide-Settings", "1")
+	}
+
+	if allSettings, err := a.settingService.GetAllSetting(); err == nil && allSettings != nil {
+		if allSettings.HappHeaderAutoDetect || isHapp {
+			if allSettings.HappRoutingEnable && profileRoutingRules == "" && allSettings.HappRoutingRules != "" {
+				c.Writer.Header().Set("Routing-Enable", "true")
+				c.Writer.Header().Set("Routing", allSettings.HappRoutingRules)
+			}
+			if allSettings.HappHideSettings {
+				c.Writer.Header().Set("Hide-Settings", "1")
+			}
+			if allSettings.HappBannerText != "" {
+				c.Writer.Header().Set("Banner", allSettings.HappBannerText)
+			}
+			if allSettings.HappBannerColor != "" {
+				c.Writer.Header().Set("Banner-Color", allSettings.HappBannerColor)
+			}
+			if allSettings.HappBannerBtnText != "" {
+				c.Writer.Header().Set("Banner-Btn", allSettings.HappBannerBtnText)
+			}
+			if allSettings.HappBannerBtnLink != "" {
+				c.Writer.Header().Set("Banner-Link", allSettings.HappBannerBtnLink)
+			}
+			if allSettings.HappTunMode != "" && allSettings.HappTunMode != "default" {
+				c.Writer.Header().Set("Tun-Mode", allSettings.HappTunMode)
+			}
+			if allSettings.HappTunEngine != "" && allSettings.HappTunEngine != "default" {
+				c.Writer.Header().Set("Tun-Engine", allSettings.HappTunEngine)
+			}
+			if allSettings.HappExcludeCidr != "" {
+				c.Writer.Header().Set("Exclude-Cidr", allSettings.HappExcludeCidr)
+			}
+			if allSettings.HappExcludeApns {
+				c.Writer.Header().Set("Exclude-Apns", "1")
+			}
+			if allSettings.HappPingMethod != "" {
+				c.Writer.Header().Set("Ping-Method", allSettings.HappPingMethod)
+			}
+			if allSettings.HappAutoConnect {
+				c.Writer.Header().Set("Auto-Connect", "1")
+			}
+			if allSettings.HappAutoConnectTarget != "" {
+				c.Writer.Header().Set("Auto-Connect-Target", allSettings.HappAutoConnectTarget)
+			}
+			if allSettings.HappColorTheme != "" {
+				c.Writer.Header().Set("Color-Theme", allSettings.HappColorTheme)
+			}
+			if allSettings.HappProviderId != "" {
+				c.Writer.Header().Set("Provider-Id", allSettings.HappProviderId)
+			}
+			if allSettings.HappNewSubUrl != "" {
+				c.Writer.Header().Set("New-Sub-Url", allSettings.HappNewSubUrl)
+			}
+			if allSettings.HappFallbackSubUrl != "" {
+				c.Writer.Header().Set("Fallback-Sub-Url", allSettings.HappFallbackSubUrl)
+			}
+			if allSettings.HappEnforceHwid {
+				c.Writer.Header().Set("Enforce-Hwid", "1")
+			}
+			if allSettings.HappAndroidPerApp != "" && allSettings.HappAndroidPerApp != "off" {
+				c.Writer.Header().Set("Android-Per-App", allSettings.HappAndroidPerApp)
+			}
+			if allSettings.HappAndroidPackages != "" {
+				c.Writer.Header().Set("Android-Packages", allSettings.HappAndroidPackages)
+			}
+			if allSettings.HappNoLimitMode {
+				c.Writer.Header().Set("No-Limit-Mode", "1")
+			}
+		}
 	}
 }

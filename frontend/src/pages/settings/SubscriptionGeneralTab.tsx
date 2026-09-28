@@ -7,6 +7,7 @@ import { RemarkTemplateField } from '@/components/form';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { catTabLabel } from './catTabLabel';
 import { sanitizePath, normalizePath } from './uriPath';
+import HappTab from './HappTab';
 
 interface SubscriptionGeneralTabProps {
   allSetting: AllSetting;
@@ -144,20 +145,7 @@ export default function SubscriptionGeneralTab({ allSetting, updateSetting }: Su
       {
         key: '5',
         label: catTabLabel(<BranchesOutlined />, 'Happ', isMobile),
-        children: (
-          <>
-            <SettingListItem paddings="small" title={t('pages.settings.subEnableRouting')} description={t('pages.settings.subEnableRoutingDesc')}>
-              <Switch checked={allSetting.subEnableRouting} onChange={(v) => updateSetting({ subEnableRouting: v })} />
-            </SettingListItem>
-            <SettingListItem paddings="small" title={t('pages.settings.subRoutingRules')} description={t('pages.settings.subRoutingRulesDesc')}>
-              <Input.TextArea value={allSetting.subRoutingRules} placeholder="happ://routing/add/..."
-                onChange={(e) => updateSetting({ subRoutingRules: e.target.value })} />
-            </SettingListItem>
-            <SettingListItem paddings="small" title={t('pages.settings.subHideSettings')} description={t('pages.settings.subHideSettingsDesc')}>
-              <Switch checked={allSetting.subHideSettings} onChange={(v) => updateSetting({ subHideSettings: v })} />
-            </SettingListItem>
-          </>
-        ),
+        children: <HappTab allSetting={allSetting} updateSetting={updateSetting} />,
       },
       {
         key: '6',
