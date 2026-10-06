@@ -18,42 +18,14 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 )
 
 // migrationModels is the FK-aware order in which tables are created and copied
 // during `d-ui migrate-db --dsn` (SQLite → PostgreSQL data migration) and in
-// related tests.
-//
-// Important: When adding a new top-level model (like OutboundSubscription),
-// you must add it here **in addition to** the list in internal/database/db.go:initModels().
-// This list is used for:
-//   - Creating the destination schema during cross-DB migration
-//   - Truncating tables
-//   - Copying data row-by-row
-//   - Resyncing Postgres sequences after bulk insert
-//
-// DumpSQLite / RestoreSQLite are schema-introspective (they read sqlite_master)
-// so they do not need manual updates.
+// related tests. It uses the canonical allModels() definition.
 func migrationModels() []any {
-	return []any{
-		&model.User{},
-		&model.Setting{},
-		&model.HistoryOfSeeders{},
-		&model.Node{},
-		&model.ApiToken{},
-		&model.Inbound{},
-		&xray.ClientTraffic{},
-		&model.OutboundTraffics{},
-		&model.InboundClientIps{},
-		&model.ClientRecord{},
-		&model.ClientInbound{},
-		&model.ClientExternalLink{},
-		&model.InboundFallback{},
-		&model.Host{},
-		&model.NodeClientTraffic{},
-		&model.NodeClientIp{},
-		&model.OutboundSubscription{},
-	}
+	return allModels()
 }
 
 // MigrateData copies every row from the configured SQLite file at srcPath into
@@ -205,6 +177,11 @@ func copyTable(src, dst *gorm.DB, mdl any) (int, error) {
 	table := stmt.Schema.Table
 	columns := stmt.Schema.DBNames
 
+	if !src.Migrator().HasTable(table) {
+		log.Printf("  %-32s table not found in source, skipping", reflect.TypeOf(mdl).Elem().Name())
+		return 0, nil
+	}
+
 	ctx := context.Background()
 	total := 0
 	for offset := 0; ; offset += batchSize {
@@ -227,7 +204,11 @@ func copyTable(src, dst *gorm.DB, mdl any) (int, error) {
 			rv := reflect.Indirect(slice.Index(i))
 			row := make(map[string]any, len(columns))
 			for _, name := range columns {
-				value, _ := stmt.Schema.FieldsByDBName[name].ValueOf(ctx, rv)
+				field := stmt.Schema.FieldsByDBName[name]
+				if field == nil {
+					continue
+				}
+				value, _ := field.ValueOf(ctx, rv)
 				row[name] = value
 			}
 			rows[i] = row
@@ -290,13 +271,17 @@ func resyncPostgresSequences(db *gorm.DB, models []any) error {
 }
 
 // tableWithIdColumn resolves a model's table name and reports whether its GORM
-// schema maps an "id" database column.
+// schema maps an integer "id" database column that uses a sequence.
 func tableWithIdColumn(db *gorm.DB, m any) (string, bool) {
 	stmt := &gorm.Statement{DB: db}
 	if err := stmt.Parse(m); err != nil {
 		return "", false
 	}
-	if stmt.Schema == nil || stmt.Schema.LookUpField("id") == nil {
+	if stmt.Schema == nil {
+		return "", false
+	}
+	f := stmt.Schema.LookUpField("id")
+	if f == nil || (f.DataType != schema.Int && f.DataType != schema.Uint) {
 		return "", false
 	}
 	return stmt.Table, true

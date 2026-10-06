@@ -58,31 +58,38 @@ const (
 	defaultPassword = "admin"
 )
 
-func initModels() error {
-	models := []any{
+// allModels returns all database models registered in the panel in FK-aware order.
+// This is the canonical list used by both initModels (for live panel startups)
+// and migrationModels (for SQLite <-> PostgreSQL cross-DB migrations).
+func allModels() []any {
+	return []any{
 		&model.User{},
-		&model.Inbound{},
-		&model.OutboundTraffics{},
+		&model.ResellerAdmin{},
+		&model.ClientGroup{},
 		&model.Setting{},
-		&model.InboundClientIps{},
-		&xray.ClientTraffic{},
 		&model.HistoryOfSeeders{},
 		&model.Node{},
 		&model.ApiToken{},
+		&model.Inbound{},
+		&xray.ClientTraffic{},
+		&model.ClientGlobalTraffic{},
+		&model.OutboundTraffics{},
+		&model.InboundClientIps{},
 		&model.ClientRecord{},
 		&model.ClientInbound{},
 		&model.ClientExternalLink{},
-		&model.ClientGroup{},
 		&model.InboundFallback{},
 		&model.Host{},
 		&model.NodeClientTraffic{},
 		&model.NodeClientIp{},
-		&model.ClientGlobalTraffic{},
 		&model.OutboundSubscription{},
-		&model.ResellerAdmin{},
 		&model.ClientHwid{},
 		&model.SubBalancer{},
 	}
+}
+
+func initModels() error {
+	models := allModels()
 	for _, mdl := range models {
 		if IsPostgres() && postgresModelSettled(mdl) {
 			continue
