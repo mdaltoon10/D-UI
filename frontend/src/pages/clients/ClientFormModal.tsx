@@ -33,7 +33,6 @@ import { ClientFormSchema, ClientCreateFormSchema } from '@/schemas/client';
 import { useClientHwids } from '@/hooks/useClientHwids';
 import { useDatepicker } from '@/hooks/useDatepicker';
 import ClientHwidListModal from '@/components/clients/ClientHwidList';
-import { getSpeedTranslations } from '@/utils/speedI18n';
 import './ClientFormModal.css';
 
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
@@ -247,9 +246,8 @@ export default function ClientFormModal({
   resetTraffic,
   onOpenChange,
 }: ClientFormModalProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { datepicker } = useDatepicker();
-  const speedDict = useMemo(() => getSpeedTranslations(i18n.language), [i18n.language]);
   const [messageApi, messageContextHolder] = message.useMessage();
   const isEdit = mode === 'edit';
 
@@ -1103,54 +1101,6 @@ export default function ClientFormModal({
                 label: t('pages.clients.tabCredentials'),
                 children: (
                   <>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item label={speedDict.uploadLimit} tooltip={speedDict.uploadLimitDesc}>
-                          <InputNumber
-                            value={form.uploadLimit}
-                            min={0}
-                            step={1}
-                            style={{ width: '100%' }}
-                            onChange={(v) => update('uploadLimit', Number(v) || 0)}
-                          />
-                          <PresetChips
-                            items={[
-                              { label: '0', value: 0 },
-                              { label: '5M', value: 5 },
-                              { label: '10M', value: 10 },
-                              { label: '20M', value: 20 },
-                              { label: '50M', value: 50 },
-                              { label: '100M', value: 100 },
-                            ]}
-                            selectedValue={form.uploadLimit}
-                            onSelect={(v) => update('uploadLimit', v)}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item label={speedDict.downloadLimit} tooltip={speedDict.downloadLimitDesc}>
-                          <InputNumber
-                            value={form.downloadLimit}
-                            min={0}
-                            step={1}
-                            style={{ width: '100%' }}
-                            onChange={(v) => update('downloadLimit', Number(v) || 0)}
-                          />
-                          <PresetChips
-                            items={[
-                              { label: '0', value: 0 },
-                              { label: '10M', value: 10 },
-                              { label: '20M', value: 20 },
-                              { label: '50M', value: 50 },
-                              { label: '100M', value: 100 },
-                              { label: '200M', value: 200 },
-                            ]}
-                            selectedValue={form.downloadLimit}
-                            onSelect={(v) => update('downloadLimit', v)}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
                     <Form.Item label={t('pages.clients.comment')}>
                       <Input value={form.comment} onChange={(e) => update('comment', e.target.value)} />
                     </Form.Item>
