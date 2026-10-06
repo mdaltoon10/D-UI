@@ -1,0 +1,18 @@
+#!/sbin/openrc-run
+
+command="/usr/local/d-ui/d-ui"
+command_background=true
+pidfile="/run/d-ui.pid"
+description="d-ui Service"
+procname="d-ui"
+depend() {
+    need net
+}
+start_pre(){
+    cd /usr/local/d-ui
+}
+reload() {
+  ebegin "Reloading ${RC_SVCNAME}"
+  kill -USR1 $(cat $pidfile)
+  eend $?
+}

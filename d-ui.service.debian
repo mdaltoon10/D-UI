@@ -1,0 +1,17 @@
+[Unit]
+Description=d-ui Service
+After=network.target
+Wants=network.target
+
+[Service]
+EnvironmentFile=-/etc/default/d-ui
+Environment="XRAY_VMESS_AEAD_FORCED=false"
+Type=simple
+WorkingDirectory=/usr/local/d-ui/
+ExecStart=/usr/local/d-ui/d-ui
+ExecReload=/bin/kill -USR1 $MAINPID
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,88 @@
+.settings-page .conf-alert {
+  margin-bottom: 10px;
+}
+
+.ldap-no-inbounds {
+  margin-top: 6px;
+  color: var(--ant-color-text-tertiary);
+  font-size: 12px;
+}
+
+/* Compact, orderly, and neat Tab navigation for all settings cards */
+.settings-page .ant-tabs {
+  margin-bottom: 8px;
+}
+
+.settings-page .ant-tabs-nav {
+  margin-bottom: 16px !important;
+}
+
+.settings-page .ant-tabs-nav-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.settings-page .ant-tabs-nav-list {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+.settings-page .ant-tabs-tab {
+  padding: 6px 12px !important;
+  margin: 0 2px !important;
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-page .ant-tabs-tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.settings-page .ant-tabs-tab-active {
+  background: rgba(var(--ant-color-primary-rgb, 0, 180, 216), 0.12) !important;
+}
+
+.cat-tab-icon-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.cat-tab-icon-wrapper svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.cat-tab-icon-wrapper:hover svg {
+  transform: scale(1.1);
+}
+
+@media (max-width: 768px) {
+  .settings-page .ant-tabs-tab {
+    padding: 4px 8px !important;
+    margin: 0 1px !important;
+  }
+  .cat-tab-icon-wrapper {
+    font-size: 16px;
+    width: 24px;
+    height: 24px;
+  }
+  .cat-tab-icon-wrapper svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
