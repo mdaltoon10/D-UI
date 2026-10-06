@@ -11,9 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mdaltoon10/D-UI/v3/internal/database/model"
-	"github.com/mdaltoon10/D-UI/v3/internal/xray"
-
 	"github.com/glebarez/sqlite"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
