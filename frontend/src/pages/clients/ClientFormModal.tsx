@@ -1261,7 +1261,7 @@ export default function ClientFormModal({
 
                     <div style={{ marginTop: 16 }}>
                       <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
-                        {t('pages.clients.externalSubscriptions') || 'External Subscriptions'} ({subscriptionRows.length})
+                        {t('pages.clients.externalSubscriptions', 'External Subscriptions')} ({subscriptionRows.length})
                       </Typography.Text>
                       {subscriptionRows.length === 0 ? (
                         <Typography.Text type="secondary">{t('pages.clients.noExternalSubscriptions')}</Typography.Text>
