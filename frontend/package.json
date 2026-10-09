@@ -42,7 +42,7 @@
     "react-router-dom": "^7.18.1",
     "recharts": "^3.9.1",
     "swagger-ui-react": "^5.32.8",
-    "zod": "^4.4.3"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
