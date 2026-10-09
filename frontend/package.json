@@ -28,7 +28,7 @@
     "@swagger-api/apidom-core": "1.11.3",
     "@tanstack/react-query": "^5.101.2",
     "@tanstack/react-query-devtools": "^5.101.2",
-    "antd": "^6.5.0",
+    "antd": "^6.6.5",
     "axios": "^1.18.1",
     "codemirror": "^6.0.2",
     "dayjs": "^1.11.21",
