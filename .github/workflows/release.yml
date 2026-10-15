@@ -58,8 +58,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Tidy Go Modules
-        run: go mod tidy
+      - name: Download Go Modules
+        run: go mod download
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
