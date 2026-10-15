@@ -95,7 +95,7 @@ jobs:
             mkdir -p "dist/d-ui/bin"
             
             # Build backend
-            eval "CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -trimpath -ldflags=\"${GO_LDFLAGS}\" -o \"dist/d-ui/d-ui\" main.go"
+            eval "CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -mod=mod -trimpath -ldflags=\"${GO_LDFLAGS}\" -o \"dist/d-ui/d-ui\" main.go"
             
             # Download Xray
             XRAY_ARCH=${GOARCH}
