@@ -41,6 +41,7 @@ var backupSQLiteTimeout = 2 * time.Minute
 const (
 	DialectSQLite   = "sqlite"
 	DialectPostgres = "postgres"
+	TrafficMax      = int64(1<<62 - 1)
 )
 
 func IsPostgres() bool {
