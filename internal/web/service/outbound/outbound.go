@@ -15,14 +15,14 @@ import (
 	"github.com/mdaltoon10/D-UI/v3/internal/xray"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // OutboundService provides business logic for managing Xray outbound configurations.
 // It handles outbound traffic monitoring and statistics.
 type OutboundService struct{}
 
-func (s *OutboundService) AddTraffic(traffics []*xray.Traffic, clientTraffics []*xray.ClientTraffic) (error, bool) {
-	var err error
+func (s *OutboundService) AddTraffic(traffics []*xray.Traffic, clientTraffics []*xray.ClientTraffic) (err error, success bool) {
 	db := database.GetDB()
 	tx := db.Begin()
 
@@ -30,7 +30,9 @@ func (s *OutboundService) AddTraffic(traffics []*xray.Traffic, clientTraffics []
 		if err != nil {
 			tx.Rollback()
 		} else {
-			tx.Commit()
+			if commitErr := tx.Commit().Error; commitErr != nil {
+				err = commitErr
+			}
 		}
 	}()
 
@@ -47,25 +49,22 @@ func (s *OutboundService) addOutboundTraffic(tx *gorm.DB, traffics []*xray.Traff
 		return nil
 	}
 
-	var err error
-
 	for _, traffic := range traffics {
 		if traffic.IsOutbound {
-
-			var outbound model.OutboundTraffics
-
-			err = tx.Model(&model.OutboundTraffics{}).Where("tag = ?", traffic.Tag).
-				FirstOrCreate(&outbound).Error
-			if err != nil {
-				return err
+			ot := model.OutboundTraffics{
+				Tag:   traffic.Tag,
+				Up:    traffic.Up,
+				Down:  traffic.Down,
+				Total: traffic.Up + traffic.Down,
 			}
-
-			outbound.Tag = traffic.Tag
-			outbound.Up = outbound.Up + traffic.Up
-			outbound.Down = outbound.Down + traffic.Down
-			outbound.Total = outbound.Up + outbound.Down
-
-			err = tx.Save(&outbound).Error
+			err := tx.Clauses(clause.OnConflict{
+				Columns: []clause.Column{{Name: "tag"}},
+				DoUpdates: clause.Assignments(map[string]any{
+					"up":    gorm.Expr("outbound_traffics.up + ?", traffic.Up),
+					"down":  gorm.Expr("outbound_traffics.down + ?", traffic.Down),
+					"total": gorm.Expr("outbound_traffics.total + ?", traffic.Up+traffic.Down),
+				}),
+			}).Create(&ot).Error
 			if err != nil {
 				return err
 			}
@@ -78,7 +77,7 @@ func (s *OutboundService) GetOutboundsTraffic() ([]*model.OutboundTraffics, erro
 	db := database.GetDB()
 	var traffics []*model.OutboundTraffics
 
-	err := db.Model(model.OutboundTraffics{}).Find(&traffics).Error
+	err := db.Model(&model.OutboundTraffics{}).Find(&traffics).Error
 	if err != nil {
 		logger.Warning("Error retrieving OutboundTraffics: ", err)
 		return nil, err
@@ -97,7 +96,7 @@ func (s *OutboundService) ResetOutboundTraffic(tag string) error {
 		whereText += " = ?"
 	}
 
-	result := db.Model(model.OutboundTraffics{}).
+	result := db.Model(&model.OutboundTraffics{}).
 		Where(whereText, tag).
 		Updates(map[string]any{"up": 0, "down": 0, "total": 0})
 

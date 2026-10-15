@@ -107,6 +107,8 @@ type OutboundTraffics struct {
 	Total int64  `json:"total" form:"total" gorm:"default:0"`
 }
 
+func (OutboundTraffics) TableName() string { return "outbound_traffics" }
+
 // InboundClientIps stores IP addresses associated with inbound clients for access control.
 type InboundClientIps struct {
 	Id          int    `json:"id" gorm:"primaryKey;autoIncrement"`
@@ -971,10 +973,13 @@ type OutboundSubscription struct {
 	LastError            string `json:"lastError" form:"lastError"`
 	LastFetchedOutbounds string `json:"lastFetchedOutbounds" form:"lastFetchedOutbounds" gorm:"type:text"`
 	LinkIdentities       string `json:"-" gorm:"type:text;column:link_identities"`
+	UserAgent            string `json:"userAgent" form:"userAgent" gorm:"column:user_agent;type:text"`
 	CreatedAt            int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
 	UpdatedAt            int64  `json:"updatedAt" gorm:"autoUpdateTime:milli"`
 	OutboundCount        int    `json:"outboundCount" gorm:"-"`
 }
+
+func (OutboundSubscription) TableName() string { return "outbound_subscriptions" }
 
 func MergeClientRecord(existing *ClientRecord, incoming *ClientRecord) []ClientMergeConflict {
 	var conflicts []ClientMergeConflict

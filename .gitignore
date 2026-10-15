@@ -2,7 +2,8 @@
 .idea/
 .vscode/
 .cursor/
-.claude/*
+.specify/
+.claude/
 .cache/
 .sync*
 
@@ -12,21 +13,18 @@
 # Ignore temporary files
 tmp/
 *.tar.gz
-*.zip
 
 # Ignore build and distribution directories
 backup/
 bin/
-d-ui/
+x-ui/
 dist/
-!internal/web/dist/
-internal/web/dist/*
-!internal/web/dist/.gitkeep
 release/
 node_modules/
 
 # Ignore compiled binaries
 main
+3x-ui
 
 # Ignore OS specific files
 .DS_Store
@@ -34,9 +32,9 @@ Thumbs.db
 
 # Ignore Go build files
 *.exe
-d-ui.db
-d-ui.db-shm
-d-ui.db-wal
+x-ui.db
+x-ui.db-shm
+x-ui.db-wal
 system_metrics.gob
 *.dump
 
@@ -45,4 +43,3 @@ docker-compose.override.yml
 
 # Ignore .env (Environment Variables) file
 .env
-

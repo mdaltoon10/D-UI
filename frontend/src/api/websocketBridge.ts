@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getSharedWebSocketClient, WebSocketClient } from '@/api/websocket';
+import { getSharedWebSocketClient } from '@/api/websocket';
 import { keys } from '@/api/queryKeys';
 import { isRecentLocalInvalidate } from '@/api/invalidationTracker';
 

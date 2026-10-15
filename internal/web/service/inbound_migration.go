@@ -89,6 +89,9 @@ func (s *InboundService) MigrationRequirements() {
 		normalizeBool("clients", "enable")
 		normalizeBool("api_tokens", "enabled")
 		normalizeBool("outbound_subscriptions", "enabled")
+		normalizeBool("outbound_subscriptions", "allow_private")
+		normalizeBool("outbound_subscriptions", "prepend")
+		normalizeBool("sub_balancers", "enabled")
 	}
 
 	// Fix inbounds based problems

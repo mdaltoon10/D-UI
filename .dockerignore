@@ -5,6 +5,6 @@ build
 db
 cert
 pgdata
-d-ui/
+x-ui/
 *.db
 *.dump

@@ -286,7 +286,11 @@ func (s *OutboundSubscriptionService) fetchAndStore(sub *model.OutboundSubscript
 		s.recordError(sub, err)
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "d-ui-outbound-sub/1.0")
+	ua := strings.TrimSpace(sub.UserAgent)
+	if ua == "" {
+		ua = "d-ui-outbound-sub/1.0"
+	}
+	req.Header.Set("User-Agent", ua)
 
 	resp, err := client.Do(req)
 	if err != nil {

@@ -30,5 +30,5 @@ export const OutboundDomainStrategies = Object.freeze([
 export type OutboundDomainStrategy = (typeof OutboundDomainStrategies)[number];
 
 export function isOutboundProtocol(value: unknown): boolean {
-  return typeof value === string && Object.values(OutboundProtocols).includes(value as any);
+  return typeof value === 'string' && (Object.values(OutboundProtocols) as string[]).includes(value);
 }

@@ -60,6 +60,6 @@ export function makeTestQueryClient() {
       },
     },
   });
-  (client as any).query = (options: any) => client.fetchQuery(options);
+  (client as unknown as Record<string, unknown>).query = (options: Parameters<typeof client.fetchQuery>[0]) => client.fetchQuery(options);
   return client;
 }

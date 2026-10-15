@@ -12,7 +12,6 @@ import { DateTimePicker, SelectAllClearButtons } from '@/components/form';
 import { useClients, type InboundOption } from '@/hooks/useClients';
 import { useFail2banStatusQuery, getLimitIpNotice } from '@/api/queries/useFail2banStatusQuery';
 import { ClientBulkAddFormSchema, type ClientBulkAddFormValues } from '@/schemas/client';
-import { getSpeedTranslations } from '@/utils/speedI18n';
 
 const PRESET_TRAFFIC_GB = [10, 20, 30, 40, 50, 100];
 const PRESET_IP_LIMITS = [1, 2, 3, 4, 5, 6];
@@ -84,8 +83,7 @@ export default function ClientBulkAddModal({
   onOpenChange,
   onSaved,
 }: ClientBulkAddModalProps) {
-  const { t, i18n } = useTranslation();
-  const speedDict = useMemo(() => getSpeedTranslations(i18n.language), [i18n.language]);
+  const { t } = useTranslation();
   const [messageApi, messageContextHolder] = message.useMessage();
   const { bulkCreate } = useClients();
 
