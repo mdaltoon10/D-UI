@@ -1175,3 +1175,50 @@ type SubBalancer struct {
 
 func (SubBalancer) TableName() string { return "sub_balancers" }
 
+const ApiScopeAdmin = "admin"
+
+type NodePendingReset struct {
+	Id       int    `json:"id" gorm:"primaryKey;autoIncrement"`
+	NodeId   int    `json:"nodeId" gorm:"column:node_id;index:idx_node_pending_resets"`
+	Email    string `json:"email" gorm:"column:email;index:idx_node_pending_resets"`
+	QueuedAt int64  `json:"queuedAt" gorm:"column:queued_at"`
+}
+
+func (NodePendingReset) TableName() string { return "node_pending_resets" }
+
+type TuicTrafficReceipt struct {
+	Id        int    `json:"id" gorm:"primaryKey;autoIncrement"`
+	ClientKey string `json:"clientKey" gorm:"column:client_key;unique"`
+	Bytes     int64  `json:"bytes" gorm:"column:bytes;default:0"`
+	UpdatedAt int64  `json:"updatedAt" gorm:"column:updated_at"`
+}
+
+func (TuicTrafficReceipt) TableName() string { return "tuic_traffic_receipts" }
+
+func StripMtprotoInboundSecret(settings string) (string, bool) {
+	var m map[string]any
+	if json.Unmarshal([]byte(settings), &m) != nil {
+		return settings, false
+	}
+	if _, exists := m["secret"]; exists {
+		delete(m, "secret")
+		b, err := json.Marshal(m)
+		if err != nil {
+			return settings, false
+		}
+		return string(b), true
+	}
+	return settings, false
+}
+
+func ReplaceRemovedShadowsocksCipher(method string) (string, bool) {
+	switch method {
+	case "rc4-md5", "aes-128-cfb", "aes-192-cfb", "aes-256-cfb":
+		return "chacha20-ietf-poly1305", true
+	default:
+		return method, false
+	}
+}
+
+func NormalizeLegacyClientFields(_ map[string]any) {}
+
