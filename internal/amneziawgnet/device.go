@@ -5,12 +5,22 @@ import (
 	"net/netip"
 	"strings"
 
+	awgconn "github.com/amnezia-vpn/amneziawg-go/v3/conn"
 	"github.com/amnezia-vpn/amneziawg-go/v3/device"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
 
 	"github.com/mdaltoon10/D-UI/v3/internal/amneziawg"
 	"github.com/mdaltoon10/D-UI/v3/internal/util/wireguard"
 )
+
+func newListenBind(listen string) awgconn.Bind {
+	return awgconn.NewDefaultBind()
+}
+
+func newResolvingBind(listen string) awgconn.Bind {
+	return newListenBind(listen)
+}
+
 
 // DeviceOptions carries AmneziaWG 3.0's device-wide fields (header
 // protection, content padding, and the five session-timing knobs) --

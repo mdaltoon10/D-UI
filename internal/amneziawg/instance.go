@@ -163,3 +163,29 @@ func FirstIPv6(allowedIPs []string) string {
 	}
 	return ""
 }
+
+// DefaultMTU matches WireGuard/AmneziaWG's usual accounting for tunnel encapsulation
+// overhead on a standard 1500-byte-MTU host link.
+const DefaultMTU = 1420
+
+// MinMTU is the floor for the S4-adjusted default, so a large s4 cannot shrink the tunnel
+// below what clients reliably tolerate.
+const MinMTU = 1280
+
+// EffectiveMTU calculates the actual interface MTU, taking into account
+// S4 junk overhead when MTU is not explicitly configured.
+func EffectiveMTU(configuredMtu int, s4 int) int {
+	if configuredMtu > 0 {
+		return configuredMtu
+	}
+	junk := s4
+	if junk < 0 {
+		junk = 0
+	}
+	mtu := DefaultMTU - junk
+	if mtu < MinMTU {
+		return MinMTU
+	}
+	return mtu
+}
+
