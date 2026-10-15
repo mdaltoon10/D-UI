@@ -785,6 +785,7 @@ func (InboundFallback) TableName() string { return "inbound_fallbacks" }
 type Host struct {
 	Id                int      `json:"id" form:"id" gorm:"primaryKey;autoIncrement" example:"1"`
 	InboundId         int      `json:"inboundId" form:"inboundId" gorm:"index;not null;column:inbound_id" validate:"required" example:"1"`
+	GroupId           string   `json:"groupId" form:"groupId" gorm:"column:group_id"`
 	SortOrder         int      `json:"sortOrder" form:"sortOrder" gorm:"default:0;column:sort_order"`
 	Remark            string   `json:"remark" form:"remark" validate:"required,max=256" example:"cdn-front"`
 	ServerDescription string   `json:"serverDescription" form:"serverDescription" gorm:"column:server_description" validate:"omitempty,max=64"`
