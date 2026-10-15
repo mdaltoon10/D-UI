@@ -181,6 +181,7 @@ function makeBackendProxy(target) {
 export default defineConfig({
   plugins: [esToolkitCompatEsmResolver(), react(), injectBasePathPlugin()],
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },
