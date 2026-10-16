@@ -977,6 +977,7 @@ type OutboundSubscription struct {
 	LastFetchedOutbounds string `json:"lastFetchedOutbounds" form:"lastFetchedOutbounds" gorm:"type:text"`
 	LinkIdentities       string `json:"-" gorm:"type:text;column:link_identities"`
 	UserAgent            string `json:"userAgent" form:"userAgent" gorm:"column:user_agent;type:text"`
+	LastSubFetch         int64  `json:"lastSubFetch" form:"lastSubFetch" gorm:"column:last_sub_fetch"`
 	CreatedAt            int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
 	UpdatedAt            int64  `json:"updatedAt" gorm:"autoUpdateTime:milli"`
 	OutboundCount        int    `json:"outboundCount" gorm:"-"`
