@@ -13,7 +13,7 @@
     },
     "frontend": {
       "name": "d-ui-frontend",
-      "version": "3.3.0",
+      "version": "3.5.2",
       "dependencies": {
         "@ant-design/icons": "^6.3.2",
         "@codemirror/lang-json": "^6.0.2",

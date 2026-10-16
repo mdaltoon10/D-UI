@@ -163,6 +163,7 @@ type ApiToken struct {
 	Name      string `json:"name" gorm:"uniqueIndex;not null"`
 	Token     string `json:"token" gorm:"not null"` // SHA-256 hash; the plaintext is shown only once at creation
 	Enabled   bool   `json:"enabled" gorm:"default:true"`
+	Scope     string `json:"scope" gorm:"column:scope"`
 	CreatedAt int64  `json:"createdAt" gorm:"autoCreateTime"`
 }
 
