@@ -75,11 +75,8 @@ type Instance struct {
 	Tag           string
 	InterfaceName string
 	ListenPort    int
-	// Listen is an optional host bind address (e.g. "203.0.113.10").
-	// Empty/wildcard keeps dual-stack StdNetBind; a real IP pins the UDP socket.
-	Listen     string
-	PrivateKey string
-	PublicKey  string
+	PrivateKey    string
+	PublicKey     string
 	// Address holds the interface's own tunnel address(es), e.g. "10.8.1.1/24".
 	// Carries both the IPv4 and (when enabled) IPv6 server address.
 	Address []string
@@ -245,4 +242,14 @@ func (s ServerSettings) Obfuscation() Obfuscation31 {
 type InboundSettings struct {
 	Server  *ServerSettings `json:"server"`
 	Clients []model.Client  `json:"clients"`
+}
+
+func EffectiveMTU(mtu, s4 int) int {
+	if mtu <= 0 {
+		mtu = 1420
+	}
+	if s4 > 0 && mtu > 1420-s4 {
+		mtu = 1420 - s4
+	}
+	return mtu
 }

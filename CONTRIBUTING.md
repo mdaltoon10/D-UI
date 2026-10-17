@@ -1,11 +1,11 @@
 # Contributing
 
-Thanks for taking the time to contribute to 3x-ui. This guide gets a development panel running locally and explains the conventions the project follows so changes land cleanly.
+Thanks for taking the time to contribute to d-ui. This guide gets a development panel running locally and explains the conventions the project follows so changes land cleanly.
 
 ## Prerequisites
 
-- **Go 1.27+** (the version pinned in `go.mod`)
-- **Node.js 26** (the version pinned in `.nvmrc`) and npm 11+ (for the React frontend)
+- **Go 1.26+** (the version pinned in `go.mod`)
+- **Node.js 22+** and npm 10+ (for the React frontend)
 - **Git**
 - **A C compiler** — required by the CGo SQLite driver (`github.com/mattn/go-sqlite3`). Linux and macOS already ship one; for Windows see below.
 
@@ -50,12 +50,12 @@ Cross-building the Linux SQLite target from Windows (or vice versa) requires a s
 ## First-time setup
 
 ```bash
-git clone https://github.com/MHSanaei/3x-ui.git
-cd 3x-ui
+git clone https://github.com/mdaltoon10/D-UI.git
+cd d-ui
 
 cp .env.example .env
 
-mkdir x-ui
+mkdir d-ui
 
 go mod download
 
@@ -65,18 +65,18 @@ npm run build
 cd ..
 ```
 
-`.env.example` ships with defaults that keep the database, logs, and xray binary inside the local `x-ui/` folder so nothing escapes the project directory:
+`.env.example` ships with defaults that keep the database, logs, and xray binary inside the local `d-ui/` folder so nothing escapes the project directory:
 
 ```
-XUI_DEBUG=true
-XUI_DB_FOLDER=x-ui
-XUI_LOG_FOLDER=x-ui
-XUI_BIN_FOLDER=x-ui
-XUI_INIT_WEB_BASE_PATH=/
-# XUI_PORT=8080
+DUI_DEBUG=true
+DUI_DB_FOLDER=d-ui
+DUI_LOG_FOLDER=d-ui
+DUI_BIN_FOLDER=d-ui
+DUI_INIT_WEB_BASE_PATH=/
+# DUI_PORT=8080
 ```
 
-Drop the xray binary (`xray-windows-amd64.exe` on Windows, `xray-linux-amd64` on Linux, etc.) plus the matching `geoip.dat` and `geosite.dat` files into `x-ui/`. The easiest source is a [released Xray-core build](https://github.com/XTLS/Xray-core/releases). On Windows, `wintun.dll` is also required for testing TUN inbounds.
+Drop the xray binary (`xray-windows-amd64.exe` on Windows, `xray-linux-amd64` on Linux, etc.) plus the matching `geoip.dat` and `geosite.dat` files into `d-ui/`. The easiest source is a [released Xray-core build](https://github.com/XTLS/Xray-core/releases). On Windows, `wintun.dll` is also required for testing TUN inbounds.
 
 ## Running
 
@@ -88,7 +88,7 @@ Open [http://localhost:2053](http://localhost:2053) and log in with `admin` / `a
 
 ### Inside VS Code
 
-The repo checks in two VS Code launch profiles in `.vscode/launch.json`: **Run 3x-ui (Debug)** for the default SQLite setup, and **Run 3x-ui (Postgres)** which points `XUI_DB_TYPE`/`XUI_DB_DSN` at a local PostgreSQL. The Postgres profile also prepends the PostgreSQL `bin` to `PATH` so the panel can find `pg_dump`/`pg_restore` (the `postgresql-client` tools used for DB backup/restore) — adjust the DSN and that path to your machine:
+The repo checks in two VS Code launch profiles in `.vscode/launch.json`: **Run d-ui (Debug)** for the default SQLite setup, and **Run d-ui (Postgres)** which points `DUI_DB_TYPE`/`DUI_DB_DSN` at a local PostgreSQL. The Postgres profile also prepends the PostgreSQL `bin` to `PATH` so the panel can find `pg_dump`/`pg_restore` (the `postgresql-client` tools used for DB backup/restore) — adjust the DSN and that path to your machine:
 
 ```jsonc
 {
@@ -96,33 +96,33 @@ The repo checks in two VS Code launch profiles in `.vscode/launch.json`: **Run 3
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run 3x-ui (Debug)",
+      "name": "Run d-ui (Debug)",
       "type": "go",
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}",
       "cwd": "${workspaceFolder}",
       "env": {
-        "XUI_DEBUG": "true",
-        "XUI_DB_FOLDER": "x-ui",
-        "XUI_LOG_FOLDER": "x-ui",
-        "XUI_BIN_FOLDER": "x-ui"
+        "DUI_DEBUG": "true",
+        "DUI_DB_FOLDER": "d-ui",
+        "DUI_LOG_FOLDER": "d-ui",
+        "DUI_BIN_FOLDER": "d-ui"
       },
       "console": "integratedTerminal"
     },
     {
-      "name": "Run 3x-ui (Postgres)",
+      "name": "Run d-ui (Postgres)",
       "type": "go",
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}",
       "cwd": "${workspaceFolder}",
       "env": {
-        "XUI_DEBUG": "true",
-        "XUI_LOG_FOLDER": "x-ui",
-        "XUI_BIN_FOLDER": "x-ui",
-        "XUI_DB_TYPE": "postgres",
-        "XUI_DB_DSN": "postgres://xui:xuipass@127.0.0.1:5432/xui?sslmode=disable",
+        "DUI_DEBUG": "true",
+        "DUI_LOG_FOLDER": "d-ui",
+        "DUI_BIN_FOLDER": "d-ui",
+        "DUI_DB_TYPE": "postgres",
+        "DUI_DB_DSN": "postgres://dui:duipass@127.0.0.1:5432/dui?sslmode=disable",
         "PATH": "C:\\Program Files\\PostgreSQL\\18\\bin;${env:PATH}"
       },
       "console": "integratedTerminal"
@@ -151,23 +151,22 @@ Panel navigation happens client-side through React Router, and per-route code is
 - **Local UI state stays in the page** (`useState`); shared concerns go through contexts and hooks in `src/hooks/` (`useTheme`, `useWebSocket`, `useClients`, `useDatepicker`, …). Prefer extending an existing hook over introducing a new global.
 - **Zod is the single source of truth.** Schemas in `src/schemas/` define the xray config model; every API response is parsed through them, every form field validates against them, and TypeScript types are inferred with `z.infer` — never hand-written. Go-side types are mirrored into `src/generated/` by `npm run gen:zod` (do not hand-edit that folder).
 - **xray domain logic** — link generation, protocol defaults, form ⇄ wire adapters — lives as pure functions in `src/lib/xray/`. `src/models/` keeps only thin legacy types still being migrated onto schemas.
-- **HTTP** goes through `HttpUtil` in `src/utils/index.ts`, a thin `fetch` wrapper that handles CSRF, response toasts, and a `silent: true` opt-out for bulk operations that would otherwise spam toasts. The `fetch` setup itself (base path, CSRF, 401/403 handling) lives in `src/api/http-init.ts`.
+- **HTTP** goes through `HttpUtil` in `src/utils/index.ts`, a thin Axios wrapper that handles CSRF, response toasts, and a `silent: true` opt-out for bulk operations that would otherwise spam toasts. The Axios setup itself lives in `src/api/axios-init.ts`.
 
 ### i18n
 
 Locale strings live in `internal/web/translation/<locale>.json`, **not** under `frontend/`. The Go binary embeds the same JSON and serves it to both backend templates and `react-i18next` (initialized in `src/i18n/react.ts`). When a new English key is added it must also land in **every** non-English locale — missing keys do not break the build, they just render the raw key in the UI.
 
-### Dev workflows
+### Two dev workflows
 
 | Goal | Command |
 |------|---------|
 | Iterate on UI changes with HMR | `cd frontend && npm run dev` (Vite on `:5173`, proxies `/panel/*` and the WebSocket to the Go panel on `:2053`). Start the Go panel first. |
 | Verify what end users actually see | `cd frontend && npm run build`, then `go run .`. The Go binary serves the built bundle — embedded in release mode, off disk in debug mode. |
-| Develop/preview a reusable component in isolation | `cd frontend && npm run storybook` (Storybook workbench + autodocs on `:6006`). |
 
 The Vite dev proxy serves the admin SPA for any `/panel/*` URL — `bypassMigratedRoute` in `vite.config.js` rewrites those requests to `index.html` and lets React Router take over — while forwarding `/panel/api/*`, `/panel/api/setting/*`, `/panel/api/xray/*`, and the WebSocket to the Go panel. Because routing is now client-side, new panel routes need no proxy or allowlist changes.
 
-> **`XUI_DEBUG=true` gotcha** — in debug mode the panel serves HTML from the embedded FS (frozen at the last `go build` / `go run`) but JS/CSS off disk. Re-running `npm run build` without restarting Go leaves the embedded HTML pointing at the *old* hashed asset names, producing a blank page with 404s in the console. Always restart `go run .` after a frontend rebuild.
+> **`DUI_DEBUG=true` gotcha** — in debug mode the panel serves HTML from the embedded FS (frozen at the last `go build` / `go run`) but JS/CSS off disk. Re-running `npm run build` without restarting Go leaves the embedded HTML pointing at the *old* hashed asset names, producing a blank page with 404s in the console. Always restart `go run .` after a frontend rebuild.
 
 ### Adding a new page
 
@@ -184,13 +183,12 @@ Only a genuinely **standalone bundle** (like `login` or `subpage`, reachable wit
 - **TypeScript strict mode** — all new code in `.ts` / `.tsx`. Run `npm run typecheck` (`tsc --noEmit`) before pushing. The path alias `@/*` resolves to `src/*`.
 - **Ant Design 6** is the only UI kit — no Tailwind, no shadcn. A previous attempt to migrate was rolled back. Small, targeted UX tweaks beat sweeping rewrites; raise broader visual changes for discussion before implementing.
 - **Function components + hooks** everywhere. No class components.
-- **Comments in committed Go/TS/TSX: 2 lines MAX per comment block**, spent on the *why* a name cannot hold — an invariant, an issue number, a non-obvious constraint. Names should carry the meaning; rename rather than annotate. Compiler and tool directives (`//go:build`, `//go:generate`, `//nolint:`) are exempt, and HTML `<!-- ... -->` is fine for template structure.
+- **No `//` line comments** in committed JS/TS/Vue/Go. HTML `<!-- ... -->` is fine for template structure. Names should carry the meaning; rename rather than annotate. Comments are reserved for the *why*, and only when the reason is surprising.
 - **Persian and Arabic users are first-class.** When writing Persian text in toasts or labels, isolate code identifiers on their own lines so RTL reading flows. (Full RTL layout is not currently wired through AntD `ConfigProvider direction` — only the Jalali date picker is RTL-aware — so treat RTL as an open area, not a solved one.)
-- **Schemas over `any`.** New config shapes go in `src/schemas/`; oxlint's `typescript/no-explicit-any` is an error and production schemas use no `.loose()`. Validate form fields with `antdRule(Schema.shape.field, t)` rather than inline `z.string()` in rules.
+- **Schemas over `any`.** New config shapes go in `src/schemas/`; `@typescript-eslint/no-explicit-any` is an error and production schemas use no `.loose()`. Validate form fields with `antdRule(Schema.shape.field, t)` rather than inline `z.string()` in rules.
 - **Document new endpoints.** Every new `g.POST`/`g.GET` in `internal/web/controller/` needs a matching entry in `src/pages/api-docs/endpoints.ts` — it drives both the in-panel API docs and the generated OpenAPI/Zod (`npm run gen:api` / `gen:zod`).
 - **Do not break link generation.** Share-link logic lives in `src/lib/xray/` (`inbound-link.ts`, `outbound-link-parser.ts`, …) and is round-tripped by the golden fixture suite — run `npm run test` after any change to URL generation, defaults, or TLS/Reality handling, and regenerate snapshots (`npx vitest run -u`) only for intentional changes. Two runtime paths consume it: the **inbounds page** and the **clients page** subscription links (`/panel/api/clients/subLinks/:subId` → backend `GetSubs`); exercise both.
 - **Vite is pinned to an exact version** (no `^`) in `frontend/package.json` — read the live version there rather than trusting a number quoted here — so local, CI, and release builds resolve identically. Bump it deliberately and verify both `npm run dev` and `npm run build` afterward.
-- **Reusable components are documented in Storybook.** When you add or change a component in `frontend/src/components/`, add or update its co-located `<Component>.stories.tsx` (`tags: ['autodocs']`), documenting props via `argTypes` / `parameters.docs` string metadata rather than JSDoc. CI compile-checks every story via `npm run build-storybook` and runs each story as a headless-browser test via `@storybook/addon-vitest` (`npm run test`, needs `npx playwright install chromium`); run `npm run storybook` to preview locally.
 
 ### Project layout
 
@@ -200,8 +198,7 @@ frontend/
 ├── login.html             — login + 2FA entry
 ├── subpage.html           — public subscription viewer entry
 ├── tsconfig.json          — strict, jsx: "react-jsx", paths "@/*" → "src/*"
-├── .oxlintrc.json         — oxlint config (typescript + react-hooks + jsx-a11y)
-├── tools/oxlint/          — input-number-guard.mjs (#6121/#6127 guard as a JS plugin)
+├── eslint.config.js       — ESLint flat config (@eslint/js + typescript-eslint + react-hooks)
 ├── vite.config.js
 ├── vitest.config.ts
 ├── scripts/               — build-openapi.mjs (endpoints.ts → openapi.json)
@@ -213,7 +210,7 @@ frontend/
     ├── pages/             — one folder per route (index, inbounds, clients, groups, nodes, settings, xray, api-docs) plus login, sub
     ├── components/        — cross-page React components
     ├── hooks/             — reusable hooks (useTheme, useWebSocket, useClients, useDatepicker, …)
-    ├── api/               — fetch client + CSRF handling, TanStack Query provider/keys, WebSocket client
+    ├── api/               — Axios + CSRF interceptor, TanStack Query provider/keys, WebSocket client
     ├── i18n/              — react-i18next bootstrap (JSON lives in internal/web/translation/)
     ├── lib/xray/          — pure xray logic: link generation, defaults, form ⇄ wire adapters
     ├── schemas/           — Zod source of truth for the xray config model
@@ -237,23 +234,17 @@ For deeper notes on the frontend toolchain see [`frontend/README.md`](frontend/R
 | `internal/xray/` | Xray-core process lifecycle and gRPC API client |
 | `internal/sub/` | Subscription endpoints (raw, JSON, Clash) |
 | `internal/config/` | Environment-variable helpers, paths, defaults |
-| `x-ui/` | **Runtime data** — db, logs, xray binary, geo files (gitignored) |
+| `d-ui/` | **Runtime data** — db, logs, xray binary, geo files (gitignored) |
 
 ## Testing
 
 Tests live next to the code (`foo.go` ↔ `foo_test.go`); frontend specs and golden fixtures live in `frontend/src/test/`.
 
-### Test first, and only tests that can fail
-
-- **Red → green → refactor.** Write the test before the code. For a bug, the test reproduces the report; for a feature, it covers the first behaviour. Watch it fail, write the code that makes it pass, then refactor with the suite green.
-- **Every test catches a named failure.** Don't test getters, constants or renames. Don't restate the implementation, mock the unit under test, write assertions too weak to fail, or regenerate snapshots to match whatever the code now outputs.
-- **Fix the root cause the right way**, even when that takes more code. A small patch that hides the symptom is not a fix.
-
 ### Go conventions
 
 - **Stdlib `testing` only** — no testify. Table-driven with `t.Run` subtests and `t.Helper()` on helpers.
 - **Assert the contract, not internals.** Pin the exact value / typed error / emitted string — not `err != nil` or `len > 0`. A test that still passes when the behavior is broken is worse than no test.
-- **Real dependencies over mocks.** Get a throwaway DB with `dbtest.InitDB(t, filepath.Join(t.TempDir(), "x-ui.db"))` from `internal/database/dbtest`: it copies a once-migrated template (migrating from scratch per test is ~7x slower, worst under `-race`) and closes the DB before `t.TempDir` cleanup (Windows-safe). Keep `database.InitDB` for reopening an existing file or migrating a hand-built legacy DB. Use `httptest` servers for HTTP. The `internal/sub` suite's `initSubDB(t)` is the template.
+- **Real dependencies over mocks.** Get a throwaway DB with `database.InitDB(filepath.Join(t.TempDir(), "d-ui.db"))` + `t.Cleanup(func() { _ = database.CloseDB() })` (Windows-safe), and use `httptest` servers for HTTP. The `internal/sub` suite's `initSubDB(t)` is the template.
 
 ### Running
 
@@ -286,7 +277,7 @@ CI runs this for you nightly (and on demand) via `.github/workflows/mutation.yml
 
 ### CI
 
-`.github/workflows/ci.yml` runs per PR: `go-test` (with `-shuffle -count=1`), a `race` job (`-race -shuffle -count=1`), a `fuzz-smoke` job on the critical parsers, and the frontend `typecheck`/`lint`/`format:check`/`test`/`build`/`build-storybook`. Snapshots are regression guards — regenerate them (`npx vitest run -u`) only for intentional output changes, never to make a red test green.
+`.github/workflows/ci.yml` runs per PR: `go-test` (with `-shuffle -count=1`), a `race` job (`-race -shuffle -count=1`), a `fuzz-smoke` job on the critical parsers, and the frontend `typecheck`/`lint`/`test`/`build`. Snapshots are regression guards — regenerate them (`npx vitest run -u`) only for intentional output changes, never to make a red test green.
 
 ## Sending a pull request
 
@@ -295,7 +286,7 @@ CI runs this for you nightly (and on demand) via `.github/workflows/mutation.yml
 3. Run the relevant checks before pushing:
    - `go build ./...`
    - `go test ./...` (when Go code changed)
-   - `cd frontend && npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build && npm run build-storybook` (when the frontend changed; CI runs this same set on every PR via `.github/workflows/ci.yml`)
+   - `cd frontend && npm run typecheck && npm run lint && npm run test && npm run build` (when the frontend changed; CI runs this same set on every PR via `.github/workflows/ci.yml`)
 4. Commit messages follow the existing pattern in `git log` — `<area>: short imperative summary`, then a body explaining the *why*. Conventional-commit prefixes (`feat`, `fix`, `refactor`, `chore`, `style`, `docs`) are encouraged.
 5. Open the PR against `main` with a brief description of what changed and how to test it.
 
@@ -303,24 +294,24 @@ CI runs this for you nightly (and on demand) via `.github/workflows/mutation.yml
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `XUI_DEBUG` | `false` | Verbose logs + Gin debug mode + serve `/assets` from disk |
-| `XUI_LOG_LEVEL` | `info` | `debug` / `info` / `notice` / `warning` / `error` |
-| `XUI_DB_FOLDER` | platform default | Where `x-ui.db` lives |
-| `XUI_LOG_FOLDER` | platform default | Where `3xui.log` lives |
-| `XUI_BIN_FOLDER` | `bin` | Where the xray binary, geo files, and xray `config.json` live |
-| `XUI_INIT_WEB_BASE_PATH` | `/` | The initial URI path for the web panel |
-| `XUI_PORT` | persisted `webPort` | Runtime-only web panel listener port override (`1` through `65535`) |
-| `XUI_DB_TYPE` | `sqlite` | Set to `postgres` to use PostgreSQL via `XUI_DB_DSN` |
-| `XUI_DB_DSN` | — | PostgreSQL DSN when `XUI_DB_TYPE=postgres` |
+| `DUI_DEBUG` | `false` | Verbose logs + Gin debug mode + serve `/assets` from disk |
+| `DUI_LOG_LEVEL` | `info` | `debug` / `info` / `notice` / `warning` / `error` |
+| `DUI_DB_FOLDER` | platform default | Where `d-ui.db` lives |
+| `DUI_LOG_FOLDER` | platform default | Where `dui.log` lives |
+| `DUI_BIN_FOLDER` | `bin` | Where the xray binary, geo files, and xray `config.json` live |
+| `DUI_INIT_WEB_BASE_PATH` | `/` | The initial URI path for the web panel |
+| `DUI_PORT` | persisted `webPort` | Runtime-only web panel listener port override (`1` through `65535`) |
+| `DUI_DB_TYPE` | `sqlite` | Set to `postgres` to use PostgreSQL via `DUI_DB_DSN` |
+| `DUI_DB_DSN` | — | PostgreSQL DSN when `DUI_DB_TYPE=postgres` |
 
-A valid `XUI_PORT` takes precedence over the database-backed `webPort` for the
+A valid `DUI_PORT` takes precedence over the database-backed `webPort` for the
 current process without changing the stored setting. Unset, empty, whitespace-only,
 malformed, or out-of-range values fall back to `webPort`; invalid configured values
 also produce a warning. With Docker bridge networking, the published container port
-must match the override, for example `XUI_PORT: "8080"` with `ports: ["8080:8080"]`.
+must match the override, for example `DUI_PORT: "8080"` with `ports: ["8080:8080"]`.
 
 ## Issues
 
-- Bug reports and feature requests: [GitHub Issues](https://github.com/MHSanaei/3x-ui/issues)
+- Bug reports and feature requests: [GitHub Issues](https://github.com/mdaltoon10/D-UI/issues)
 
-Before filing a bug, include the OS, Go version, panel version (`/panel/api/server/status` or the dashboard footer), and the relevant excerpt from `x-ui/3xui.log`.
+Before filing a bug, include the OS, Go version, panel version (`/panel/api/server/status` or the dashboard footer), and the relevant excerpt from `d-ui/dui.log`.

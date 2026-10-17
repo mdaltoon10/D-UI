@@ -6,14 +6,12 @@
       "name": "d-ui",
       "dependencies": {
         "@hookform/resolvers": "^5.9.1",
-        "react": "^19.0.0",
-        "react-dom": "^19.0.0",
         "react-hook-form": "^7.86.0",
       },
     },
     "frontend": {
       "name": "d-ui-frontend",
-      "version": "3.5.5",
+      "version": "3.4.1",
       "dependencies": {
         "@ant-design/icons": "^6.3.2",
         "@codemirror/lang-json": "^6.0.2",

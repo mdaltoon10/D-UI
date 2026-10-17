@@ -395,14 +395,6 @@ export default function ClientBulkAddModal({
             </Form.Item>
           )}
 
-          <Form.Item label={speedDict.uploadLimit} tooltip={speedDict.uploadLimitDesc}>
-            <InputNumber value={form.uploadLimit} min={0} step={1} onChange={(v) => update('uploadLimit', Number(v) || 0)} />
-          </Form.Item>
-
-          <Form.Item label={speedDict.downloadLimit} tooltip={speedDict.downloadLimitDesc}>
-            <InputNumber value={form.downloadLimit} min={0} step={1} onChange={(v) => update('downloadLimit', Number(v) || 0)} />
-          </Form.Item>
-
           <Form.Item label={t('pages.clients.limitIp')} tooltip={t('pages.clients.limitIpDesc')}>
             <Tooltip title={limitIpNotice || undefined}>
               <span style={{ display: 'inline-flex' }}>

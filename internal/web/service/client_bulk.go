@@ -1385,7 +1385,12 @@ func (s *ClientService) BulkCreate(inboundSvc *InboundService, payloads []Client
 	return result, needRestart, nil
 }
 
-func (s *ClientService) DelDepleted(inboundSvc *InboundService) (int, bool, error) {
+func (s *ClientService) DelDepleted(inboundSvc *InboundService, adminUsernames ...string) (int, bool, error) {
+	adminUsername := ""
+	if len(adminUsernames) > 0 {
+		adminUsername = strings.TrimSpace(adminUsernames[0])
+	}
+
 	db := database.GetDB()
 	now := time.Now().UnixMilli()
 	depletedClause := "reset = 0 and ((total > 0 and up + down >= total) or (expiry_time > 0 and expiry_time <= ?))"
@@ -1414,7 +1419,39 @@ func (s *ClientService) DelDepleted(inboundSvc *InboundService) (int, bool, erro
 		return 0, false, nil
 	}
 
-	res, needRestart, err := s.BulkDelete(inboundSvc, emails, false)
+	// Filter by CreatedBy to prevent crosstalk between main panel and reseller admins
+	var records []model.ClientRecord
+	for _, batch := range chunkStrings(emails, sqlInChunk) {
+		var batchRecords []model.ClientRecord
+		if err := db.Where("email IN ?", batch).Find(&batchRecords).Error; err != nil {
+			return 0, false, err
+		}
+		records = append(records, batchRecords...)
+	}
+
+	filteredEmails := make([]string, 0, len(records))
+	for _, rec := range records {
+		if adminUsername == "*" || strings.EqualFold(adminUsername, "all") {
+			// Delete across all admins + master
+			filteredEmails = append(filteredEmails, rec.Email)
+		} else if adminUsername == "" {
+			// Master admin / main panel only: CreatedBy is empty
+			if strings.TrimSpace(rec.CreatedBy) == "" {
+				filteredEmails = append(filteredEmails, rec.Email)
+			}
+		} else {
+			// Specific reseller admin: CreatedBy matches reseller username
+			if strings.EqualFold(strings.TrimSpace(rec.CreatedBy), adminUsername) {
+				filteredEmails = append(filteredEmails, rec.Email)
+			}
+		}
+	}
+
+	if len(filteredEmails) == 0 {
+		return 0, false, nil
+	}
+
+	res, needRestart, err := s.BulkDelete(inboundSvc, filteredEmails, false)
 	if err != nil {
 		return res.Deleted, needRestart, err
 	}

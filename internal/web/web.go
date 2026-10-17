@@ -495,6 +495,15 @@ func (s *Server) startTask(restartXray bool) {
 			job.NewMemoryReleaseJob().Run()
 		}()
 	}
+
+	// Auto-check and upgrade Xray-core to the latest version on startup
+	go func() {
+		time.Sleep(5 * time.Second)
+		srvService := service.ServerService{}
+		if err := srvService.EnsureLatestXray(); err != nil {
+			logger.Warning("automatic xray-core version check failed:", err)
+		}
+	}()
 }
 
 // cpuAlarmWanted reports whether any notifier is configured to receive cpu.high

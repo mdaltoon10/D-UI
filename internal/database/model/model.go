@@ -107,8 +107,6 @@ type OutboundTraffics struct {
 	Total int64  `json:"total" form:"total" gorm:"default:0"`
 }
 
-func (OutboundTraffics) TableName() string { return "outbound_traffics" }
-
 // InboundClientIps stores IP addresses associated with inbound clients for access control.
 type InboundClientIps struct {
 	Id          int    `json:"id" gorm:"primaryKey;autoIncrement"`
@@ -163,8 +161,6 @@ type ApiToken struct {
 	Name      string `json:"name" gorm:"uniqueIndex;not null"`
 	Token     string `json:"token" gorm:"not null"` // SHA-256 hash; the plaintext is shown only once at creation
 	Enabled   bool   `json:"enabled" gorm:"default:true"`
-	Scope     string `json:"scope" gorm:"column:scope"`
-	ExpiresAt int64  `json:"expiresAt" gorm:"column:expires_at"`
 	CreatedAt int64  `json:"createdAt" gorm:"autoCreateTime"`
 }
 
@@ -748,8 +744,6 @@ func (ClientInbound) TableName() string { return "client_inbounds" }
 type ClientExternalLink struct {
 	Id        int    `json:"id" gorm:"primaryKey;autoIncrement"`
 	ClientId  int    `json:"clientId" gorm:"index;column:client_id"`
-	Enable    *bool  `json:"enable" gorm:"column:enable;default:true"`
-	ExpiryTime int64 `json:"expiryTime" gorm:"column:expiry_time;default:0"`
 	Kind       string `json:"kind" gorm:"column:kind"`
 	Value      string `json:"value" gorm:"column:value"`
 	Remark     string `json:"remark" gorm:"column:remark"`
@@ -789,7 +783,6 @@ func (InboundFallback) TableName() string { return "inbound_fallbacks" }
 type Host struct {
 	Id                int      `json:"id" form:"id" gorm:"primaryKey;autoIncrement" example:"1"`
 	InboundId         int      `json:"inboundId" form:"inboundId" gorm:"index;not null;column:inbound_id" validate:"required" example:"1"`
-	GroupId           string   `json:"groupId" form:"groupId" gorm:"column:group_id"`
 	SortOrder         int      `json:"sortOrder" form:"sortOrder" gorm:"default:0;column:sort_order"`
 	Remark            string   `json:"remark" form:"remark" validate:"required,max=256" example:"cdn-front"`
 	ServerDescription string   `json:"serverDescription" form:"serverDescription" gorm:"column:server_description" validate:"omitempty,max=64"`
@@ -978,14 +971,10 @@ type OutboundSubscription struct {
 	LastError            string `json:"lastError" form:"lastError"`
 	LastFetchedOutbounds string `json:"lastFetchedOutbounds" form:"lastFetchedOutbounds" gorm:"type:text"`
 	LinkIdentities       string `json:"-" gorm:"type:text;column:link_identities"`
-	UserAgent            string `json:"userAgent" form:"userAgent" gorm:"column:user_agent;type:text"`
-	LastSubFetch         int64  `json:"lastSubFetch" form:"lastSubFetch" gorm:"column:last_sub_fetch"`
 	CreatedAt            int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
 	UpdatedAt            int64  `json:"updatedAt" gorm:"autoUpdateTime:milli"`
 	OutboundCount        int    `json:"outboundCount" gorm:"-"`
 }
-
-func (OutboundSubscription) TableName() string { return "outbound_subscriptions" }
 
 func MergeClientRecord(existing *ClientRecord, incoming *ClientRecord) []ClientMergeConflict {
 	var conflicts []ClientMergeConflict
@@ -1180,51 +1169,4 @@ type SubBalancer struct {
 }
 
 func (SubBalancer) TableName() string { return "sub_balancers" }
-
-const ApiScopeAdmin = "admin"
-
-type NodePendingReset struct {
-	Id       int    `json:"id" gorm:"primaryKey;autoIncrement"`
-	NodeId   int    `json:"nodeId" gorm:"column:node_id;index:idx_node_pending_resets"`
-	Email    string `json:"email" gorm:"column:email;index:idx_node_pending_resets"`
-	QueuedAt int64  `json:"queuedAt" gorm:"column:queued_at"`
-}
-
-func (NodePendingReset) TableName() string { return "node_pending_resets" }
-
-type TuicTrafficReceipt struct {
-	Id        int    `json:"id" gorm:"primaryKey;autoIncrement"`
-	ClientKey string `json:"clientKey" gorm:"column:client_key;unique"`
-	Bytes     int64  `json:"bytes" gorm:"column:bytes;default:0"`
-	UpdatedAt int64  `json:"updatedAt" gorm:"column:updated_at"`
-}
-
-func (TuicTrafficReceipt) TableName() string { return "tuic_traffic_receipts" }
-
-func StripMtprotoInboundSecret(settings string) (string, bool) {
-	var m map[string]any
-	if json.Unmarshal([]byte(settings), &m) != nil {
-		return settings, false
-	}
-	if _, exists := m["secret"]; exists {
-		delete(m, "secret")
-		b, err := json.Marshal(m)
-		if err != nil {
-			return settings, false
-		}
-		return string(b), true
-	}
-	return settings, false
-}
-
-func ReplaceRemovedShadowsocksCipher(method string) (string, bool) {
-	switch method {
-	case "rc4-md5", "aes-128-cfb", "aes-192-cfb", "aes-256-cfb":
-		return "chacha20-ietf-poly1305", true
-	default:
-		return method, false
-	}
-}
-
-func NormalizeLegacyClientFields(_ map[string]any) {}
 

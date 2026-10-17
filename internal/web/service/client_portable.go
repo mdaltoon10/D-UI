@@ -165,11 +165,26 @@ func (s *ClientService) ImportClients(inboundSvc *InboundService, items []Client
 // together with its traffic rows, IP log, and external links. It mirrors the
 // cleanup the single-client Delete performs, batched into one transaction.
 // Returns the number of clients deleted.
-func (s *ClientService) DeleteOrphans() (int, error) {
+func (s *ClientService) DeleteOrphans(adminUsernames ...string) (int, error) {
+	adminUsername := ""
+	if len(adminUsernames) > 0 {
+		adminUsername = strings.TrimSpace(adminUsernames[0])
+	}
+
 	db := database.GetDB()
 	sub := database.GetDB().Table("client_inbounds").Select("client_id")
+	query := db.Where("id NOT IN (?)", sub)
+
+	if adminUsername == "*" || strings.EqualFold(adminUsername, "all") {
+		// All
+	} else if adminUsername == "" {
+		query = query.Where("created_by = '' OR created_by IS NULL")
+	} else {
+		query = query.Where("LOWER(created_by) = LOWER(?)", adminUsername)
+	}
+
 	var rows []model.ClientRecord
-	if err := db.Where("id NOT IN (?)", sub).Order("id ASC").Find(&rows).Error; err != nil {
+	if err := query.Order("id ASC").Find(&rows).Error; err != nil {
 		return 0, err
 	}
 	if len(rows) == 0 {

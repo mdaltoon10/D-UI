@@ -33,7 +33,6 @@ import { ClientFormSchema, ClientCreateFormSchema } from '@/schemas/client';
 import { useClientHwids } from '@/hooks/useClientHwids';
 import { useDatepicker } from '@/hooks/useDatepicker';
 import ClientHwidListModal from '@/components/clients/ClientHwidList';
-import { getSpeedTranslations } from '@/utils/speedI18n';
 import './ClientFormModal.css';
 
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
@@ -161,6 +160,8 @@ interface FormState {
   expiryDate: Dayjs | null;
   delayedStart: boolean;
   delayedDays: number;
+  trafficResetMode: number;
+  renewalType: 'disabled' | 'fixed' | 'weekly' | 'monthly';
   reset: number;
   resetLimit: number;
   limitIp: number;
@@ -193,6 +194,8 @@ function emptyForm(): FormState {
     expiryDate: null,
     delayedStart: false,
     delayedDays: 0,
+    trafficResetMode: 0,
+    renewalType: 'disabled',
     reset: 0,
     resetLimit: 0,
     limitIp: 0,
@@ -243,9 +246,8 @@ export default function ClientFormModal({
   resetTraffic,
   onOpenChange,
 }: ClientFormModalProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { datepicker } = useDatepicker();
-  const speedDict = useMemo(() => getSpeedTranslations(i18n.language), [i18n.language]);
   const [messageApi, messageContextHolder] = message.useMessage();
   const isEdit = mode === 'edit';
 
@@ -346,6 +348,8 @@ export default function ClientFormModal({
         totalGB: bytesToGB(client.totalGB || 0),
         uploadLimit: client.uploadLimit || client.uploadMbps || 0,
         downloadLimit: client.downloadLimit || client.downloadMbps || 0,
+        trafficResetMode: Number(client.reset) || 0,
+        renewalType: (Number(client.reset) || 0) > 0 ? 'fixed' : 'disabled',
         reset: Number(client.reset) || 0,
         resetLimit: Number(client.resetLimit) || 0,
         limitIp: client.limitIp || 0,
@@ -561,6 +565,17 @@ export default function ClientFormModal({
         finalInboundIds = effectiveInboundIds;
       }
     }
+    let resetValue = 0;
+    if (form.renewalType === 'fixed') {
+      resetValue = Number(form.reset) || 30;
+    } else if (form.renewalType === 'weekly') {
+      resetValue = 7;
+    } else if (form.renewalType === 'monthly') {
+      resetValue = 30;
+    } else if (form.trafficResetMode > 0) {
+      resetValue = form.trafficResetMode;
+    }
+
     const schema = isEdit ? ClientFormSchema : (isReseller ? ClientFormSchema : ClientCreateFormSchema);
     const validated = schema.safeParse({
       email: form.email,
@@ -574,7 +589,7 @@ export default function ClientFormModal({
       totalGB: form.totalGB,
       delayedStart: form.delayedStart,
       delayedDays: form.delayedDays,
-      reset: form.reset,
+      reset: resetValue,
       limitIp: form.limitIp,
       tgId: form.tgId,
       group: form.group,
@@ -604,7 +619,7 @@ export default function ClientFormModal({
       uploadMbps: Number(form.uploadLimit) || 0,
       downloadMbps: Number(form.downloadLimit) || 0,
       expiryTime,
-      reset: Number(form.reset) || 0,
+      reset: resetValue,
       resetLimit: Number(form.resetLimit) || 0,
       limitIp: Number(form.limitIp) || 0,
       limitHwid: Number(form.limitHwid) || 0,
@@ -712,7 +727,7 @@ export default function ClientFormModal({
                 children: (
                   <>
                     <Row gutter={16}>
-                      <Col xs={24} sm={8}>
+                      <Col xs={24} sm={12}>
                         <Form.Item label={t('pages.clients.email')} required>
                           <Space.Compact style={{ display: 'flex' }}>
                             <Input
@@ -727,7 +742,7 @@ export default function ClientFormModal({
                           </Space.Compact>
                         </Form.Item>
                       </Col>
-                      <Col xs={24} sm={8}>
+                      <Col xs={24} sm={12}>
                         <Form.Item label={t('pages.clients.totalGB')} tooltip={t('pages.clients.totalGBDesc')}>
                           <InputNumber
                             value={form.totalGB}
@@ -752,7 +767,10 @@ export default function ClientFormModal({
                           />
                         </Form.Item>
                       </Col>
-                      <Col xs={24} sm={8}>
+                    </Row>
+
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
                         <Form.Item label={t('pages.clients.limitIp')} tooltip={t('pages.clients.limitIpDesc')}>
                           <Tooltip title={limitIpNotice || undefined}>
                             <span style={{ display: 'flex', width: '100%' }}>
@@ -790,56 +808,7 @@ export default function ClientFormModal({
                           )}
                         </Form.Item>
                       </Col>
-                    </Row>
-
-                    <Row gutter={16}>
-                      <Col xs={24} sm={8}>
-                        <Form.Item label={speedDict.uploadLimit} tooltip={speedDict.uploadLimitDesc}>
-                          <InputNumber
-                            value={form.uploadLimit}
-                            min={0}
-                            step={1}
-                            style={{ width: '100%' }}
-                            onChange={(v) => update('uploadLimit', Number(v) || 0)}
-                          />
-                          <PresetChips
-                            items={[
-                              { label: '0', value: 0 },
-                              { label: '5M', value: 5 },
-                              { label: '10M', value: 10 },
-                              { label: '20M', value: 20 },
-                              { label: '50M', value: 50 },
-                              { label: '100M', value: 100 },
-                            ]}
-                            selectedValue={form.uploadLimit}
-                            onSelect={(v) => update('uploadLimit', v)}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={8}>
-                        <Form.Item label={speedDict.downloadLimit} tooltip={speedDict.downloadLimitDesc}>
-                          <InputNumber
-                            value={form.downloadLimit}
-                            min={0}
-                            step={1}
-                            style={{ width: '100%' }}
-                            onChange={(v) => update('downloadLimit', Number(v) || 0)}
-                          />
-                          <PresetChips
-                            items={[
-                              { label: '0', value: 0 },
-                              { label: '10M', value: 10 },
-                              { label: '20M', value: 20 },
-                              { label: '50M', value: 50 },
-                              { label: '100M', value: 100 },
-                              { label: '200M', value: 200 },
-                            ]}
-                            selectedValue={form.downloadLimit}
-                            onSelect={(v) => update('downloadLimit', v)}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={8}>
+                      <Col xs={24} sm={12}>
                         <Form.Item label={t('pages.clients.limitHwid')} tooltip={t('pages.clients.limitHwidDesc')}>
                           <span style={{ display: 'flex', width: '100%' }}>
                             <Space.Compact style={{ display: 'flex', flex: 1 }}>
@@ -874,7 +843,7 @@ export default function ClientFormModal({
                     </Row>
 
                     <Row gutter={16}>
-                      <Col xs={24} sm={12}>
+                      <Col xs={24} sm={16}>
                         {form.delayedStart ? (
                           <Form.Item label={t('pages.clients.expireDays')} tooltip={t('pages.clients.expireDays')}>
                             <InputNumber
@@ -970,7 +939,7 @@ export default function ClientFormModal({
                           </Form.Item>
                         )}
                       </Col>
-                      <Col xs={12} sm={6}>
+                      <Col xs={24} sm={8}>
                         <Form.Item label={t('pages.clients.delayedStart')}>
                           <Switch
                             checked={form.delayedStart}
@@ -978,6 +947,7 @@ export default function ClientFormModal({
                               update('delayedStart', v);
                               if (v) {
                                 update('expiryDate', null);
+                                update('delayedDays', form.delayedDays || 30);
                               } else {
                                 update('delayedDays', 0);
                               }
@@ -985,111 +955,102 @@ export default function ClientFormModal({
                           />
                         </Form.Item>
                       </Col>
-                      <Col xs={12} sm={6}>
-                        <Form.Item label={t('pages.clients.renewDays')} tooltip={t('pages.clients.renewDesc')}>
-                          <InputNumber
-                            value={form.reset}
-                            min={0}
-                            style={{ width: '100%' }}
-                            onChange={(v) => update('reset', Number(v) || 0)}
-                          />
-                          <PresetChips
-                            items={[
-                              { label: '0', value: 0 },
-                              { label: '30d', value: 30 },
-                              { label: '60d', value: 60 },
-                              { label: '90d', value: 90 },
-                            ]}
-                            selectedValue={form.reset}
-                            onSelect={(v) => update('reset', v)}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-
-                    <Row gutter={16}>
-                      <Col xs={24} sm={8}>
-                        <Form.Item label={t('pages.clients.resetDay')} tooltip={t('pages.clients.resetDayDesc')}>
-                          <InputNumber
-                            value={form.reset}
-                            min={0}
-                            style={{ width: '100%' }}
-                            onChange={(v) => update('reset', Number(v) || 0)}
-                          />
-                          <PresetChips
-                            items={[
-                              { label: '0', value: 0 },
-                              { label: '1d', value: 1 },
-                              { label: '7d', value: 7 },
-                              { label: '15d', value: 15 },
-                              { label: '30d', value: 30 },
-                            ]}
-                            selectedValue={form.reset}
-                            onSelect={(v) => update('reset', v)}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={8}>
-                        <Form.Item label={t('pages.clients.resetLimit')} tooltip={t('pages.clients.resetLimitDesc')}>
-                          <InputNumber
-                            value={form.resetLimit}
-                            min={0}
-                            style={{ width: '100%' }}
-                            onChange={(v) => update('resetLimit', Number(v) || 0)}
-                          />
-                          <PresetChips
-                            items={[
-                              { label: '0 (∞)', value: 0 },
-                              { label: '1×', value: 1 },
-                              { label: '3×', value: 3 },
-                              { label: '6×', value: 6 },
-                              { label: '12×', value: 12 },
-                            ]}
-                            selectedValue={form.resetLimit}
-                            onSelect={(v) => update('resetLimit', v)}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={8}>
-                        <Form.Item label={t('pages.clients.resetTraffic')} tooltip={t('pages.clients.trafficResetCycleDesc')}>
-                          <Select
-                            value={form.reset}
-                            onChange={(v) => update('reset', Number(v) || 0)}
-                            options={[
-                              { value: 0, label: t('pages.clients.trafficResetNever') },
-                              { value: 1, label: t('pages.clients.trafficResetDaily') },
-                              { value: 7, label: t('pages.clients.trafficResetWeekly') },
-                              { value: 15, label: t('pages.clients.trafficResetBiweekly') },
-                              { value: 30, label: t('pages.clients.trafficResetMonthly') },
-                              ...(form.reset !== 0 && form.reset !== 1 && form.reset !== 7 && form.reset !== 15 && form.reset !== 30
-                                ? [{ value: form.reset, label: `${form.reset} ${t('pages.clients.days')}` }]
-                                : []),
-                            ]}
-                          />
-                        </Form.Item>
-                      </Col>
                     </Row>
 
                     <Row gutter={16}>
                       <Col xs={24} sm={12}>
-                        <Form.Item label={t('pages.clients.comment')}>
-                          <Input value={form.comment} onChange={(e) => update('comment', e.target.value)} />
+                        <Form.Item label={t('pages.clients.resetTraffic')} tooltip={t('pages.clients.trafficResetCycleDesc')}>
+                          <Select
+                            value={form.trafficResetMode}
+                            onChange={(v) => update('trafficResetMode', Number(v) || 0)}
+                            options={[
+                              { value: 0, label: t('pages.clients.trafficResetNever', 'Never') },
+                              { value: 1, label: t('pages.clients.trafficResetDaily', 'Daily') },
+                              { value: 7, label: t('pages.clients.trafficResetWeekly', 'Weekly') },
+                              { value: 15, label: t('pages.clients.trafficResetBiweekly', 'Every 15 days') },
+                              { value: 30, label: t('pages.clients.trafficResetMonthly', 'Monthly') },
+                            ]}
+                          />
                         </Form.Item>
                       </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item label={t('pages.clients.autoRenewal', 'Auto renewal')}>
+                          <Select
+                            value={form.renewalType}
+                            onChange={(v) => {
+                              update('renewalType', v);
+                              if (v === 'fixed' && form.reset <= 0) {
+                                update('reset', 30);
+                              }
+                            }}
+                            options={[
+                              { value: 'disabled', label: t('pages.clients.autoRenewalDisabled', 'Disabled') },
+                              { value: 'fixed', label: t('pages.clients.autoRenewalFixed', 'Fixed interval (days)') },
+                              { value: 'weekly', label: t('pages.clients.autoRenewalWeekly', 'Calendar weekly') },
+                              { value: 'monthly', label: t('pages.clients.autoRenewalMonthly', 'Calendar monthly') },
+                            ]}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+
+                    {form.renewalType === 'fixed' && (
+                      <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                          <Form.Item label={t('pages.clients.renewDays', 'Interval (Days)')} tooltip={t('pages.clients.renewDesc')}>
+                            <InputNumber
+                              value={form.reset}
+                              min={1}
+                              style={{ width: '100%' }}
+                              onChange={(v) => update('reset', Number(v) || 0)}
+                            />
+                            <PresetChips
+                              items={[
+                                { label: '30d', value: 30 },
+                                { label: '60d', value: 60 },
+                                { label: '90d', value: 90 },
+                              ]}
+                              selectedValue={form.reset}
+                              onSelect={(v) => update('reset', v)}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Form.Item label={t('pages.clients.autoRenewalCap', 'Max Renewals')} tooltip={t('pages.clients.autoRenewalCapDesc')}>
+                            <InputNumber
+                              value={form.resetLimit}
+                              min={0}
+                              style={{ width: '100%' }}
+                              onChange={(v) => update('resetLimit', Number(v) || 0)}
+                            />
+                            <PresetChips
+                              items={[
+                                { label: '0 (∞)', value: 0 },
+                                { label: '1×', value: 1 },
+                                { label: '3×', value: 3 },
+                                { label: '6×', value: 6 },
+                                { label: '12×', value: 12 },
+                              ]}
+                              selectedValue={form.resetLimit}
+                              onSelect={(v) => update('resetLimit', v)}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    )}
+
+                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item label={t('pages.clients.group')} tooltip={t('pages.clients.groupDesc')}>
                           <AutoComplete
                             value={form.group}
-                            placeholder={t('pages.clients.groupPlaceholder')}
+                            placeholder="e.g. customer-a"
                             options={(groups || []).map((g) => ({ value: g }))}
                             onChange={(v) => update('group', v ?? '')}
                             allowClear
                           />
                         </Form.Item>
                       </Col>
-                    </Row>
-
-                    <Row gutter={16}>
                       <Col xs={24} sm={12}>
                         <Form.Item label={t('pages.clients.telegramId')}>
                           <InputNumber
@@ -1102,17 +1063,6 @@ export default function ClientFormModal({
                           />
                         </Form.Item>
                       </Col>
-                      {showReverseTag && (
-                        <Col xs={24} sm={12}>
-                          <Form.Item label={t('pages.clients.reverseTag')}>
-                            <Input
-                              value={form.reverseTag}
-                              placeholder={t('pages.clients.reverseTagPlaceholder')}
-                              onChange={(e) => update('reverseTag', e.target.value)}
-                            />
-                          </Form.Item>
-                        </Col>
-                      )}
                     </Row>
 
                     {!isReseller && (
@@ -1151,30 +1101,18 @@ export default function ClientFormModal({
                 label: t('pages.clients.tabCredentials'),
                 children: (
                   <>
-                    <Row gutter={16}>
-                      <Col xs={24} sm={12}>
-                        <Form.Item label={speedDict.uploadLimit} tooltip={speedDict.uploadLimitDesc}>
-                          <InputNumber
-                            value={form.uploadLimit}
-                            min={0}
-                            step={1}
-                            style={{ width: '100%' }}
-                            onChange={(v) => update('uploadLimit', Number(v) || 0)}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col xs={24} sm={12}>
-                        <Form.Item label={speedDict.downloadLimit} tooltip={speedDict.downloadLimitDesc}>
-                          <InputNumber
-                            value={form.downloadLimit}
-                            min={0}
-                            step={1}
-                            style={{ width: '100%' }}
-                            onChange={(v) => update('downloadLimit', Number(v) || 0)}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
+                    <Form.Item label={t('pages.clients.comment')}>
+                      <Input value={form.comment} onChange={(e) => update('comment', e.target.value)} />
+                    </Form.Item>
+                    {showReverseTag && (
+                      <Form.Item label={t('pages.clients.reverseTag')}>
+                        <Input
+                          value={form.reverseTag}
+                          placeholder={t('pages.clients.reverseTagPlaceholder')}
+                          onChange={(e) => update('reverseTag', e.target.value)}
+                        />
+                      </Form.Item>
+                    )}
                     <Form.Item label={t('pages.clients.uuid')}>
                       <Space.Compact style={{ display: 'flex' }}>
                         <Input value={form.uuid} style={{ flex: 1 }} onChange={(e) => update('uuid', e.target.value)} />
@@ -1323,7 +1261,7 @@ export default function ClientFormModal({
 
                     <div style={{ marginTop: 16 }}>
                       <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
-                        {t('pages.clients.externalSubscriptions') || 'External Subscriptions'} ({subscriptionRows.length})
+                        {t('pages.clients.externalSubscriptions', 'External Subscriptions')} ({subscriptionRows.length})
                       </Typography.Text>
                       {subscriptionRows.length === 0 ? (
                         <Typography.Text type="secondary">{t('pages.clients.noExternalSubscriptions')}</Typography.Text>

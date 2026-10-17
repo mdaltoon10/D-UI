@@ -193,16 +193,64 @@ func (s *ClientService) resetAllClientTrafficsLocked(id int) error {
 	return nil
 }
 
-func (s *ClientService) ResetAllTraffics() (bool, error) {
-	db := database.GetDB()
-	res := db.Model(&xray.ClientTraffic{}).
-		Where("1 = 1").
-		Updates(map[string]any{"up": 0, "down": 0})
-	if res.Error != nil {
-		return false, res.Error
+func (s *ClientService) ResetAllTraffics(adminUsernames ...string) (bool, error) {
+	adminUsername := ""
+	if len(adminUsernames) > 0 {
+		adminUsername = strings.TrimSpace(adminUsernames[0])
 	}
-	if err := db.Where("1 = 1").Delete(&model.ClientGlobalTraffic{}).Error; err != nil {
+
+	db := database.GetDB()
+	if adminUsername == "*" || strings.EqualFold(adminUsername, "all") {
+		res := db.Model(&xray.ClientTraffic{}).
+			Where("1 = 1").
+			Updates(map[string]any{"up": 0, "down": 0})
+		if res.Error != nil {
+			return false, res.Error
+		}
+		if err := db.Where("1 = 1").Delete(&model.ClientGlobalTraffic{}).Error; err != nil {
+			return false, err
+		}
+		return res.RowsAffected > 0, nil
+	}
+
+	// Filter by CreatedBy to avoid crosstalk between main panel and reseller admins
+	var records []model.ClientRecord
+	query := db.Model(&model.ClientRecord{})
+	if adminUsername == "" {
+		query = query.Where("created_by = '' OR created_by IS NULL")
+	} else {
+		query = query.Where("LOWER(created_by) = LOWER(?)", adminUsername)
+	}
+
+	if err := query.Find(&records).Error; err != nil {
 		return false, err
 	}
-	return res.RowsAffected > 0, nil
+	if len(records) == 0 {
+		return false, nil
+	}
+
+	emails := make([]string, 0, len(records))
+	for _, r := range records {
+		if r.Email != "" {
+			emails = append(emails, r.Email)
+		}
+	}
+	if len(emails) == 0 {
+		return false, nil
+	}
+
+	var rowsAffected int64
+	for _, batch := range chunkStrings(emails, sqlInChunk) {
+		res := db.Model(&xray.ClientTraffic{}).
+			Where("email IN ?", batch).
+			Updates(map[string]any{"up": 0, "down": 0})
+		if res.Error != nil {
+			return false, res.Error
+		}
+		rowsAffected += res.RowsAffected
+		if err := db.Where("email IN ?", batch).Delete(&model.ClientGlobalTraffic{}).Error; err != nil {
+			return false, err
+		}
+	}
+	return rowsAffected > 0, nil
 }

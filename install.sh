@@ -1465,14 +1465,54 @@ install_d-ui() {
 
     # Check the system's architecture and rename the file accordingly
     if [[ $(arch) == "armv5" || $(arch) == "armv6" || $(arch) == "armv7" ]]; then
-        mv bin/xray-linux-$(arch) bin/xray-linux-arm
-        chmod +x bin/xray-linux-arm
+        mv bin/xray-linux-$(arch) bin/xray-linux-arm 2>/dev/null || true
+        chmod +x bin/xray-linux-arm 2>/dev/null || true
         if [[ -f bin/mtg-linux-$(arch) ]]; then
             mv bin/mtg-linux-$(arch) bin/mtg-linux-arm
             chmod +x bin/mtg-linux-arm
         fi
     fi
-    chmod +x d-ui bin/xray-linux-$(arch)
+    chmod +x d-ui bin/xray-linux-$(arch) 2>/dev/null || true
+
+    # Ensure Xray core is on the latest version
+    local xray_bin="bin/xray-linux-$(arch)"
+    if [[ $(arch) == "armv5" || $(arch) == "armv6" || $(arch) == "armv7" ]]; then
+        xray_bin="bin/xray-linux-arm"
+    fi
+    
+    local need_xray_update=0
+    if [[ ! -f "${xray_bin}" || ! -x "${xray_bin}" ]]; then
+        need_xray_update=1
+    else
+        local current_xray_ver=$("${xray_bin}" -version 2>/dev/null | head -n1 | awk '{print $2}')
+        if [[ -z "${current_xray_ver}" || "${current_xray_ver}" == 1.* ]]; then
+            need_xray_update=1
+        fi
+    fi
+
+    if [[ ${need_xray_update} -eq 1 ]]; then
+        echo -e "${yellow}Updating Xray core to the latest release...${plain}"
+        local xray_arch=$(arch)
+        if [[ "${xray_arch}" == "amd64" ]]; then xray_arch="64"; fi
+        if [[ "${xray_arch}" == "arm64" ]]; then xray_arch="arm64-v8a"; fi
+        if [[ "${xray_arch}" == "armv5" || "${xray_arch}" == "armv6" || "${xray_arch}" == "armv7" ]]; then xray_arch="arm32-v7a"; fi
+
+        local latest_xray_ver=$(curl -s --connect-timeout 10 https://api.github.com/repos/XTLS/Xray-core/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        if [[ -z "${latest_xray_ver}" ]]; then
+            latest_xray_ver="v26.9.30"
+        fi
+
+        curl -L -o "xray-latest.zip" "https://github.com/XTLS/Xray-core/releases/download/${latest_xray_ver}/Xray-linux-${xray_arch}.zip" > /dev/null 2>&1
+        if [[ -f "xray-latest.zip" ]]; then
+            unzip -o "xray-latest.zip" "xray" "geoip.dat" "geosite.dat" -d "bin" > /dev/null 2>&1
+            if [[ -f "bin/xray" ]]; then
+                mv -f "bin/xray" "${xray_bin}"
+                chmod +x "${xray_bin}"
+                echo -e "${green}Xray core successfully updated to ${latest_xray_ver}${plain}"
+            fi
+            rm -f "xray-latest.zip"
+        fi
+    fi
     if [[ -f bin/mtg-linux-arm ]]; then
         chmod +x bin/mtg-linux-arm
     elif [[ -f bin/mtg-linux-$(arch) ]]; then

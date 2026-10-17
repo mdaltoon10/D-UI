@@ -936,6 +936,7 @@
       "addMonths": "Add calendar months",
       "externalLinks": "External Links",
       "externalLinksDesc": "External proxies or subscription feeds to merge into this client's subscription output.",
+      "externalSubscriptions": "External Subscriptions",
       "addExternalSub": "Add External Subscription",
       "externalLinkUrl": "Link URL / URI",
       "externalLinkKind": "Link Type",

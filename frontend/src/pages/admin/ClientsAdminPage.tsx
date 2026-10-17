@@ -40,6 +40,7 @@ import {
   RetweetOutlined,
   EditOutlined,
   MoreOutlined,
+  RestOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { HttpUtil, SizeFormatter, IntlUtil } from '@/utils';
@@ -143,6 +144,7 @@ function AdminClientsSubList({
     detach,
     setExternalLinks,
     resetTraffic,
+    delDepleted,
     tgBotEnable,
     allGroups,
     expireDiff,
@@ -308,6 +310,27 @@ function AdminClientsSubList({
     setEditingExternalLinks([]);
     setFormOpen(true);
   };
+
+  const onDelDepleted = useCallback(() => {
+    Modal.confirm({
+      title: isFa ? `حذف کلاینت‌های اتمام‌یافته ادمین ${adminUsername}؟` : `Delete depleted clients of ${adminUsername}?`,
+      content: isFa ? 'هر کلاینتی متعلق به این ادمین که سهمیه ترافیک‌اش تمام شده یا تاریخ انقضایش گذشته است حذف می‌شود.' : 'Removes every client belonging to this admin whose traffic quota is exhausted or expiry has passed.',
+      okText: t('delete'),
+      okType: 'danger',
+      cancelText: t('cancel'),
+      onOk: async () => {
+        try {
+          const res = await delDepleted(adminUsername);
+          const deleted = (res?.obj as any)?.deleted ?? 0;
+          messageApi.success(isFa ? `${deleted} کلاینت اتمام‌یافته حذف شد` : `${deleted} depleted clients deleted`);
+          fetchClients();
+          onClientChange();
+        } catch (err: any) {
+          messageApi.error(err?.message || t('somethingWentWrong'));
+        }
+      },
+    });
+  }, [adminUsername, isFa, t, delDepleted, messageApi, fetchClients, onClientChange]);
 
   const onDelete = useCallback(async (row: any) => {
     const msg = await remove(row.email);
@@ -655,15 +678,26 @@ function AdminClientsSubList({
           />
         </div>
 
-        <Button
-          type="primary"
-          size={isMobile ? "small" : "middle"}
-          icon={<PlusOutlined />}
-          onClick={onAdd}
-          style={{ borderRadius: 8 }}
-        >
-          {dict.btnCreateClient}
-        </Button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Button
+            danger
+            size={isMobile ? "small" : "middle"}
+            icon={<RestOutlined />}
+            onClick={onDelDepleted}
+            style={{ borderRadius: 8 }}
+          >
+            {isFa ? 'حذف اتمام‌یافته‌ها' : t('pages.clients.delDepleted')}
+          </Button>
+          <Button
+            type="primary"
+            size={isMobile ? "small" : "middle"}
+            icon={<PlusOutlined />}
+            onClick={onAdd}
+            style={{ borderRadius: 8 }}
+          >
+            {dict.btnCreateClient}
+          </Button>
+        </div>
       </div>
 
       {!isMobile ? (

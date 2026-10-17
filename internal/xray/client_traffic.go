@@ -15,5 +15,4 @@ type ClientTraffic struct {
 	Total      int64  `json:"total" form:"total" example:"10737418240"`
 	Reset      int    `json:"reset" form:"reset" gorm:"default:0;index:idx_client_traffics_renew,priority:2" example:"0"`
 	LastOnline int64  `json:"lastOnline" form:"lastOnline" gorm:"default:0" example:"1735680000000"`
-	LastSubFetch int64 `json:"lastSubFetch" form:"lastSubFetch" gorm:"default:0;column:last_sub_fetch"`
 }

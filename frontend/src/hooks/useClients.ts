@@ -42,6 +42,7 @@ const JSON_HEADERS = { headers: { 'Content-Type': 'application/json' } } as cons
 
 interface SubSettings {
   enable: boolean;
+  happLinkEnable?: boolean;
   subURI: string;
   subJsonURI: string;
   subJsonEnable: boolean;
@@ -237,6 +238,7 @@ export function useClients() {
   const defaults = defaultsQuery.data ?? {};
   const subSettings: SubSettings = useMemo(() => ({
     enable: !!defaults.subEnable,
+    happLinkEnable: !!defaults.happLinkEnable,
     subURI: (defaults.subURI as string) || '',
     subJsonURI: (defaults.subJsonURI as string) || '',
     subJsonEnable: !!defaults.subJsonEnable,
@@ -245,6 +247,7 @@ export function useClients() {
     publicHost: (defaults.subDomain as string) || (defaults.webDomain as string) || '',
   }), [
     defaults.subEnable,
+    defaults.happLinkEnable,
     defaults.subURI,
     defaults.subJsonURI,
     defaults.subJsonEnable,
@@ -408,16 +411,18 @@ export function useClients() {
   });
 
   const delDepletedMut = useMutation({
-    mutationFn: async () => {
-      const raw = await HttpUtil.post('/panel/api/clients/delDepleted');
+    mutationFn: async (adminUsername?: string) => {
+      const url = adminUsername ? `/panel/api/clients/delDepleted?createdBy=${encodeURIComponent(adminUsername)}` : '/panel/api/clients/delDepleted';
+      const raw = await HttpUtil.post(url);
       return parseMsg(raw, DelDepletedResultSchema, 'clients/delDepleted');
     },
     onSuccess: (msg) => { if (msg?.success) invalidateAll(); },
   });
 
   const delOrphansMut = useMutation({
-    mutationFn: async () => {
-      const raw = await HttpUtil.post('/panel/api/clients/delOrphans');
+    mutationFn: async (adminUsername?: string) => {
+      const url = adminUsername ? `/panel/api/clients/delOrphans?createdBy=${encodeURIComponent(adminUsername)}` : '/panel/api/clients/delOrphans';
+      const raw = await HttpUtil.post(url);
       return parseMsg(raw, DelDepletedResultSchema, 'clients/delOrphans');
     },
     onSuccess: (msg) => { if (msg?.success) invalidateAll(); },
@@ -494,9 +499,12 @@ export function useClients() {
     if (!client?.email) return Promise.resolve(null as unknown as Msg<unknown>);
     return resetTrafficMut.mutateAsync(client.email);
   }, [resetTrafficMut]);
-  const resetAllTraffics = useCallback(() => resetAllTrafficsMut.mutateAsync(), [resetAllTrafficsMut]);
-  const delDepleted = useCallback(() => delDepletedMut.mutateAsync(), [delDepletedMut]);
-  const delOrphans = useCallback(() => delOrphansMut.mutateAsync(), [delOrphansMut]);
+  const resetAllTraffics = useCallback((adminUsername?: string) => {
+    const url = adminUsername ? `/panel/api/clients/resetAllTraffics?createdBy=${encodeURIComponent(adminUsername)}` : '/panel/api/clients/resetAllTraffics';
+    return HttpUtil.post(url);
+  }, []);
+  const delDepleted = useCallback((adminUsername?: string) => delDepletedMut.mutateAsync(adminUsername), [delDepletedMut]);
+  const delOrphans = useCallback((adminUsername?: string) => delOrphansMut.mutateAsync(adminUsername), [delOrphansMut]);
   const importClients = useCallback((data: string) => importClientsMut.mutateAsync(data), [importClientsMut]);
   // Fetch the exported clients so the page can show them in a CodeMirror viewer
   // (Copy / Download), rather than triggering an immediate browser download.

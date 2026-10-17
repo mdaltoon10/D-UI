@@ -379,8 +379,16 @@ func (a *ClientController) setExternalLinks(c *gin.Context) {
 }
 
 func (a *ClientController) resetAllTraffics(c *gin.Context) {
-	if !a.ensureMaster(c) { return }
-	needRestart, err := a.clientService.ResetAllTraffics()
+	var adminUsername string
+	if session.IsResellerLogin(c) {
+		adminUsername = session.GetLoginResellerUsername(c)
+	} else {
+		adminUsername = c.Query("createdBy")
+		if adminUsername == "" {
+			adminUsername = c.Query("admin")
+		}
+	}
+	needRestart, err := a.clientService.ResetAllTraffics(adminUsername)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
@@ -579,8 +587,16 @@ func (a *ClientController) bulkCreate(c *gin.Context) {
 }
 
 func (a *ClientController) delDepleted(c *gin.Context) {
-	if !a.ensureMaster(c) { return }
-	deleted, needRestart, err := a.clientService.DelDepleted(&a.inboundService)
+	var adminUsername string
+	if session.IsResellerLogin(c) {
+		adminUsername = session.GetLoginResellerUsername(c)
+	} else {
+		adminUsername = c.Query("createdBy")
+		if adminUsername == "" {
+			adminUsername = c.Query("admin")
+		}
+	}
+	deleted, needRestart, err := a.clientService.DelDepleted(&a.inboundService, adminUsername)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
@@ -651,8 +667,16 @@ func (a *ClientController) importClients(c *gin.Context) {
 }
 
 func (a *ClientController) delOrphans(c *gin.Context) {
-	if !a.ensureMaster(c) { return }
-	deleted, err := a.clientService.DeleteOrphans()
+	var adminUsername string
+	if session.IsResellerLogin(c) {
+		adminUsername = session.GetLoginResellerUsername(c)
+	} else {
+		adminUsername = c.Query("createdBy")
+		if adminUsername == "" {
+			adminUsername = c.Query("admin")
+		}
+	}
+	deleted, err := a.clientService.DeleteOrphans(adminUsername)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return

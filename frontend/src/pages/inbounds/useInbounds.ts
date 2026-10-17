@@ -16,6 +16,7 @@ import type { InboundSpeedEntry } from './list/types';
 
 export interface SubSettings {
   enable: boolean;
+  happLinkEnable?: boolean;
   subTitle: string;
   subURI: string;
   subJsonURI: string;
@@ -173,12 +174,13 @@ export function useInbounds() {
 
   const subSettings: SubSettings = useMemo(() => ({
     enable: !!defaults.subEnable,
+    happLinkEnable: !!defaults.happLinkEnable,
     subTitle: defaults.subTitle || '',
     subURI: defaults.subURI || '',
     subJsonURI: defaults.subJsonURI || '',
     subJsonEnable: !!defaults.subJsonEnable,
     publicHost: defaults.subDomain || defaults.webDomain || '',
-  }), [defaults.subEnable, defaults.subTitle, defaults.subURI, defaults.subJsonURI, defaults.subJsonEnable, defaults.subDomain, defaults.webDomain]);
+  }), [defaults.subEnable, defaults.happLinkEnable, defaults.subTitle, defaults.subURI, defaults.subJsonURI, defaults.subJsonEnable, defaults.subDomain, defaults.webDomain]);
 
   useEffect(() => {
     if (defaults.datepicker) setDatepicker(datepicker);
