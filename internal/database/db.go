@@ -3008,18 +3008,19 @@ func normalizeApiTokenCreatedAtSeconds() error {
 
 func migrateApiTokenScopeAndExpiry() error {
 	m := db.Migrator()
-	if !m.HasColumn(&model.ApiToken{}, "Scope") {
+	if !m.HasColumn(&model.ApiToken{}, "Scope") && !m.HasColumn(&model.ApiToken{}, "scope") {
 		if err := m.AddColumn(&model.ApiToken{}, "Scope"); err != nil {
 			return err
 		}
 	}
-	if !m.HasColumn(&model.ApiToken{}, "ExpiresAt") {
+	if !m.HasColumn(&model.ApiToken{}, "ExpiresAt") && !m.HasColumn(&model.ApiToken{}, "expires_at") {
 		if err := m.AddColumn(&model.ApiToken{}, "ExpiresAt"); err != nil {
 			return err
 		}
 	}
-	return db.Model(&model.ApiToken{}).Where("scope IS NULL OR TRIM(scope) = ''").
-		Updates(map[string]any{"scope": model.ApiScopeAdmin, "expires_at": 0}).Error
+	_ = db.Model(&model.ApiToken{}).Where("scope IS NULL OR TRIM(scope) = ''").
+		Update("scope", model.ApiScopeAdmin).Error
+	return nil
 }
 
 // openPostgresWithRetry retries the initial PostgreSQL connection with
