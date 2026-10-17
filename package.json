@@ -10,7 +10,7 @@
     "start": "cd frontend && npm run dev",
     "lint": "cd frontend && npm run lint"
   },
-  "version": "3.5.4",
+  "version": "3.5.5",
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
     "react": "^19.0.0",

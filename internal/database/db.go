@@ -376,8 +376,10 @@ func migrateClientTrafficResetColumns() error {
 // left by an earlier ALTER TABLE; configured nonzero weekdays are preserved.
 func migrateClientResetWeekdayColumns() error {
 	for _, table := range []string{"clients", "client_traffics"} {
-		if err := db.Table(table).Where("reset_weekday IS NULL").UpdateColumn("reset_weekday", 0).Error; err != nil {
-			return err
+		if db.Migrator().HasColumn(table, "reset_weekday") {
+			if err := db.Table(table).Where("reset_weekday IS NULL").UpdateColumn("reset_weekday", 0).Error; err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -1053,10 +1055,14 @@ func migrateVmessRemovedSecurities() error {
 // on the struct field already causes AutoMigrate to create it on new
 // installations; the explicit migration ensures existing databases get it.
 func migrateTgIDIndex() error {
-	if db.Migrator().HasIndex(&model.ClientRecord{}, "idx_clients_tg_id") {
+	m := db.Migrator()
+	if !m.HasTable(&model.ClientRecord{}) || m.HasIndex(&model.ClientRecord{}, "idx_clients_tg_id") {
 		return nil
 	}
-	return db.Migrator().CreateIndex(&model.ClientRecord{}, "TgID")
+	if m.HasColumn(&model.ClientRecord{}, "tg_id") {
+		return db.Exec("CREATE INDEX IF NOT EXISTS idx_clients_tg_id ON clients (tg_id)").Error
+	}
+	return nil
 }
 
 // normalizeInboundSubSortIndex lifts legacy zero defaults to 1.
