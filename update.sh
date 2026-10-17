@@ -1013,8 +1013,8 @@ update_d-ui() {
                 rm ${dui_service}/d-ui.service -f > /dev/null 2>&1
                 systemctl daemon-reload > /dev/null 2>&1
             else
-                rm d-ui-linux-$(arch).tar.gz -f > /dev/null 2>&1
-                _fail "ERROR: d-ui systemd unit not installed."
+                systemctl stop d-ui > /dev/null 2>&1 || true
+                pkill -f "${dui_folder}/d-ui" > /dev/null 2>&1 || true
             fi
         fi
         # Kill any leftover mtg (MTProto) sidecars. d-ui runs them outside its own
@@ -1090,7 +1090,7 @@ update_d-ui() {
         fi
 
         curl -L -o "xray-latest.zip" "https://github.com/XTLS/Xray-core/releases/download/${latest_xray_ver}/Xray-linux-${xray_arch}.zip" > /dev/null 2>&1
-        if [[ -f "xray-latest.zip" ]]; then
+        if [[ -s "xray-latest.zip" ]]; then
             unzip -o "xray-latest.zip" "xray" "geoip.dat" "geosite.dat" -d "bin" > /dev/null 2>&1
             if [[ -f "bin/xray" ]]; then
                 mv -f "bin/xray" "${xray_bin}"
