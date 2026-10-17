@@ -1076,6 +1076,10 @@ func normalizeInboundSubSortIndex() error {
 // normalizeClientExternalLinkEnable keeps external-link rows written before the
 // enable column existed enabled; disabled rows from newer builds stay false.
 func normalizeClientExternalLinkEnable() error {
+	m := db.Migrator()
+	if !m.HasTable(&model.ClientExternalLink{}) || !m.HasColumn(&model.ClientExternalLink{}, "enable") {
+		return nil
+	}
 	res := db.Exec("UPDATE client_external_links SET enable = ? WHERE enable IS NULL", true)
 	if res.Error != nil {
 		log.Printf("Error normalizing client external link enable: %v", res.Error)
@@ -1090,19 +1094,30 @@ func normalizeClientExternalLinkEnable() error {
 // normalizeClientExternalLinkTimestamps zeroes the NULLs an older build could
 // leave behind, so the sub-side expiry predicate never drops a legacy row.
 func normalizeClientExternalLinkTimestamps() error {
-	res := db.Exec("UPDATE client_external_links SET expiry_time = 0 WHERE expiry_time IS NULL")
-	if res.Error != nil {
-		log.Printf("Error normalizing client external link expiry_time: %v", res.Error)
-		return res.Error
+	m := db.Migrator()
+	if !m.HasTable(&model.ClientExternalLink{}) {
+		return nil
 	}
-	expiryRows := res.RowsAffected
-	res = db.Exec("UPDATE client_external_links SET last_fetch_at = 0 WHERE last_fetch_at IS NULL")
-	if res.Error != nil {
-		log.Printf("Error normalizing client external link last_fetch_at: %v", res.Error)
-		return res.Error
+	var expiryRows int64
+	if m.HasColumn(&model.ClientExternalLink{}, "expiry_time") {
+		res := db.Exec("UPDATE client_external_links SET expiry_time = 0 WHERE expiry_time IS NULL")
+		if res.Error != nil {
+			log.Printf("Error normalizing client external link expiry_time: %v", res.Error)
+			return res.Error
+		}
+		expiryRows = res.RowsAffected
 	}
-	if expiryRows+res.RowsAffected > 0 {
-		log.Printf("Normalized timestamps on %d client external link(s)", expiryRows+res.RowsAffected)
+	var fetchRows int64
+	if m.HasColumn(&model.ClientExternalLink{}, "last_fetch_at") {
+		res := db.Exec("UPDATE client_external_links SET last_fetch_at = 0 WHERE last_fetch_at IS NULL")
+		if res.Error != nil {
+			log.Printf("Error normalizing client external link last_fetch_at: %v", res.Error)
+			return res.Error
+		}
+		fetchRows = res.RowsAffected
+	}
+	if expiryRows+fetchRows > 0 {
+		log.Printf("Normalized timestamps on %d client external link(s)", expiryRows+fetchRows)
 	}
 	return nil
 }

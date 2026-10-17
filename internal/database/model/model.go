@@ -748,6 +748,8 @@ func (ClientInbound) TableName() string { return "client_inbounds" }
 type ClientExternalLink struct {
 	Id        int    `json:"id" gorm:"primaryKey;autoIncrement"`
 	ClientId  int    `json:"clientId" gorm:"index;column:client_id"`
+	Enable    *bool  `json:"enable" gorm:"column:enable;default:true"`
+	ExpiryTime int64 `json:"expiryTime" gorm:"column:expiry_time;default:0"`
 	Kind       string `json:"kind" gorm:"column:kind"`
 	Value      string `json:"value" gorm:"column:value"`
 	Remark     string `json:"remark" gorm:"column:remark"`

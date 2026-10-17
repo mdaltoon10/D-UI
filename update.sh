@@ -1090,7 +1090,7 @@ update_d-ui() {
         fi
 
         curl -L -o "xray-latest.zip" "https://github.com/XTLS/Xray-core/releases/download/${latest_xray_ver}/Xray-linux-${xray_arch}.zip" > /dev/null 2>&1
-        if [[ -s "xray-latest.zip" ]]; then
+        if [[ -f "xray-latest.zip" ]]; then
             unzip -o "xray-latest.zip" "xray" "geoip.dat" "geosite.dat" -d "bin" > /dev/null 2>&1
             if [[ -f "bin/xray" ]]; then
                 mv -f "bin/xray" "${xray_bin}"
