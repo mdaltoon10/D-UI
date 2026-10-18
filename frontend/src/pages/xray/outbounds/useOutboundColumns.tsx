@@ -65,32 +65,35 @@ export function useOutboundColumns({
         key: 'action',
         align: 'center',
         width: 100,
-        render: (_v, _record, index) => (
-          <div className="action-cell">
-            <span className="row-index">{index + 1}</span>
-            <div className="action-buttons">
-              <Button shape="circle" size="small" icon={<EditOutlined />} aria-label={t('edit')} onClick={() => openEdit(index)} />
-              <Dropdown
-                trigger={['click']}
-                menu={{
-                  items: [
-                    ...(index > 0
-                      ? [
-                          { key: 'top', label: <><VerticalAlignTopOutlined /> {t('pages.xray.outbound.moveToTop')}</>, onClick: () => setFirst(index) },
-                        ]
-                      : []),
-                    { key: 'up', label: <><ArrowUpOutlined /> {t('pages.inbounds.form.moveUp')}</>, disabled: index === 0, onClick: () => moveUp(index) },
-                    { key: 'down', label: <><ArrowDownOutlined /> {t('pages.inbounds.form.moveDown')}</>, disabled: index === rows.length - 1, onClick: () => moveDown(index) },
-                    { key: 'reset', label: <><RetweetOutlined /> {t('pages.inbounds.resetTraffic')}</>, onClick: () => onResetTraffic(rows[index].tag || '') },
-                    { key: 'del', danger: true, label: <><DeleteOutlined /> {t('delete')}</>, onClick: () => confirmDelete(index) },
-                  ],
-                }}
-              >
-                <Button shape="circle" size="small" icon={<MoreOutlined />} aria-label={t('more')} />
-              </Dropdown>
+        render: (_v, record, index) => {
+          const targetIndex = record.key ?? index;
+          return (
+            <div className="action-cell">
+              <span className="row-index">{index + 1}</span>
+              <div className="action-buttons">
+                <Button shape="circle" size="small" icon={<EditOutlined />} aria-label={t('edit')} onClick={() => openEdit(targetIndex)} />
+                <Dropdown
+                  trigger={['click']}
+                  menu={{
+                    items: [
+                      ...(index > 0
+                        ? [
+                            { key: 'top', label: <><VerticalAlignTopOutlined /> {t('pages.xray.outbound.moveToTop')}</>, onClick: () => setFirst(targetIndex) },
+                          ]
+                        : []),
+                      { key: 'up', label: <><ArrowUpOutlined /> {t('pages.inbounds.form.moveUp')}</>, disabled: index === 0, onClick: () => moveUp(targetIndex) },
+                      { key: 'down', label: <><ArrowDownOutlined /> {t('pages.inbounds.form.moveDown')}</>, disabled: index === rows.length - 1, onClick: () => moveDown(targetIndex) },
+                      { key: 'reset', label: <><RetweetOutlined /> {t('pages.inbounds.resetTraffic')}</>, onClick: () => onResetTraffic(record.tag || '') },
+                      { key: 'del', danger: true, label: <><DeleteOutlined /> {t('delete')}</>, onClick: () => confirmDelete(targetIndex) },
+                    ],
+                  }}
+                >
+                  <Button shape="circle" size="small" icon={<MoreOutlined />} aria-label={t('more')} />
+                </Dropdown>
+              </div>
             </div>
-          </div>
-        ),
+          );
+        },
       },
       {
         title: t('pages.xray.outbound.tag'),
@@ -155,9 +158,10 @@ export function useOutboundColumns({
         key: 'testResult',
         align: 'left',
         width: 140,
-        render: (_v, _record, index) => {
-          const r = testResult(outboundTestStates, index);
-          if (!r) return isTesting(outboundTestStates, index) ? <LoadingOutlined /> : <span className="empty">—</span>;
+        render: (_v, record, index) => {
+          const targetIndex = record.key ?? index;
+          const r = testResult(outboundTestStates, targetIndex);
+          if (!r) return isTesting(outboundTestStates, targetIndex) ? <LoadingOutlined /> : <span className="empty">—</span>;
           return <TestResultPopover result={r} />;
         },
       },
@@ -166,19 +170,22 @@ export function useOutboundColumns({
         key: 'test',
         align: 'center',
         width: 80,
-        render: (_v, record, index) => (
-          <Tooltip title={`${t('check')} (${(isUdpOutbound(record) ? 'http' : testMode).toUpperCase()})`}>
-            <Button
-              type="primary"
-              shape="circle"
-              loading={isTesting(outboundTestStates, index)}
-              disabled={isUntestable(record) || isTesting(outboundTestStates, index)}
-              icon={<ThunderboltOutlined />}
-              aria-label={t('check')}
-              onClick={() => onTest(index, testMode)}
-            />
-          </Tooltip>
-        ),
+        render: (_v, record, index) => {
+          const targetIndex = record.key ?? index;
+          return (
+            <Tooltip title={`${t('check')} (${(isUdpOutbound(record) ? 'http' : testMode).toUpperCase()})`}>
+              <Button
+                type="primary"
+                shape="circle"
+                loading={isTesting(outboundTestStates, targetIndex)}
+                disabled={isUntestable(record) || isTesting(outboundTestStates, targetIndex)}
+                icon={<ThunderboltOutlined />}
+                aria-label={t('check')}
+                onClick={() => onTest(targetIndex, testMode)}
+              />
+            </Tooltip>
+          );
+        },
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -29,6 +29,24 @@ export const OutboundDomainStrategies = Object.freeze([
 
 export type OutboundDomainStrategy = (typeof OutboundDomainStrategies)[number];
 
-export function isOutboundProtocol(value: unknown): boolean {
-  return typeof value === string && Object.values(OutboundProtocols).includes(value as any);
+export function isOutboundProtocol(value: unknown, targetProtocol?: string): boolean {
+  const proto =
+    typeof value === 'string'
+      ? value
+      : typeof (value as any)?.protocol === 'string'
+        ? (value as any).protocol
+        : undefined;
+
+  if (typeof proto !== 'string') {
+    return false;
+  }
+
+  const normalized = proto.toLowerCase();
+  if (targetProtocol !== undefined) {
+    return normalized === targetProtocol.toLowerCase();
+  }
+
+  return Object.values(OutboundProtocols).some(
+    (p) => typeof p === 'string' && p.toLowerCase() === normalized,
+  );
 }

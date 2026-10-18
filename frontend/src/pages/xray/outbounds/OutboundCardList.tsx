@@ -81,11 +81,11 @@ export default function OutboundCardList({
               menu={{
                 items: [
                   ...(index > 0
-                    ? [{ key: 'top', label: <><VerticalAlignTopOutlined /> {t('pages.xray.outbound.moveToTop')}</>, onClick: () => setFirst(index) }]
+                    ? [{ key: 'top', label: <><VerticalAlignTopOutlined /> {t('pages.xray.outbound.moveToTop')}</>, onClick: () => setFirst(record.key ?? index) }]
                     : []),
-                  { key: 'edit', label: <><EditOutlined /> {t('edit')}</>, onClick: () => openEdit(index) },
+                  { key: 'edit', label: <><EditOutlined /> {t('edit')}</>, onClick: () => openEdit(record.key ?? index) },
                   { key: 'reset', label: <><RetweetOutlined /> {t('pages.inbounds.resetTraffic')}</>, onClick: () => onResetTraffic(record.tag || '') },
-                  { key: 'del', danger: true, label: <><DeleteOutlined /> {t('delete')}</>, onClick: () => confirmDelete(index) },
+                  { key: 'del', danger: true, label: <><DeleteOutlined /> {t('delete')}</>, onClick: () => confirmDelete(record.key ?? index) },
                 ],
               }}
             >
@@ -106,20 +106,20 @@ export default function OutboundCardList({
             <span className="traffic-sep" />
             <span className="traffic-down">↓ {SizeFormatter.sizeFormat(trafficFor(outboundsTraffic, record).down)}</span>
             <span className="card-test">
-              {testResult(outboundTestStates, index) ? (
-                <TestResultPopover result={testResult(outboundTestStates, index)!} />
-              ) : isTesting(outboundTestStates, index) ? (
+              {testResult(outboundTestStates, record.key ?? index) ? (
+                <TestResultPopover result={testResult(outboundTestStates, record.key ?? index)!} />
+              ) : isTesting(outboundTestStates, record.key ?? index) ? (
                 <LoadingOutlined />
               ) : null}
               <Button
                 type="primary"
                 shape="circle"
                 size="small"
-                loading={isTesting(outboundTestStates, index)}
-                disabled={isUntestable(record) || isTesting(outboundTestStates, index)}
+                loading={isTesting(outboundTestStates, record.key ?? index)}
+                disabled={isUntestable(record) || isTesting(outboundTestStates, record.key ?? index)}
                 icon={<ThunderboltOutlined />}
                 aria-label={t('check')}
-                onClick={() => onTest(index, testMode)}
+                onClick={() => onTest(record.key ?? index, testMode)}
               />
             </span>
           </div>
